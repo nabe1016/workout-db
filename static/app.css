@@ -1,6 +1,12 @@
 /* Dark theme overrides */
 body { font-size: 16px; }
 
+/* Bootstrap cards default to --bs-card-color which is dark in light-mode.
+   Force inherit so body's text-light (#f8f9fa) flows through. */
+.card {
+  color: inherit;
+}
+
 /* Improve text-secondary contrast on dark bg (#6c757d → #adb5bd) */
 .text-secondary {
   color: #adb5bd !important;
@@ -10,12 +16,6 @@ a.text-secondary {
 }
 a.text-secondary:hover {
   color: #ced4da !important;
-}
-
-/* Minimum readable size for tiny labels */
-.text-secondary.small,
-.small.text-secondary {
-  font-size: 0.8rem !important;
 }
 
 .form-control, .form-select {
