@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}マイセット{% endblock %}
+{% block nav_title %}マイセット{% endblock %}
+{% block nav_mysets %}active{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="mb-0">マイセット <span class="badge bg-secondary">{{ my_sets|length }}</span></h5>
+</div>
+
+{% if my_sets %}
+<div class="d-flex flex-column gap-2">
+  {% for ms in my_sets %}
+  <a href="{{ url_for('my_set_detail', my_set_id=ms.id) }}" class="text-decoration-none">
+    <div class="card bg-secondary bg-opacity-25 border-secondary">
+      <div class="card-body py-3">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <div class="fw-bold fs-5 text-warning">{{ ms.name }}</div>
+            {% if ms.description %}
+            <div class="text-secondary small">{{ ms.description }}</div>
+            {% endif %}
+          </div>
+          <span class="badge bg-secondary">{{ ms.exercise_count }} 種目</span>
+        </div>
+      </div>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="text-center text-secondary mt-5">
+  <div style="font-size:3rem;">⚙️</div>
+  <p class="mt-2">マイセットがまだありません。</p>
+  <p class="small">よく使うトレーニングメニューを登録しておくと、<br>ワンタップでセッションに反映できます。</p>
+</div>
+{% endif %}
+
+<a href="{{ url_for('my_set_new') }}"
+   class="btn btn-warning btn-lg rounded-circle position-fixed shadow"
+   style="bottom:5rem;right:1.5rem;width:3.5rem;height:3.5rem;font-size:1.5rem;line-height:1;padding:0;display:flex;align-items:center;justify-content:center;">
+  +
+</a>
+{% endblock %}

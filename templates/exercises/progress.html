@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% set back_url = request.referrer or url_for('sessions_list') %}
+{% block title %}{{ exercise.name }} 推移{% endblock %}
+{% block nav_title %}推移{% endblock %}
+
+{% block content %}
+<h5 class="mb-1">{{ exercise.name }}</h5>
+<p class="text-secondary small mb-3">{{ history|length }} セッション</p>
+
+{% if history %}
+
+{# 1RM mini bar chart #}
+<div class="mb-4">
+  <div class="text-secondary small mb-1">1RM 推移</div>
+  {% for r in history %}
+  {% if r.one_rep_max %}
+  <div class="d-flex align-items-center gap-2 mb-1 small">
+    <span class="text-secondary" style="width:5.5rem;">{{ r.session_date.strftime('%y/%m/%d') }}</span>
+    <div class="flex-grow-1 bg-secondary rounded" style="height:14px;">
+      <div class="bg-info rounded" style="height:14px;width:{{ (r.one_rep_max / max_1rm * 100)|int }}%;"></div>
+    </div>
+    <span class="text-light fw-bold" style="width:4rem;text-align:right;">{{ r.one_rep_max }}kg</span>
+  </div>
+  {% endif %}
+  {% endfor %}
+</div>
+
+{# Detail table #}
+<div class="table-responsive">
+  <table class="table table-dark table-sm table-bordered text-center small">
+    <thead>
+      <tr class="text-secondary">
+        <th>日付</th>
+        <th>1RM</th>
+        <th>重量</th>
+        <th>Sets</th>
+        <th>EXP</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in history|reverse %}
+      <tr>
+        <td class="text-start">{{ r.session_date.strftime('%m/%d') }}（{{ r.day_of_week }}）</td>
+        <td>{{ r.one_rep_max or '-' }}</td>
+        <td>
+          {% if r.weight_low_load %}
+            <span class="text-secondary">低: </span>{{ r.weight_low_load }}
+          {% elif r.weight_setting %}
+            {{ r.weight_setting }}
+          {% else %}-{% endif %}
+        </td>
+        <td>
+          {% for completed in [r.set1_completed, r.set2_completed, r.set3_completed] %}
+          <span class="{% if completed %}text-success{% else %}text-secondary{% endif %}">
+            {% if completed %}O{% else %}X{% endif %}
+          </span>
+          {% endfor %}
+        </td>
+        <td class="text-warning">{{ "{:,}".format(r.exp_earned or 0) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="text-secondary text-center mt-4">データがありません。</p>
+{% endif %}
+{% endblock %}

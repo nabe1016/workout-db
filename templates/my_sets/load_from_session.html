@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% set back_url = url_for('my_set_detail', my_set_id=my_set.id) %}
+{% block title %}セッションから読み込む{% endblock %}
+{% block nav_title %}読み込み{% endblock %}
+
+{% block content %}
+<h5 class="mb-1">セッションから読み込む</h5>
+<p class="text-secondary small mb-1">「<strong class="text-warning">{{ my_set.name }}</strong>」に読み込むセッションを選んでください。</p>
+<p class="text-secondary small mb-4">既存の種目はすべて置き換えられます。読み込み後に個別編集できます。</p>
+
+{% if candidates %}
+<div class="d-flex flex-column gap-3">
+  {% for item in candidates %}
+  {% set s = item.session %}
+  {% set exlist = item.exercises %}
+
+  <div class="card bg-secondary bg-opacity-25 border-secondary">
+    <div class="card-body pb-2">
+      <div class="d-flex justify-content-between align-items-start mb-2">
+        <div>
+          <div class="fw-bold fs-5">
+            {{ s.session_date.strftime('%Y/%m/%d') }}
+            <span class="text-secondary fs-6">（{{ s.day_of_week }}）</span>
+          </div>
+          {% if s.start_time and s.end_time %}
+          <div class="text-secondary small">
+            {{ s.start_time.strftime('%H:%M') }} – {{ s.end_time.strftime('%H:%M') }}
+          </div>
+          {% endif %}
+        </div>
+        <span class="badge bg-secondary">{{ s.exercise_count }} 種目</span>
+      </div>
+
+      <div class="mb-3">
+        {% for ex in exlist %}
+        <div class="d-flex justify-content-between align-items-center py-1 border-bottom border-secondary border-opacity-25">
+          <span class="text-info small fw-bold">{{ ex.name }}</span>
+          <span class="text-secondary small">
+            {% if ex.weight_setting %}{{ ex.weight_setting }}kg{% endif %}
+            {% if ex.weight_low_load %} / {{ ex.weight_low_load }}kg{% endif %}
+            {% if ex.reps %} × {{ ex.reps }}rep{% endif %}
+          </span>
+        </div>
+        {% endfor %}
+      </div>
+
+      <form method="post"
+            action="{{ url_for('my_set_load_from_session_execute', my_set_id=my_set.id, session_id=s.id) }}"
+            onsubmit="return confirm('このセッションの内容を読み込みますか？')">
+        <button type="submit" class="btn btn-warning btn-lg w-100 fw-bold">
+          このセッションを読み込む
+        </button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% else %}
+<div class="text-center text-secondary mt-5">
+  <div style="font-size:3rem;">📋</div>
+  <p class="mt-2">読み込めるセッションがありません。</p>
+</div>
+{% endif %}
+{% endblock %}

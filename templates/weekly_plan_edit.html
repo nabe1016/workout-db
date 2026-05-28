@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% set back_url = url_for('weekly_plan') %}
+{% set dow_names = ['月曜日', '火曜日', '水曜日', '木曜日', '金曜日', '土曜日', '日曜日'] %}
+{% block title %}{{ dow_names[dow] }}の予定{% endblock %}
+{% block nav_title %}{{ dow_names[dow] }}{% endblock %}
+
+{% block content %}
+<h5 class="mb-3">{{ dow_names[dow] }}のトレーニング設定</h5>
+
+<form method="post">
+  {# Location #}
+  <div class="mb-4">
+    <label class="form-label fw-bold">トレーニング種別</label>
+    <div class="d-flex flex-column gap-2">
+      {% for val, label, desc in [
+        ('gym',  '🏋️ ジム',    'ジムでのトレーニング'),
+        ('home', '🏠 自宅',    '自宅でのトレーニング'),
+        ('rest', '😴 休養',    'この日はトレーニングしない'),
+      ] %}
+      <label class="card bg-dark border-secondary p-0" style="cursor:pointer;">
+        <div class="card-body py-2 px-3 d-flex align-items-center gap-3">
+          <input type="radio" name="location" value="{{ val }}" class="form-check-input mt-0"
+                 {% if (day and day.location == val) or (not day and val == 'gym') %}checked{% endif %}>
+          <div>
+            <div class="fw-bold">{{ label }}</div>
+            <div class="text-secondary small">{{ desc }}</div>
+          </div>
+        </div>
+      </label>
+      {% endfor %}
+    </div>
+  </div>
+
+  {# My Set #}
+  <div class="mb-3" id="my-set-section">
+    <label class="form-label">使用するマイセット <span class="text-secondary small">（任意）</span></label>
+    <select class="form-select bg-dark text-light border-secondary" name="my_set_id">
+      <option value="">なし</option>
+      {% for ms in my_sets %}
+      <option value="{{ ms.id }}"
+              {% if day and day.my_set_id == ms.id %}selected{% endif %}>
+        {{ '🏠 ' if ms.location == 'home' else '🏋️ ' }}{{ ms.name }}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+
+  {# Notes #}
+  <div class="mb-4">
+    <label class="form-label">メモ <span class="text-secondary small">（任意）</span></label>
+    <input type="text" class="form-control bg-dark text-light border-secondary"
+           name="notes"
+           value="{{ day.notes if day and day.notes else '' }}"
+           placeholder="例: 高負荷の日・軽め">
+  </div>
+
+  <button type="submit" class="btn btn-warning btn-lg w-100">保存</button>
+</form>
+
+<script>
+(function () {
+  var radios = document.querySelectorAll('input[name="location"]');
+  var section = document.getElementById('my-set-section');
+  function toggle() {
+    var val = document.querySelector('input[name="location"]:checked').value;
+    section.style.display = val === 'rest' ? 'none' : '';
+  }
+  radios.forEach(function (r) { r.addEventListener('change', toggle); });
+  toggle();
+})();
+</script>
+{% endblock %}

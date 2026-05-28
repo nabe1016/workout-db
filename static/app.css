@@ -1,0 +1,98 @@
+/* Dark theme overrides */
+body { font-size: 16px; }
+
+.form-control, .form-select {
+  color: #f8f9fa !important;
+}
+.form-control::placeholder {
+  color: #6c757d !important;
+}
+.form-control:focus, .form-select:focus {
+  border-color: #ffc107 !important;
+  box-shadow: 0 0 0 0.15rem rgba(255,193,7,.25) !important;
+}
+
+/* Cards tappable on mobile */
+a > .card:hover, a > .card:active {
+  border-color: #adb5bd !important;
+}
+
+/* Set toggle buttons */
+.set-btn {
+  font-size: 1.8rem;
+  min-height: 3.5rem;
+}
+
+/* Bottom navigation */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1030;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.bottom-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  color: #adb5bd;
+  padding: 0.5rem 1rem;
+  min-width: 4rem;
+  transition: color 0.15s;
+}
+
+.bottom-nav-item.active,
+.bottom-nav-item:hover {
+  color: #ffc107;
+}
+
+.bottom-nav-today {
+  background: #ffc107;
+  border-radius: 50%;
+  width: 3rem;
+  height: 3rem;
+  padding: 0;
+  color: #212529 !important;
+  font-weight: bold;
+  flex-direction: row;
+  gap: 0;
+}
+
+.bottom-nav-today .bottom-nav-label {
+  display: none;
+}
+
+.bottom-nav-today .bottom-nav-icon {
+  font-size: 1.4rem;
+}
+
+.bottom-nav-icon {
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.bottom-nav-label {
+  font-size: 0.65rem;
+  margin-top: 0.15rem;
+}
+
+/* Offset content so bottom nav doesn't cover it */
+.main-content {
+  padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+}
+
+/* Table on small screens */
+@media (max-width: 400px) {
+  .table { font-size: 0.75rem; }
+}
+
+/* Last-values hint */
+.last-value-hint {
+  font-size: 0.7rem;
+  color: #6c757d;
+  margin-top: 0.2rem;
+}

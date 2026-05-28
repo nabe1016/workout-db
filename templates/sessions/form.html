@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% set back_url = url_for('session_detail', session_id=session.id) if session else url_for('sessions_list') %}
+{% block title %}{% if session %}セッション編集{% else %}新規セッション{% endif %}{% endblock %}
+{% block nav_title %}{% if session %}編集{% else %}新規{% endif %}{% endblock %}
+
+{% block content %}
+<h5 class="mb-3">{% if session %}セッションを編集{% else %}新規セッション{% endif %}</h5>
+
+<form method="post">
+  <div class="mb-3">
+    <label class="form-label">日付 <span class="text-danger">*</span></label>
+    <input type="date" class="form-control form-control-lg bg-dark text-light border-secondary"
+           name="session_date"
+           value="{{ session.session_date.isoformat() if session else today }}"
+           required>
+  </div>
+
+  <div class="row g-2 mb-3">
+    <div class="col-6">
+      <label class="form-label">開始時刻</label>
+      <input type="time" class="form-control bg-dark text-light border-secondary"
+             name="start_time"
+             value="{{ session.start_time.strftime('%H:%M') if session and session.start_time else '' }}">
+    </div>
+    <div class="col-6">
+      <label class="form-label">終了時刻</label>
+      <input type="time" class="form-control bg-dark text-light border-secondary"
+             name="end_time"
+             value="{{ session.end_time.strftime('%H:%M') if session and session.end_time else '' }}">
+    </div>
+  </div>
+
+  <div class="mb-4">
+    <label class="form-label">回数 / セット（全体デフォルト）</label>
+    <input type="number" class="form-control bg-dark text-light border-secondary"
+           name="rep_count" inputmode="numeric" min="1" max="100"
+           value="{{ session.rep_count if session and session.rep_count else '' }}"
+           placeholder="例: 8">
+  </div>
+
+  <button type="submit" class="btn btn-warning btn-lg w-100">保存</button>
+</form>
+
+<script>
+(function () {
+  var startEl = document.querySelector('input[name="start_time"]');
+  if (startEl && !startEl.value) {
+    var now = new Date();
+    var hh = String(now.getHours()).padStart(2, '0');
+    var mm = String(now.getMinutes()).padStart(2, '0');
+    startEl.value = hh + ':' + mm;
+  }
+})();
+</script>
+{% endblock %}

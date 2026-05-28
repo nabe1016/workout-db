@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% set back_url = url_for('session_detail', session_id=session.id) %}
+{% block title %}{% if se %}種目編集{% else %}種目追加{% endif %}{% endblock %}
+{% block nav_title %}{% if se %}編集{% else %}追加{% endif %}{% endblock %}
+
+{% block content %}
+<h5 class="mb-3">{% if se %}種目を編集{% else %}種目を追加{% endif %}</h5>
+
+{# Pass session rep_count to JS #}
+<input type="hidden" id="session_rep_count" value="{{ session.rep_count or 0 }}">
+
+<form method="post" id="ex-form">
+  {# Exercise select #}
+  <div class="mb-3">
+    <label class="form-label">種目 <span class="text-danger">*</span></label>
+    <select class="form-select form-select-lg bg-dark text-light border-secondary"
+            name="exercise_id" id="exercise_select" required
+            onchange="if(this.value) location.href='?exercise_id='+this.value">
+      <option value="">選択してください</option>
+      {% for ex in exercises %}
+      <option value="{{ ex.id }}"
+              {% if se and se.exercise_id == ex.id %}selected
+              {% elif prefill_exercise_id and prefill_exercise_id == ex.id %}selected
+              {% endif %}>
+        {{ ex.name }}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+
+  {% if last_values and not se %}
+  <div class="alert alert-secondary py-2 small mb-3">
+    前回の値を引き継ぎました。変更がある場合は修正してください。
+  </div>
+  {% endif %}
+
+  {# 1RM #}
+  <div class="mb-3">
+    <label class="form-label">1RM (kg)</label>
+    <input type="number" class="form-control bg-dark text-light border-secondary"
+           name="one_rep_max" id="one_rep_max"
+           inputmode="decimal" step="0.1" min="0"
+           value="{% if se and se.one_rep_max %}{{ se.one_rep_max }}{% elif last_values and last_values.one_rep_max %}{{ last_values.one_rep_max }}{% endif %}"
+           placeholder="例: 60.0">
+    {% if last_values and not se and last_values.one_rep_max %}
+    <div class="last-value-hint">前回: {{ last_values.one_rep_max }}kg</div>
+    {% endif %}
+  </div>
+
+  {# Weight settings #}
+  <div class="row g-2 mb-3">
+    <div class="col-6">
+      <label class="form-label">高負荷 (kg)</label>
+      <input type="number" class="form-control bg-dark text-light border-secondary"
+             name="weight_setting" id="weight_setting"
+             inputmode="decimal" step="0.1" min="0"
+             value="{% if se and se.weight_setting %}{{ se.weight_setting }}{% elif last_values and last_values.weight_setting %}{{ last_values.weight_setting }}{% endif %}"
+             placeholder="例: 48.0">
+      {% if last_values and not se and last_values.weight_setting %}
+      <div class="last-value-hint">前回: {{ last_values.weight_setting }}kg</div>
+      {% endif %}
+    </div>
+    <div class="col-6">
+      <label class="form-label">低負荷 (kg)</label>
+      <input type="number" class="form-control bg-dark text-light border-secondary"
+             name="weight_low_load" id="weight_low_load"
+             inputmode="decimal" step="0.1" min="0"
+             value="{% if se and se.weight_low_load %}{{ se.weight_low_load }}{% elif last_values and last_values.weight_low_load %}{{ last_values.weight_low_load }}{% endif %}"
+             placeholder="なければ空欄">
+      {% if last_values and not se and last_values.weight_low_load %}
+      <div class="last-value-hint">前回: {{ last_values.weight_low_load }}kg</div>
+      {% endif %}
+    </div>
+  </div>
+
+  {# Reps #}
+  <div class="mb-3">
+    <label class="form-label">rep 数（この種目固有）</label>
+    <input type="number" class="form-control bg-dark text-light border-secondary"
+           name="reps" id="reps"
+           inputmode="numeric" min="1" max="200"
+           value="{% if se and se.reps %}{{ se.reps }}{% elif last_values and last_values.reps %}{{ last_values.reps }}{% endif %}"
+           placeholder="空欄 = セッションのデフォルト（{{ session.rep_count or '未設定' }}回）">
+  </div>
+
+  {# Set completion #}
+  <div class="mb-3">
+    <label class="form-label d-block">セット完了</label>
+    <div class="d-flex gap-3">
+      {% for i in [1, 2, 3] %}
+      {% set completed = se["set%d_completed" % i] if se else False %}
+      <button type="button"
+              class="set-btn btn btn-lg fw-bold flex-fill
+                     {% if completed %}btn-success{% else %}btn-outline-secondary{% endif %}"
+              data-completed="{{ 'true' if completed else 'false' }}"
+              data-target="set{{ i }}_completed"
+              style="min-height:3.5rem;font-size:1.5rem;">
+        {% if completed %}O{% else %}X{% endif %}
+      </button>
+      <input type="hidden" name="set{{ i }}_completed" id="set{{ i }}_completed"
+             value="{{ 'true' if completed else 'false' }}">
+      {% endfor %}
+    </div>
+  </div>
+
+  {# EXP preview #}
+  <div class="mb-3 text-center">
+    <div id="exp-preview" class="fs-3 fw-bold text-warning">EXP: 0</div>
+    <input type="hidden" name="exp_earned" id="exp_earned"
+           value="{{ se.exp_earned if se else 0 }}">
+  </div>
+
+  {# Muscle groups #}
+  <div class="mb-4">
+    <label class="form-label">筋肉グループ <span class="text-secondary small">（任意）</span></label>
+    <input type="text" class="form-control bg-dark text-light border-secondary"
+           name="muscle_groups"
+           value="{% if se and se.muscle_groups %}{{ se.muscle_groups }}{% elif last_values and last_values.muscle_groups %}{{ last_values.muscle_groups }}{% endif %}"
+           placeholder="例: 広背筋,大腿四頭筋">
+  </div>
+
+  <button type="submit" class="btn btn-warning btn-lg w-100">保存</button>
+</form>
+
+<script>
+(function () {
+  function calcExp() {
+    const orm      = parseFloat(document.getElementById('one_rep_max').value) || 0;
+    const lowLoad  = parseFloat(document.getElementById('weight_low_load').value);
+    const setting  = parseFloat(document.getElementById('weight_setting').value) || 0;
+    const repsEl   = document.getElementById('reps');
+    const sessReps = parseInt(document.getElementById('session_rep_count').value) || 0;
+    const reps     = (repsEl.value ? parseInt(repsEl.value) : 0) || sessReps;
+
+    const weight = (!isNaN(lowLoad) && lowLoad > 0) ? lowLoad : setting;
+
+    const doneBtns = document.querySelectorAll('.set-btn[data-completed="true"]');
+    const exp = Math.round(weight * reps * doneBtns.length);
+
+    document.getElementById('exp-preview').textContent = 'EXP: ' + exp.toLocaleString();
+    document.getElementById('exp_earned').value = exp;
+  }
+
+  document.querySelectorAll('.set-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      const done = btn.dataset.completed === 'true';
+      btn.dataset.completed = done ? 'false' : 'true';
+      btn.classList.toggle('btn-success', !done);
+      btn.classList.toggle('btn-outline-secondary', done);
+      btn.textContent = done ? 'X' : 'O';
+      document.getElementById(btn.dataset.target).value = done ? 'false' : 'true';
+      calcExp();
+    });
+  });
+
+  ['one_rep_max', 'weight_setting', 'weight_low_load', 'reps'].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el) el.addEventListener('input', calcExp);
+  });
+
+  calcExp();
+})();
+</script>
+{% endblock %}

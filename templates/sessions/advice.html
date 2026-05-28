@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% set back_url = url_for('session_detail', session_id=session.id) %}
+{% block title %}リカバリーアドバイス{% endblock %}
+{% block nav_title %}アドバイス{% endblock %}
+
+{% block content %}
+{# Header #}
+<div class="text-center mb-3">
+  {% if intensity == 'high' %}
+  <div style="font-size:3rem;">⚡</div>
+  <h4 class="mt-1 text-warning">高強度セッション完了！</h4>
+  {% elif intensity == 'medium' %}
+  <div style="font-size:3rem;">💪</div>
+  <h4 class="mt-1">充実したトレーニング！</h4>
+  {% else %}
+  <div style="font-size:3rem;">✅</div>
+  <h4 class="mt-1">軽めのセッション完了！</h4>
+  {% endif %}
+  <div class="text-secondary small">{{ session.session_date.strftime('%Y/%m/%d') }}（{{ session.day_of_week }}）</div>
+</div>
+
+{# Stats #}
+<div class="card bg-secondary bg-opacity-25 border-secondary mb-4">
+  <div class="card-body">
+    <div class="row text-center g-0">
+      <div class="col-4 border-end border-secondary">
+        <div class="fs-3 fw-bold text-warning">{{ "{:,}".format(session.total_exp or 0) }}</div>
+        <div class="text-secondary small">EXP</div>
+      </div>
+      <div class="col-4 border-end border-secondary">
+        <div class="fs-3 fw-bold text-info">{{ exercises | length }}</div>
+        <div class="text-secondary small">種目</div>
+      </div>
+      <div class="col-4">
+        <div class="fs-3 fw-bold text-success">{{ completed_count }}</div>
+        <div class="text-secondary small">完全完了</div>
+      </div>
+    </div>
+    {% if session.post_notes %}
+    <div class="border-top border-secondary mt-2 pt-2 text-secondary small">
+      "{{ session.post_notes }}"
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{# Advice cards #}
+<h6 class="text-secondary mb-2">今日のリカバリーアドバイス</h6>
+<div class="d-flex flex-column gap-2 mb-4">
+  {% for tip in advice %}
+  <div class="card bg-dark border-secondary">
+    <div class="card-body py-2 px-3">
+      <div class="d-flex gap-2 align-items-start">
+        <span style="font-size:1.5rem;line-height:1.4;">{{ tip.icon }}</span>
+        <div>
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-secondary" style="font-size:.65rem;">{{ tip.cat }}</span>
+          </div>
+          <div class="fw-bold mt-1">{{ tip.title }}</div>
+          <div class="text-secondary small mt-1">{{ tip.body }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{# Next action #}
+<div class="d-flex flex-column gap-2">
+  <a href="{{ url_for('weight_log') }}" class="btn btn-outline-info btn-lg w-100">
+    ⚖️ 今日の体重を記録する
+  </a>
+  <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-lg w-100">
+    🏠 ダッシュボードへ
+  </a>
+</div>
+{% endblock %}

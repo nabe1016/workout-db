@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% set back_url = url_for('dashboard') %}
+{% block title %}週間計画{% endblock %}
+{% block nav_title %}週間計画{% endblock %}
+
+{% block content %}
+<h5 class="mb-3">週間トレーニング計画</h5>
+
+{% set dow_names = ['月', '火', '水', '木', '金', '土', '日'] %}
+{% set loc_labels = {'gym': '🏋️ ジム', 'home': '🏠 自宅', 'rest': '😴 休養'} %}
+{% set loc_colors = {'gym': 'warning', 'home': 'info', 'rest': 'secondary'} %}
+
+<div class="d-flex flex-column gap-2">
+  {% for day in schedule %}
+  {% set loc = day.location or 'gym' %}
+  <a href="{{ url_for('weekly_plan_edit', dow=day.day_of_week) }}" class="text-decoration-none">
+    <div class="card bg-dark border-secondary">
+      <div class="card-body py-2 px-3">
+        <div class="d-flex justify-content-between align-items-center">
+          <div class="d-flex align-items-center gap-3">
+            <span class="fw-bold fs-5" style="min-width:1.5rem;">{{ dow_names[day.day_of_week] }}</span>
+            <div>
+              <span class="badge bg-{{ loc_colors[loc] }} text-dark">{{ loc_labels[loc] }}</span>
+              {% if day.my_set_name %}
+              <div class="text-secondary small mt-1">{{ day.my_set_name }}</div>
+              {% endif %}
+              {% if day.notes %}
+              <div class="text-secondary small">{{ day.notes }}</div>
+              {% endif %}
+            </div>
+          </div>
+          <span class="text-secondary">›</span>
+        </div>
+      </div>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+
+<p class="text-secondary small text-center mt-3">各曜日をタップして編集</p>
+{% endblock %}

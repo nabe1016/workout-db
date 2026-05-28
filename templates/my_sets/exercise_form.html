@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% set back_url = url_for('my_set_detail', my_set_id=my_set.id) %}
+{% block title %}{% if mse %}種目編集{% else %}種目追加{% endif %} — {{ my_set.name }}{% endblock %}
+{% block nav_title %}{% if mse %}編集{% else %}追加{% endif %}{% endblock %}
+
+{% block content %}
+<h5 class="mb-1">{% if mse %}種目を編集{% else %}種目を追加{% endif %}</h5>
+<p class="text-secondary small mb-3">{{ my_set.name }}</p>
+
+<form method="post">
+  <div class="mb-3">
+    <label class="form-label">種目 <span class="text-danger">*</span></label>
+    <select class="form-select form-select-lg bg-dark text-light border-secondary"
+            name="exercise_id" required>
+      <option value="">選択してください</option>
+      {% for ex in all_exercises %}
+      <option value="{{ ex.id }}" {% if mse and mse.exercise_id == ex.id %}selected{% endif %}>
+        {{ ex.name }}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">1RM (kg)</label>
+    <input type="number" class="form-control bg-dark text-light border-secondary"
+           name="one_rep_max" inputmode="decimal" step="0.1" min="0"
+           value="{{ mse.one_rep_max if mse and mse.one_rep_max else '' }}"
+           placeholder="例: 60.0">
+  </div>
+
+  <div class="row g-2 mb-3">
+    <div class="col-6">
+      <label class="form-label">高負荷 (kg)</label>
+      <input type="number" class="form-control bg-dark text-light border-secondary"
+             name="weight_setting" inputmode="decimal" step="0.1" min="0"
+             value="{{ mse.weight_setting if mse and mse.weight_setting else '' }}"
+             placeholder="例: 48.0">
+    </div>
+    <div class="col-6">
+      <label class="form-label">低負荷 (kg)</label>
+      <input type="number" class="form-control bg-dark text-light border-secondary"
+             name="weight_low_load" inputmode="decimal" step="0.1" min="0"
+             value="{{ mse.weight_low_load if mse and mse.weight_low_load else '' }}"
+             placeholder="なければ空欄">
+    </div>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">rep 数（任意）</label>
+    <input type="number" class="form-control bg-dark text-light border-secondary"
+           name="reps" inputmode="numeric" min="1" max="200"
+           value="{{ mse.reps if mse and mse.reps else '' }}"
+           placeholder="空欄 = セッションのデフォルト">
+  </div>
+
+  <div class="mb-4">
+    <label class="form-label">筋肉グループ <span class="text-secondary small">（任意）</span></label>
+    <input type="text" class="form-control bg-dark text-light border-secondary"
+           name="muscle_groups"
+           value="{{ mse.muscle_groups if mse and mse.muscle_groups else '' }}"
+           placeholder="例: 広背筋,大腿四頭筋">
+  </div>
+
+  <button type="submit" class="btn btn-warning btn-lg w-100">保存</button>
+</form>
+{% endblock %}

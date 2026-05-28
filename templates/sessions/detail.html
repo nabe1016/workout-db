@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% set back_url = url_for('sessions_list') %}
+{% block title %}{{ session.session_date.strftime('%m/%d') }}（{{ session.day_of_week }}）{% endblock %}
+{% block nav_title %}詳細{% endblock %}
+
+{% block content %}
+{# Session header #}
+<div class="card bg-secondary bg-opacity-25 border-secondary mb-3">
+  <div class="card-body py-2">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <div class="fw-bold fs-4">
+          {{ session.session_date.strftime('%Y/%m/%d') }}（{{ session.day_of_week }}）
+        </div>
+        {% if session.start_time and session.end_time %}
+        <div class="text-secondary">
+          {{ session.start_time.strftime('%H:%M') }} – {{ session.end_time.strftime('%H:%M') }}
+        </div>
+        {% endif %}
+        {% if session.rep_count %}
+        <div class="text-secondary small">{{ session.rep_count }} 回 / セット</div>
+        {% endif %}
+      </div>
+      <div class="text-end">
+        <div class="fs-4 fw-bold text-warning" id="total-exp">
+          {{ "{:,}".format(session.total_exp or 0) }}
+        </div>
+        <div class="text-secondary small">EXP</div>
+      </div>
+    </div>
+    <div class="d-flex gap-2 mt-2">
+      <a href="{{ url_for('session_finish', session_id=session.id) }}"
+         class="btn btn-success btn-sm flex-fill fw-bold">🎉 終了・アドバイス</a>
+      <a href="{{ url_for('session_edit', session_id=session.id) }}"
+         class="btn btn-outline-secondary btn-sm">編集</a>
+      <form method="post" action="{{ url_for('session_delete', session_id=session.id) }}"
+            onsubmit="return confirm('このセッションを削除しますか？')">
+        <button class="btn btn-outline-danger btn-sm">削除</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+{# Exercise list #}
+{% if exercises %}
+<div class="d-flex flex-column gap-2 mb-3" id="exercise-list">
+  {% for ex in exercises %}
+  <div class="card bg-dark border-secondary" id="ex-card-{{ ex.id }}">
+    <div class="card-body py-2 px-3">
+      <div class="d-flex justify-content-between align-items-start">
+        <div class="flex-grow-1">
+          <a href="{{ url_for('exercise_progress', exercise_id=ex.exercise_id) }}"
+             class="fw-bold text-info text-decoration-none">
+            {{ ex.exercise_name }}
+          </a>
+          {% if ex.muscle_groups %}
+          <div class="text-secondary small">{{ ex.muscle_groups }}</div>
+          {% endif %}
+          <div class="d-flex flex-wrap gap-2 mt-1 small text-secondary">
+            {% if ex.one_rep_max %}<span>1RM: <strong class="text-light">{{ ex.one_rep_max }}kg</strong></span>{% endif %}
+            {% if ex.weight_setting %}<span>高: <strong class="text-light">{{ ex.weight_setting }}kg</strong></span>{% endif %}
+            {% if ex.weight_low_load %}<span>低: <strong class="text-light">{{ ex.weight_low_load }}kg</strong></span>{% endif %}
+            {% if ex.reps %}<span>{{ ex.reps }}rep</span>{% endif %}
+          </div>
+
+          {# Inline set toggle buttons #}
+          <div class="d-flex gap-2 mt-2 align-items-center">
+            {% for i in [1, 2, 3] %}
+            {% set completed = ex["set%d_completed" % i] %}
+            <button type="button"
+                    class="set-toggle-btn btn btn-sm fw-bold {% if completed %}btn-success{% else %}btn-outline-secondary{% endif %}"
+                    data-se-id="{{ ex.id }}"
+                    data-set-num="{{ i }}"
+                    data-completed="{{ 'true' if completed else 'false' }}"
+                    style="min-width:2.8rem;min-height:2.8rem;font-size:1.1rem;">
+              {% if completed %}O{% else %}X{% endif %}
+            </button>
+            {% endfor %}
+            <span class="badge bg-warning text-dark ms-1 exp-badge-{{ ex.id }}">
+              {{ "{:,}".format(ex.exp_earned) }} EXP
+            </span>
+          </div>
+        </div>
+
+        <div class="d-flex flex-column gap-1 ms-2">
+          <a href="{{ url_for('exercise_edit', session_id=session.id, se_id=ex.id) }}"
+             class="btn btn-outline-secondary btn-sm">編集</a>
+          <form method="post"
+                action="{{ url_for('exercise_delete', session_id=session.id, se_id=ex.id) }}"
+                onsubmit="return confirm('削除しますか？')">
+            <button class="btn btn-outline-danger btn-sm w-100">削除</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{# 3-way entry (compact) when exercises exist #}
+<div class="d-flex gap-2 mb-3">
+  <a href="{{ url_for('session_apply_my_set', session_id=session.id) }}"
+     class="btn btn-outline-warning btn-sm flex-fill">⚙️ マイセット</a>
+  <a href="{{ url_for('session_copy_from', session_id=session.id) }}"
+     class="btn btn-outline-info btn-sm flex-fill">📋 直近</a>
+</div>
+
+{% else %}
+{# Empty state — 3-way entry #}
+<div class="text-center mb-3">
+  <div style="font-size:3rem;">🏋️</div>
+  <p class="text-secondary mt-2 mb-4">トレーニングを開始しましょう</p>
+</div>
+<div class="d-flex flex-column gap-3 mb-3">
+  <a href="{{ url_for('session_apply_my_set', session_id=session.id) }}"
+     class="btn btn-warning btn-lg fw-bold">
+    ⚙️ マイセットから入力
+  </a>
+  <a href="{{ url_for('session_copy_from', session_id=session.id) }}"
+     class="btn btn-info btn-lg fw-bold">
+    📋 直近のメニューから入力
+  </a>
+  <a href="{{ url_for('exercise_new', session_id=session.id) }}"
+     class="btn btn-outline-secondary btn-lg">
+    ＋ 自身で選択して入力
+  </a>
+</div>
+{% endif %}
+
+{% if exercises %}
+<a href="{{ url_for('exercise_new', session_id=session.id) }}"
+   class="btn btn-warning btn-lg w-100">+ 種目を追加</a>
+{% endif %}
+
+<script>
+(function () {
+  document.querySelectorAll('.set-toggle-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var seId = btn.dataset.seId;
+      var setNum = btn.dataset.setNum;
+      btn.disabled = true;
+
+      fetch('/api/se/' + seId + '/toggle/' + setNum, { method: 'POST' })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          var done = data.completed;
+          btn.dataset.completed = done ? 'true' : 'false';
+          btn.textContent = done ? 'O' : 'X';
+          btn.classList.toggle('btn-success', done);
+          btn.classList.toggle('btn-outline-secondary', !done);
+
+          var expEl = document.querySelector('.exp-badge-' + seId);
+          if (expEl) expEl.textContent = data.exp_earned.toLocaleString() + ' EXP';
+
+          var totalEl = document.getElementById('total-exp');
+          if (totalEl) totalEl.textContent = data.session_total_exp.toLocaleString();
+        })
+        .catch(function () { /* silent fail — page still usable */ })
+        .finally(function () { btn.disabled = false; });
+    });
+  });
+})();
+</script>
+{% endblock %}

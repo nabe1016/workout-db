@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}種目一覧{% endblock %}
+{% block nav_title %}種目{% endblock %}
+{% block nav_exercises %}active{% endblock %}
+
+{% block content %}
+<h5 class="mb-3">種目一覧 <span class="badge bg-secondary">{{ exercises|length }}</span></h5>
+
+<div class="d-flex flex-column gap-2">
+  {% for ex in exercises %}
+  <a href="{{ url_for('exercise_progress', exercise_id=ex.id) }}"
+     class="text-decoration-none">
+    <div class="card bg-secondary bg-opacity-25 border-secondary">
+      <div class="card-body py-3">
+        <span class="fw-bold text-info">{{ ex.name }}</span>
+      </div>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% endblock %}

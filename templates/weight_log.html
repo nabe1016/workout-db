@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% set back_url = url_for('dashboard') %}
+{% block title %}体重記録{% endblock %}
+{% block nav_title %}体重{% endblock %}
+
+{% block content %}
+<h5 class="mb-3">体重記録</h5>
+
+{# Quick input #}
+<div class="card bg-secondary bg-opacity-25 border-secondary mb-4">
+  <div class="card-body">
+    <form method="post" action="{{ url_for('weight_add') }}" class="d-flex flex-column gap-2">
+      <div class="row g-2">
+        <div class="col-5">
+          <label class="form-label small">日付</label>
+          <input type="date" class="form-control bg-dark text-light border-secondary"
+                 name="logged_date" value="{{ today }}" required>
+        </div>
+        <div class="col-4">
+          <label class="form-label small">体重 (kg)</label>
+          <input type="number" class="form-control bg-dark text-light border-secondary"
+                 name="weight_kg" inputmode="decimal" step="0.1" min="20" max="300"
+                 placeholder="72.5" required>
+        </div>
+        <div class="col-3 d-flex align-items-end">
+          <button type="submit" class="btn btn-warning w-100">記録</button>
+        </div>
+      </div>
+      <input type="text" class="form-control bg-dark text-light border-secondary"
+             name="notes" placeholder="メモ（任意）">
+    </form>
+  </div>
+</div>
+
+{% if logs %}
+{# Mini chart using CSS bars #}
+{% set max_w = logs | map(attribute='weight_kg') | max %}
+{% set min_w = logs | map(attribute='weight_kg') | min %}
+{% set range_w = [max_w - min_w, 0.1] | max %}
+
+<div class="mb-3">
+  <div class="text-secondary small mb-1">推移（直近30件）</div>
+  <div class="d-flex align-items-end gap-1" style="height:3rem;">
+    {% for log in logs | reverse %}
+    {% set pct = ((log.weight_kg - min_w) / range_w * 80 + 10) | int %}
+    <div class="flex-fill bg-info rounded-top"
+         style="height:{{ pct }}%;opacity:0.7;"
+         title="{{ log.logged_date.strftime('%m/%d') }}: {{ log.weight_kg }}kg"></div>
+    {% endfor %}
+  </div>
+  <div class="d-flex justify-content-between text-secondary" style="font-size:.65rem;">
+    <span>{{ logs[-1].logged_date.strftime('%m/%d') }}</span>
+    <span>{{ logs[0].logged_date.strftime('%m/%d') }}</span>
+  </div>
+</div>
+
+<div class="d-flex flex-column gap-1">
+  {% for log in logs %}
+  <div class="d-flex justify-content-between align-items-center px-1 py-2 border-bottom border-secondary border-opacity-25">
+    <div>
+      <span class="fw-bold">{{ log.weight_kg }} kg</span>
+      {% if loop.index < logs|length %}
+      {% set diff = log.weight_kg - logs[loop.index].weight_kg %}
+      <span class="ms-2 small {% if diff > 0 %}text-danger{% elif diff < 0 %}text-success{% else %}text-secondary{% endif %}">
+        {% if diff > 0 %}+{% endif %}{{ "%.1f"|format(diff) }}
+      </span>
+      {% endif %}
+      {% if log.notes %}<div class="text-secondary small">{{ log.notes }}</div>{% endif %}
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      <span class="text-secondary small">{{ log.logged_date.strftime('%Y/%m/%d') }}</span>
+      <form method="post" action="{{ url_for('weight_delete', logged_date=log.logged_date.isoformat()) }}"
+            onsubmit="return confirm('削除しますか？')">
+        <button type="submit" class="btn btn-outline-danger btn-sm" style="padding:.1rem .4rem;font-size:.75rem;">×</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% else %}
+<p class="text-secondary text-center mt-4">まだ記録がありません。</p>
+{% endif %}
+{% endblock %}
