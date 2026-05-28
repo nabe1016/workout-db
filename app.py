@@ -9,6 +9,34 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "workout-secret-key-dev")
 
 
+def run_migrations():
+    import psycopg2
+    from db import _DATABASE_URL
+    conn = psycopg2.connect(_DATABASE_URL)
+    conn.autocommit = True
+    cur = conn.cursor()
+    with open(os.path.join(os.path.dirname(__file__), "schema.sql")) as f:
+        sql = f.read()
+    for stmt in [s.strip() for s in sql.split(";") if s.strip()]:
+        try:
+            cur.execute(stmt)
+        except Exception:
+            pass
+    # Seed weekly_schedule
+    cur.execute("SELECT COUNT(*) FROM weekly_schedule")
+    if cur.fetchone()[0] == 0:
+        for dow in range(7):
+            cur.execute(
+                "INSERT INTO weekly_schedule (day_of_week) VALUES (%s) ON CONFLICT DO NOTHING",
+                (dow,)
+            )
+    cur.close()
+    conn.close()
+
+
+run_migrations()
+
+
 def _parse_date(s: str):
     try:
         return datetime.date.fromisoformat(s)
