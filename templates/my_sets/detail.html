@@ -21,11 +21,19 @@
 </div>
 
 {% if exercises %}
-<div class="d-flex flex-column gap-2 mb-4" id="exercise-list">
+<div class="text-secondary small mb-2 ms-1">≡ を長押ししてドラッグで並び替え</div>
+<div class="d-flex flex-column gap-2 mb-4" id="sortable-list">
   {% for ex in exercises %}
-  <div class="card bg-dark border-secondary">
+  <div class="card bg-dark border-secondary" data-id="{{ ex.id }}">
     <div class="card-body py-2 px-3">
-      <div class="d-flex justify-content-between align-items-start">
+      <div class="d-flex align-items-center gap-2">
+
+        {# ドラッグハンドル #}
+        <div class="drag-handle text-secondary"
+             style="font-size:1.4rem;cursor:grab;padding:0.2rem 0.4rem;touch-action:none;user-select:none;">
+          ≡
+        </div>
+
         <div class="flex-grow-1">
           <div class="fw-bold text-info">{{ ex.exercise_name }}</div>
           {% if ex.muscle_groups %}
@@ -38,7 +46,8 @@
             {% if ex.reps %}<span>{{ ex.reps }}rep</span>{% endif %}
           </div>
         </div>
-        <div class="d-flex flex-column gap-1 ms-2">
+
+        <div class="d-flex flex-column gap-1 ms-1">
           <a href="{{ url_for('my_set_exercise_edit', my_set_id=my_set.id, mse_id=ex.id) }}"
              class="btn btn-outline-secondary btn-sm">編集</a>
           <form method="post"
@@ -52,6 +61,7 @@
   </div>
   {% endfor %}
 </div>
+
 {% else %}
 <div class="text-center my-4">
   <div style="font-size:3rem;">⚙️</div>
@@ -74,4 +84,30 @@
 </div>
 <a href="{{ url_for('my_set_exercise_new', my_set_id=my_set.id) }}"
    class="btn btn-warning btn-lg w-100">+ 種目を追加</a>
+
+{% if exercises %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script>
+(function () {
+  var reorderUrl = '{{ url_for("my_set_exercises_reorder", my_set_id=my_set.id) }}';
+  var sortable = Sortable.create(document.getElementById('sortable-list'), {
+    handle: '.drag-handle',
+    animation: 150,
+    delay: 150,           // 長押し150msでドラッグ開始
+    delayOnTouchOnly: true,
+    ghostClass: 'sortable-ghost',
+    chosenClass: 'sortable-chosen',
+    onEnd: function () {
+      var ids = Array.from(document.querySelectorAll('#sortable-list [data-id]'))
+                     .map(function (el) { return el.dataset.id; });
+      fetch(reorderUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: ids })
+      });
+    }
+  });
+})();
+</script>
+{% endif %}
 {% endblock %}

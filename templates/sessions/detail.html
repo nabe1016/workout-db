@@ -43,11 +43,16 @@
 
 {# Exercise list #}
 {% if exercises %}
-<div class="d-flex flex-column gap-2 mb-3" id="exercise-list">
+<div class="text-secondary small mb-2 ms-1">≡ を長押ししてドラッグで並び替え</div>
+<div class="d-flex flex-column gap-2 mb-3" id="session-sortable">
   {% for ex in exercises %}
-  <div class="card bg-dark border-secondary" id="ex-card-{{ ex.id }}">
+  <div class="card bg-dark border-secondary" id="ex-card-{{ ex.id }}" data-id="{{ ex.id }}">
     <div class="card-body py-2 px-3">
-      <div class="d-flex justify-content-between align-items-start">
+      <div class="d-flex align-items-start gap-2">
+        <div class="drag-handle text-secondary mt-1"
+             style="font-size:1.4rem;cursor:grab;padding:0.1rem 0.3rem;touch-action:none;user-select:none;">
+          ≡
+        </div>
         <div class="flex-grow-1">
           <a href="{{ url_for('exercise_progress', exercise_id=ex.exercise_id) }}"
              class="fw-bold text-info text-decoration-none">
@@ -132,8 +137,34 @@
    class="btn btn-warning btn-lg w-100">+ 種目を追加</a>
 {% endif %}
 
+{% if exercises %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+{% endif %}
 <script>
 (function () {
+  // ── Sortable ──────────────────────────────────────────────────────────────
+  var sortableEl = document.getElementById('session-sortable');
+  if (sortableEl && typeof Sortable !== 'undefined') {
+    Sortable.create(sortableEl, {
+      handle: '.drag-handle',
+      animation: 150,
+      delay: 150,
+      delayOnTouchOnly: true,
+      ghostClass: 'sortable-ghost',
+      chosenClass: 'sortable-chosen',
+      onEnd: function () {
+        var ids = Array.from(document.querySelectorAll('#session-sortable [data-id]'))
+                       .map(function (el) { return el.dataset.id; });
+        fetch('{{ url_for("session_exercises_reorder", session_id=session.id) }}', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids: ids })
+        });
+      }
+    });
+  }
+
+  // ── Set toggle ────────────────────────────────────────────────────────────
   document.querySelectorAll('.set-toggle-btn').forEach(function (btn) {
     btn.addEventListener('click', function () {
       var seId = btn.dataset.seId;

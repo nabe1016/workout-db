@@ -323,6 +323,26 @@ def delete_my_set_exercise(mse_id: int) -> None:
         cur.execute("DELETE FROM my_set_exercises WHERE id = %s", (mse_id,))
 
 
+def reorder_my_set_exercises(my_set_id: int, ordered_ids: list) -> None:
+    with _conn() as conn:
+        cur = conn.cursor()
+        for i, mse_id in enumerate(ordered_ids, 1):
+            cur.execute(
+                "UPDATE my_set_exercises SET sort_order=%s WHERE id=%s AND my_set_id=%s",
+                (i, mse_id, my_set_id)
+            )
+
+
+def reorder_session_exercises(session_id: int, ordered_ids: list) -> None:
+    with _conn() as conn:
+        cur = conn.cursor()
+        for i, se_id in enumerate(ordered_ids, 1):
+            cur.execute(
+                "UPDATE session_exercises SET sort_order=%s WHERE id=%s AND session_id=%s",
+                (i, se_id, session_id)
+            )
+
+
 def copy_session_to_my_set(session_id: int, my_set_id: int) -> int:
     """Import all exercises from a session into a my-set (replaces existing exercises)."""
     with _conn() as conn:

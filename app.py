@@ -366,6 +366,26 @@ def session_advice(session_id):
                            completed_count=completed_count)
 
 
+# ── Reorder (AJAX) ───────────────────────────────────────────────────────────
+
+@app.route("/my-sets/<int:my_set_id>/exercises/reorder", methods=["POST"])
+def my_set_exercises_reorder(my_set_id):
+    ids = request.json.get("ids", [])
+    if not ids:
+        return jsonify({"error": "no ids"}), 400
+    db.reorder_my_set_exercises(my_set_id, [int(i) for i in ids])
+    return jsonify({"ok": True})
+
+
+@app.route("/sessions/<int:session_id>/exercises/reorder", methods=["POST"])
+def session_exercises_reorder(session_id):
+    ids = request.json.get("ids", [])
+    if not ids:
+        return jsonify({"error": "no ids"}), 400
+    db.reorder_session_exercises(session_id, [int(i) for i in ids])
+    return jsonify({"ok": True})
+
+
 # ── Inline set toggle (AJAX) ──────────────────────────────────────────────────
 
 @app.route("/api/se/<int:se_id>/toggle/<int:set_num>", methods=["POST"])

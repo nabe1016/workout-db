@@ -91,6 +91,20 @@ a > .card:hover, a > .card:active {
   .table { font-size: 0.75rem; }
 }
 
+/* Sortable drag feedback */
+.sortable-ghost {
+  opacity: 0.4;
+  background: #495057 !important;
+}
+.sortable-chosen {
+  background: #343a40 !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+.drag-handle:active {
+  cursor: grabbing;
+  color: #ffc107 !important;
+}
+
 /* Last-values hint */
 .last-value-hint {
   font-size: 0.7rem;
