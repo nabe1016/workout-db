@@ -103,7 +103,7 @@
 </div>
 
 {# 3-way entry (compact) when exercises exist #}
-<div class="d-flex gap-2 mb-3">
+<div class="d-flex gap-2 mb-2">
   <a href="{{ url_for('session_apply_my_set', session_id=session.id) }}"
      class="btn btn-outline-warning btn-sm flex-fill">⚙️ マイセット</a>
   <a href="{{ url_for('session_copy_from', session_id=session.id) }}"
@@ -133,8 +133,10 @@
 {% endif %}
 
 {% if exercises %}
-<a href="{{ url_for('exercise_new', session_id=session.id) }}"
-   class="btn btn-warning btn-lg w-100">+ 種目を追加</a>
+<div class="sticky-action-bar">
+  <a href="{{ url_for('exercise_new', session_id=session.id) }}"
+     class="btn btn-warning btn-lg w-100">+ 種目を追加</a>
+</div>
 {% endif %}
 
 {% if exercises %}

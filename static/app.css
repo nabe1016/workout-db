@@ -81,9 +81,17 @@ a > .card:hover, a > .card:active {
 }
 
 /* Offset content so bottom nav doesn't cover it */
-/* iOS Safari のブラウザツールバー分も加算 */
 .main-content {
-  padding-bottom: calc(10rem + env(safe-area-inset-bottom));
+  padding-bottom: calc(6rem + env(safe-area-inset-bottom));
+}
+
+/* Sticky action bar — stays just above the bottom nav */
+.sticky-action-bar {
+  position: sticky;
+  bottom: calc(4rem + env(safe-area-inset-bottom));
+  z-index: 100;
+  padding-top: 0.5rem;
+  background: #212529;
 }
 
 /* Table on small screens */
