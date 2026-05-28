@@ -2,10 +2,11 @@
 
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 import datetime
+import os
 import db
 
 app = Flask(__name__)
-app.secret_key = "workout-secret-key-2024"
+app.secret_key = os.environ.get("SECRET_KEY", "workout-secret-key-dev")
 
 
 def _parse_date(s: str):
