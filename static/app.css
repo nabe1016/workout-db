@@ -1,6 +1,23 @@
 /* Dark theme overrides */
 body { font-size: 16px; }
 
+/* Improve text-secondary contrast on dark bg (#6c757d → #adb5bd) */
+.text-secondary {
+  color: #adb5bd !important;
+}
+a.text-secondary {
+  color: #adb5bd !important;
+}
+a.text-secondary:hover {
+  color: #ced4da !important;
+}
+
+/* Minimum readable size for tiny labels */
+.text-secondary.small,
+.small.text-secondary {
+  font-size: 0.8rem !important;
+}
+
 .form-control, .form-select {
   color: #f8f9fa !important;
 }
@@ -115,7 +132,7 @@ a > .card:hover, a > .card:active {
 
 /* Last-values hint */
 .last-value-hint {
-  font-size: 0.7rem;
-  color: #6c757d;
+  font-size: 0.75rem;
+  color: #adb5bd;
   margin-top: 0.2rem;
 }
