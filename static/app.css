@@ -81,8 +81,9 @@ a > .card:hover, a > .card:active {
 }
 
 /* Offset content so bottom nav doesn't cover it */
+/* iOS Safari のブラウザツールバー分も加算 */
 .main-content {
-  padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+  padding-bottom: calc(7rem + env(safe-area-inset-bottom));
 }
 
 /* Table on small screens */
