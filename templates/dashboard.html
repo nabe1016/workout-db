@@ -4,6 +4,44 @@
 {% block nav_dashboard %}active{% endblock %}
 
 {% block content %}
+
+{# ── 今日のトレーニングプラン（最優先） ── #}
+{% if today_training_plan %}
+<div class="card border-warning mb-3" style="background:rgba(255,193,7,0.12);">
+  <div class="card-body py-3">
+    <div class="d-flex justify-content-between align-items-start mb-2">
+      <div>
+        <div class="text-warning small fw-bold mb-1">📅 今日のトレーニングプラン</div>
+        <div class="fw-bold fs-5">{{ today_training_plan.name }}</div>
+        {% if today_training_plan.my_set_name %}
+        <div class="text-secondary small">⚙️ {{ today_training_plan.my_set_name }}</div>
+        {% endif %}
+      </div>
+      <form method="post" action="{{ url_for('today_plan_delete', plan_id=today_training_plan.id) }}"
+            onsubmit="return confirm('プランをキャンセルしますか？')">
+        <button class="btn btn-outline-secondary btn-sm">✕</button>
+      </form>
+    </div>
+
+    {% if today_training_plan.session_id %}
+    {# トレーニング開始済み #}
+    <a href="{{ url_for('session_detail', session_id=today_training_plan.session_id) }}"
+       class="btn btn-warning btn-lg w-100 fw-bold">
+      ▶ トレーニングを続ける
+    </a>
+    {% else %}
+    {# 未開始 #}
+    <form method="post" action="{{ url_for('today_plan_start', plan_id=today_training_plan.id) }}">
+      <button type="submit" class="btn btn-success btn-lg w-100 fw-bold"
+              style="font-size:1.2rem;letter-spacing:0.05em;">
+        🏋️ WORKOUT START!
+      </button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
 {# ── 今日の予定 ── #}
 <div class="card mb-3
   {% if today_plan and today_plan.location == 'rest' %}border-secondary bg-secondary bg-opacity-10

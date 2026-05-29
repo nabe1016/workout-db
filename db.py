@@ -608,6 +608,110 @@ def get_last_exercise_values(exercise_id: int, exclude_session_id: int = None):
         return cur.fetchone()
 
 
+# ── Today plan ───────────────────────────────────────────────────────────────
+
+def get_today_plan():
+    import datetime
+    today = datetime.date.today()
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT tp.*, ms.name AS my_set_name
+            FROM today_plans tp
+            LEFT JOIN my_sets ms ON ms.id = tp.my_set_id
+            WHERE tp.plan_date = %s
+        """, (today,))
+        return cur.fetchone()
+
+
+def save_today_plan(plan_date, name: str, my_set_id) -> int:
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO today_plans (plan_date, name, my_set_id)
+            VALUES (%s, %s, %s)
+            ON CONFLICT (plan_date) DO UPDATE
+                SET name = EXCLUDED.name, my_set_id = EXCLUDED.my_set_id,
+                    session_id = NULL
+            RETURNING id
+        """, (plan_date, name.strip(), my_set_id or None))
+        return cur.fetchone()["id"]
+
+
+def start_today_plan(plan_id: int) -> int:
+    """Create (or reuse) today's session, apply my_set, link to plan. Returns session_id."""
+    import datetime
+    today = datetime.date.today()
+    now = datetime.datetime.now()
+
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM today_plans WHERE id = %s", (plan_id,))
+        plan = cur.fetchone()
+        if plan is None:
+            raise ValueError("plan not found")
+
+        # Already started → return existing session
+        if plan["session_id"]:
+            return plan["session_id"]
+
+        # Reuse today's session or create new one
+        cur.execute("SELECT id FROM workout_sessions WHERE session_date = %s", (today,))
+        row = cur.fetchone()
+        if row:
+            session_id = row["id"]
+        else:
+            dow = DOW_MAP[today.weekday()]
+            cur.execute("""
+                INSERT INTO workout_sessions
+                    (session_date, day_of_week, start_time, total_exp)
+                VALUES (%s, %s, %s, 0)
+                RETURNING id
+            """, (today, dow, now.strftime("%H:%M")))
+            session_id = cur.fetchone()["id"]
+
+        # Apply my_set if set and session has no exercises yet
+        if plan["my_set_id"]:
+            cur.execute(
+                "SELECT COUNT(*) FROM session_exercises WHERE session_id = %s",
+                (session_id,)
+            )
+            if cur.fetchone()[0] == 0:
+                cur.execute("""
+                    SELECT mse.*, ex.name
+                    FROM my_set_exercises mse
+                    JOIN exercises ex ON ex.id = mse.exercise_id
+                    WHERE mse.my_set_id = %s
+                    ORDER BY COALESCE(mse.sort_order, 999), mse.id
+                """, (plan["my_set_id"],))
+                exercises = cur.fetchall()
+                for i, ex in enumerate(exercises, 1):
+                    w80 = round(float(ex["one_rep_max"]) * 0.8, 1) if ex["one_rep_max"] else None
+                    cur.execute("""
+                        INSERT INTO session_exercises
+                            (session_id, exercise_id, sort_order,
+                             one_rep_max, weight_pct80, weight_setting,
+                             weight_low_load, reps, exp_earned, muscle_groups)
+                        VALUES (%s,%s,%s, %s,%s,%s,%s,%s, 0,%s)
+                    """, (session_id, ex["exercise_id"], i,
+                          ex["one_rep_max"], w80, ex["weight_setting"],
+                          ex["weight_low_load"], ex["reps"], ex["muscle_groups"]))
+
+        # Link plan → session
+        cur.execute(
+            "UPDATE today_plans SET session_id = %s WHERE id = %s",
+            (session_id, plan_id)
+        )
+
+    return session_id
+
+
+def delete_today_plan(plan_id: int) -> None:
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute("DELETE FROM today_plans WHERE id = %s", (plan_id,))
+
+
 def get_today_session():
     import datetime
     today = datetime.date.today()

@@ -145,6 +145,16 @@ INSERT INTO muscles (name, sort_order) VALUES ('ヒラメ筋',         71) ON CO
 INSERT INTO muscles (name, sort_order) VALUES ('カーフ',           72) ON CONFLICT DO NOTHING;
 INSERT INTO muscles (name, sort_order) VALUES ('前脛骨筋',         73) ON CONFLICT DO NOTHING;
 
+CREATE TABLE IF NOT EXISTS today_plans (
+    id         SERIAL PRIMARY KEY,
+    plan_date  DATE NOT NULL,
+    name       TEXT NOT NULL,
+    my_set_id  INTEGER REFERENCES my_sets(id) ON DELETE SET NULL,
+    session_id INTEGER REFERENCES workout_sessions(id) ON DELETE SET NULL,
+    created_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE (plan_date)
+);
+
 ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS set4_completed  BOOLEAN;
 ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS set5_completed  BOOLEAN;
 ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS set6_completed  BOOLEAN;

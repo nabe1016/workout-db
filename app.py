@@ -131,11 +131,13 @@ def index():
 def dashboard():
     stats = db.get_dashboard_stats()
     today_plan = db.get_today_schedule()
+    today_training_plan = db.get_today_plan()
     latest_weight = db.get_latest_weight()
     today_session = db.get_today_session()
     return render_template("dashboard.html",
                            stats=stats,
                            today_plan=today_plan,
+                           today_training_plan=today_training_plan,
                            latest_weight=latest_weight,
                            today_session=today_session,
                            today=datetime.date.today())
@@ -146,15 +148,75 @@ def today():
     row = db.get_today_session()
     if row:
         return redirect(url_for("session_detail", session_id=row["id"]))
-    import datetime
-    now = datetime.datetime.now()
     session_id = db.create_session(
         session_date=datetime.date.today(),
-        start_time=now.strftime("%H:%M"),
+        start_time=datetime.datetime.now().strftime("%H:%M"),
         end_time=None,
         rep_count=None,
     )
     flash("今日のセッションを作成しました。", "success")
+    return redirect(url_for("session_detail", session_id=session_id))
+
+
+# ── Today training plan ────────────────────────────────────────────────────────
+
+@app.route("/today-plan/new")
+def today_plan_new():
+    my_set_id = _parse_int(request.args.get("my_set_id"))
+    my_set = db.get_my_set(my_set_id) if my_set_id else None
+    today = datetime.date.today()
+    dow = ["月", "火", "水", "木", "金", "土", "日"][today.weekday()]
+    preset_name = f"{today.month}/{today.day}({dow})"
+    if my_set:
+        preset_name += f"_{my_set['name']}"
+    return render_template("today_plan/form.html",
+                           preset_name=preset_name,
+                           my_set=my_set,
+                           today=today)
+
+
+@app.route("/today-plan/save", methods=["POST"])
+def today_plan_save():
+    name = request.form.get("name", "").strip()
+    my_set_id = _parse_int(request.form.get("my_set_id"))
+    if not name:
+        flash("名前を入力してください", "warning")
+        return redirect(request.referrer or url_for("dashboard"))
+    db.save_today_plan(datetime.date.today(), name, my_set_id)
+    flash(f"「{name}」を今日のプランとして保存しました", "success")
+    return redirect(url_for("dashboard"))
+
+
+@app.route("/today-plan/<int:plan_id>/start", methods=["POST"])
+def today_plan_start(plan_id):
+    session_id = db.start_today_plan(plan_id)
+    return redirect(url_for("session_detail", session_id=session_id))
+
+
+@app.route("/today-plan/<int:plan_id>/delete", methods=["POST"])
+def today_plan_delete(plan_id):
+    db.delete_today_plan(plan_id)
+    flash("今日のプランをキャンセルしました", "success")
+    return redirect(url_for("dashboard"))
+
+
+@app.route("/my-sets/<int:my_set_id>/start-now", methods=["POST"])
+def my_set_start_now(my_set_id):
+    """Create session immediately from a my_set and redirect to it."""
+    today = datetime.date.today()
+    dow = ["月", "火", "水", "木", "金", "土", "日"][today.weekday()]
+    row = db.get_today_session()
+    if row:
+        session_id = row["id"]
+    else:
+        session_id = db.create_session(
+            session_date=today,
+            start_time=datetime.datetime.now().strftime("%H:%M"),
+            end_time=None,
+            rep_count=None,
+        )
+    db.copy_my_set_to_session(my_set_id, session_id)
+    flash("マイセットを適用してトレーニングを開始しました", "success")
     return redirect(url_for("session_detail", session_id=session_id))
 
 

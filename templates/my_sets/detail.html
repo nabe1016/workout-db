@@ -92,6 +92,20 @@
 
 
 {% if exercises %}
+<div class="d-flex flex-column gap-2 mb-3 sticky-action-bar">
+  <a href="{{ url_for('today_plan_new', my_set_id=my_set.id) }}"
+     class="btn btn-warning btn-lg fw-bold">
+    📅 あとでトレーニング
+  </a>
+  <form method="post" action="{{ url_for('my_set_start_now', my_set_id=my_set.id) }}">
+    <button type="submit" class="btn btn-success btn-lg w-100 fw-bold">
+      ▶ 今すぐ開始
+    </button>
+  </form>
+</div>
+{% endif %}
+
+{% if exercises %}
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <script>
 (function () {

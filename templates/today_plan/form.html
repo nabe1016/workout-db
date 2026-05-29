@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% set back_url = url_for('my_sets_list') if my_set else url_for('dashboard') %}
+{% block title %}今日のプランを保存{% endblock %}
+{% block nav_title %}今日のプラン{% endblock %}
+
+{% block content %}
+<div class="card bg-warning bg-opacity-10 border-warning mb-4">
+  <div class="card-body py-3">
+    <div class="text-secondary small mb-1">
+      {{ today.strftime('%Y年%m月%d日') }}（{{ ['月','火','水','木','金','土','日'][today.weekday()] }}）
+    </div>
+    {% if my_set %}
+    <div class="fw-bold fs-5">⚙️ {{ my_set.name }}</div>
+    <div class="text-secondary small">このマイセットを今日のプランとして保存します</div>
+    {% else %}
+    <div class="fw-bold fs-5">📅 今日のトレーニングプラン</div>
+    {% endif %}
+  </div>
+</div>
+
+<form method="post" action="{{ url_for('today_plan_save') }}">
+  {% if my_set %}
+  <input type="hidden" name="my_set_id" value="{{ my_set.id }}">
+  {% endif %}
+
+  <div class="mb-4">
+    <label class="form-label fw-bold">プラン名</label>
+    <input type="text" class="form-control bg-dark text-light border-secondary form-control-lg"
+           name="name" value="{{ preset_name }}" required
+           placeholder="例: 5/29(土)_土曜日高負荷">
+    <div class="text-secondary small mt-1">日付＋マイセット名がプリセットされています。追記・修正できます。</div>
+  </div>
+
+  <div class="d-flex flex-column gap-3">
+    <button type="submit" class="btn btn-warning btn-lg fw-bold">
+      📅 あとでトレーニングする
+    </button>
+  </div>
+</form>
+
+{% if my_set %}
+<div class="mt-3">
+  <form method="post" action="{{ url_for('my_set_start_now', my_set_id=my_set.id) }}">
+    <button type="submit" class="btn btn-success btn-lg w-100 fw-bold">
+      ▶ 今すぐトレーニングを開始
+    </button>
+  </form>
+  <div class="text-secondary small text-center mt-2">
+    今すぐ開始するとマイセットがセッションに適用されます
+  </div>
+</div>
+{% endif %}
+{% endblock %}
