@@ -43,7 +43,14 @@
 
 {# Exercise list #}
 {% if exercises %}
-<div class="text-secondary small mb-2 ms-1">≡ を長押ししてドラッグで並び替え</div>
+<div class="d-flex justify-content-between align-items-center mb-1 ms-1">
+  <div class="text-secondary small">≡ を長押ししてドラッグで並び替え</div>
+  <button type="button" id="select-mode-btn"
+          class="btn btn-outline-secondary btn-sm">選択</button>
+</div>
+
+<form id="bulk-delete-form" method="post"
+      action="{{ url_for('session_exercises_bulk_delete', session_id=session.id) }}">
 <div class="d-flex flex-column gap-2 mb-3" id="session-sortable">
   {% for ex in exercises %}
   <div class="card border-secondary{% if ex.skipped %} se-skipped{% endif %}"
@@ -53,6 +60,11 @@
        style="{% if ex.primary_muscle %}background-color:{{ muscle_bg(ex.primary_muscle) }};{% else %}background-color:rgba(0,0,0,0.3);{% endif %}">
     <div class="card-body py-2 px-3">
       <div class="d-flex align-items-start gap-2">
+        <div class="ex-checkbox-wrap align-self-center" style="display:none;">
+          <input type="checkbox" class="form-check-input ex-checkbox"
+                 name="se_ids" value="{{ ex.id }}"
+                 style="width:1.5rem;height:1.5rem;cursor:pointer;">
+        </div>
         <div class="drag-handle text-secondary mt-1"
              style="font-size:1.4rem;cursor:grab;padding:0.1rem 0.3rem;touch-action:none;user-select:none;">
           ≡
@@ -124,6 +136,7 @@
   </div>
   {% endfor %}
 </div>
+</form>
 
 {# 3-way entry (compact) when exercises exist #}
 <div class="d-flex gap-2 mb-2">
@@ -157,8 +170,14 @@
 
 {% if exercises %}
 <div class="sticky-action-bar">
-  <a href="{{ url_for('exercise_new', session_id=session.id) }}"
-     class="btn btn-warning btn-lg w-100">+ 種目を追加</a>
+  <div id="normal-action-bar">
+    <a href="{{ url_for('exercise_new', session_id=session.id) }}"
+       class="btn btn-warning btn-lg w-100">+ 種目を追加</a>
+  </div>
+  <div id="bulk-delete-bar" style="display:none;">
+    <button id="bulk-delete-btn" type="submit" form="bulk-delete-form"
+            class="btn btn-danger btn-lg w-100" disabled>選択してください</button>
+  </div>
 </div>
 {% endif %}
 
@@ -261,6 +280,56 @@
         .finally(function () { btn.disabled = false; });
     });
   });
+
+  // ── Select mode ──────────────────────────────────────────────────────────
+  var selectMode = false;
+  var selectBtn = document.getElementById('select-mode-btn');
+  if (selectBtn) {
+    selectBtn.addEventListener('click', function () {
+      selectMode = !selectMode;
+      selectBtn.textContent = selectMode ? 'キャンセル' : '選択';
+      selectBtn.classList.toggle('btn-outline-secondary', !selectMode);
+      selectBtn.classList.toggle('btn-warning', selectMode);
+
+      document.querySelectorAll('.ex-checkbox-wrap').forEach(function (el) {
+        el.style.display = selectMode ? 'flex' : 'none';
+      });
+      document.querySelectorAll('.drag-handle').forEach(function (el) {
+        el.style.display = selectMode ? 'none' : '';
+      });
+      document.querySelectorAll('.skip-btn').forEach(function (el) {
+        el.style.display = selectMode ? 'none' : '';
+      });
+
+      if (!selectMode) {
+        document.querySelectorAll('.ex-checkbox').forEach(function (cb) { cb.checked = false; });
+      }
+      updateBulkBar();
+    });
+  }
+
+  function updateBulkBar() {
+    var count = document.querySelectorAll('.ex-checkbox:checked').length;
+    var normalBar = document.getElementById('normal-action-bar');
+    var bulkBar = document.getElementById('bulk-delete-bar');
+    var deleteBtn = document.getElementById('bulk-delete-btn');
+    if (normalBar) normalBar.style.display = selectMode ? 'none' : '';
+    if (bulkBar) bulkBar.style.display = selectMode ? '' : 'none';
+    if (deleteBtn) {
+      deleteBtn.textContent = count > 0 ? count + '件を削除' : '選択してください';
+      deleteBtn.disabled = count === 0;
+    }
+  }
+
+  document.querySelectorAll('.ex-checkbox').forEach(function (cb) {
+    cb.addEventListener('change', updateBulkBar);
+  });
+
+  document.getElementById('bulk-delete-form') && document.getElementById('bulk-delete-form')
+    .addEventListener('submit', function (e) {
+      var count = document.querySelectorAll('.ex-checkbox:checked').length;
+      if (!confirm(count + '件を削除しますか？')) e.preventDefault();
+    });
 
   // ── Muscle conflict detection ─────────────────────────────────────────────
   function checkMuscleConflicts() {

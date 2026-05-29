@@ -28,13 +28,27 @@
 </div>
 
 {% if exercises %}
-<div class="text-secondary small mb-2 ms-1">≡ を長押ししてドラッグで並び替え</div>
+<div class="d-flex justify-content-between align-items-center mb-1 ms-1">
+  <div class="text-secondary small">≡ を長押ししてドラッグで並び替え</div>
+  <button type="button" id="select-mode-btn"
+          class="btn btn-outline-secondary btn-sm">選択</button>
+</div>
+
+<form id="bulk-delete-form" method="post"
+      action="{{ url_for('my_set_exercises_bulk_delete', my_set_id=my_set.id) }}">
 <div class="d-flex flex-column gap-2 mb-4" id="sortable-list">
   {% for ex in exercises %}
   <div class="card border-secondary" data-id="{{ ex.id }}"
        style="{% if ex.primary_muscle %}background-color:{{ muscle_bg(ex.primary_muscle) }};{% else %}background-color:rgba(0,0,0,0.3);{% endif %}">
     <div class="card-body py-2 px-3">
       <div class="d-flex align-items-center gap-2">
+
+        {# 選択チェックボックス #}
+        <div class="ex-checkbox-wrap" style="display:none;">
+          <input type="checkbox" class="form-check-input ex-checkbox"
+                 name="mse_ids" value="{{ ex.id }}"
+                 style="width:1.5rem;height:1.5rem;cursor:pointer;">
+        </div>
 
         {# ドラッグハンドル #}
         <div class="drag-handle text-secondary"
@@ -77,6 +91,7 @@
   </div>
   {% endfor %}
 </div>
+</form>
 
 {% else %}
 <div class="text-center my-4">
@@ -92,16 +107,22 @@
 
 
 {% if exercises %}
-<div class="d-flex flex-column gap-2 mb-3 sticky-action-bar">
-  <a href="{{ url_for('today_plan_new', my_set_id=my_set.id) }}"
-     class="btn btn-warning btn-lg fw-bold">
-    📅 あとでトレーニング
-  </a>
-  <form method="post" action="{{ url_for('my_set_start_now', my_set_id=my_set.id) }}">
-    <button type="submit" class="btn btn-success btn-lg w-100 fw-bold">
-      ▶ 今すぐ開始
-    </button>
-  </form>
+<div class="sticky-action-bar">
+  <div id="normal-action-bar" class="d-flex flex-column gap-2">
+    <a href="{{ url_for('today_plan_new', my_set_id=my_set.id) }}"
+       class="btn btn-warning btn-lg fw-bold">
+      📅 あとでトレーニング
+    </a>
+    <form method="post" action="{{ url_for('my_set_start_now', my_set_id=my_set.id) }}">
+      <button type="submit" class="btn btn-success btn-lg w-100 fw-bold">
+        ▶ 今すぐ開始
+      </button>
+    </form>
+  </div>
+  <div id="bulk-delete-bar" style="display:none;">
+    <button id="bulk-delete-btn" type="submit" form="bulk-delete-form"
+            class="btn btn-danger btn-lg w-100" disabled>選択してください</button>
+  </div>
 </div>
 {% endif %}
 
@@ -109,11 +130,12 @@
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <script>
 (function () {
+  // ── Sortable ──────────────────────────────────────────────────────────────
   var reorderUrl = '{{ url_for("my_set_exercises_reorder", my_set_id=my_set.id) }}';
-  var sortable = Sortable.create(document.getElementById('sortable-list'), {
+  Sortable.create(document.getElementById('sortable-list'), {
     handle: '.drag-handle',
     animation: 150,
-    delay: 150,           // 長押し150msでドラッグ開始
+    delay: 150,
     delayOnTouchOnly: true,
     ghostClass: 'sortable-ghost',
     chosenClass: 'sortable-chosen',
@@ -126,6 +148,46 @@
         body: JSON.stringify({ ids: ids })
       });
     }
+  });
+
+  // ── Select mode ───────────────────────────────────────────────────────────
+  var selectMode = false;
+  var selectBtn = document.getElementById('select-mode-btn');
+  selectBtn.addEventListener('click', function () {
+    selectMode = !selectMode;
+    selectBtn.textContent = selectMode ? 'キャンセル' : '選択';
+    selectBtn.classList.toggle('btn-outline-secondary', !selectMode);
+    selectBtn.classList.toggle('btn-warning', selectMode);
+
+    document.querySelectorAll('.ex-checkbox-wrap').forEach(function (el) {
+      el.style.display = selectMode ? 'flex' : 'none';
+    });
+    document.querySelectorAll('.drag-handle').forEach(function (el) {
+      el.style.display = selectMode ? 'none' : '';
+    });
+
+    if (!selectMode) {
+      document.querySelectorAll('.ex-checkbox').forEach(function (cb) { cb.checked = false; });
+    }
+    updateBulkBar();
+  });
+
+  function updateBulkBar() {
+    var count = document.querySelectorAll('.ex-checkbox:checked').length;
+    document.getElementById('normal-action-bar').style.display = selectMode ? 'none' : '';
+    document.getElementById('bulk-delete-bar').style.display = selectMode ? '' : 'none';
+    var deleteBtn = document.getElementById('bulk-delete-btn');
+    deleteBtn.textContent = count > 0 ? count + '件を削除' : '選択してください';
+    deleteBtn.disabled = count === 0;
+  }
+
+  document.querySelectorAll('.ex-checkbox').forEach(function (cb) {
+    cb.addEventListener('change', updateBulkBar);
+  });
+
+  document.getElementById('bulk-delete-form').addEventListener('submit', function (e) {
+    var count = document.querySelectorAll('.ex-checkbox:checked').length;
+    if (!confirm(count + '件を削除しますか？')) e.preventDefault();
   });
 })();
 </script>

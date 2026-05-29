@@ -196,6 +196,18 @@ def delete_session_exercise(se_id: int, session_id: int) -> None:
     recalculate_session_exp(session_id)
 
 
+def bulk_delete_session_exercises(session_id: int, se_ids: list) -> None:
+    if not se_ids:
+        return
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "DELETE FROM session_exercises WHERE session_id = %s AND id = ANY(%s)",
+            (session_id, se_ids)
+        )
+    recalculate_session_exp(session_id)
+
+
 def toggle_skip_exercise(se_id: int) -> dict:
     with _conn() as conn:
         cur = conn.cursor()
@@ -398,6 +410,17 @@ def delete_my_set_exercise(mse_id: int) -> None:
     with _conn() as conn:
         cur = conn.cursor()
         cur.execute("DELETE FROM my_set_exercises WHERE id = %s", (mse_id,))
+
+
+def bulk_delete_my_set_exercises(my_set_id: int, mse_ids: list) -> None:
+    if not mse_ids:
+        return
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "DELETE FROM my_set_exercises WHERE my_set_id = %s AND id = ANY(%s)",
+            (my_set_id, mse_ids)
+        )
 
 
 def reorder_my_set_exercises(my_set_id: int, ordered_ids: list) -> None:

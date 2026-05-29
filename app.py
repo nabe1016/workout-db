@@ -504,6 +504,14 @@ def session_exercises_reorder(session_id):
     return jsonify({"ok": True})
 
 
+@app.route("/sessions/<int:session_id>/exercises/bulk-delete", methods=["POST"])
+def session_exercises_bulk_delete(session_id):
+    se_ids = [int(x) for x in request.form.getlist("se_ids") if x.isdigit()]
+    if se_ids:
+        db.bulk_delete_session_exercises(session_id, se_ids)
+    return redirect(url_for("session_detail", session_id=session_id))
+
+
 # ── Inline set toggle (AJAX) ──────────────────────────────────────────────────
 
 @app.route("/api/se/<int:se_id>/toggle/<int:set_num>", methods=["POST"])
@@ -637,6 +645,14 @@ def my_set_exercise_edit(my_set_id, mse_id):
 def my_set_exercise_delete(my_set_id, mse_id):
     db.delete_my_set_exercise(mse_id)
     flash("削除しました。", "success")
+    return redirect(url_for("my_set_detail", my_set_id=my_set_id))
+
+
+@app.route("/my-sets/<int:my_set_id>/exercises/bulk-delete", methods=["POST"])
+def my_set_exercises_bulk_delete(my_set_id):
+    mse_ids = [int(x) for x in request.form.getlist("mse_ids") if x.isdigit()]
+    if mse_ids:
+        db.bulk_delete_my_set_exercises(my_set_id, mse_ids)
     return redirect(url_for("my_set_detail", my_set_id=my_set_id))
 
 
