@@ -33,26 +33,15 @@
   {# Primary muscle #}
   <div class="mb-4">
     <label class="form-label fw-bold">主導筋 <span class="text-secondary small">（カード背景色の基準）</span></label>
-    <input type="text" class="form-control bg-dark text-light border-secondary"
-           name="primary_muscle"
-           value="{{ exercise.primary_muscle or '' }}"
-           list="muscle-list"
-           placeholder="例: 広背筋">
-    <datalist id="muscle-list">
-      {% for m in ['広背筋','大胸筋','大腿四頭筋','ハムストリングス','大腿二頭筋',
-                   '三角筋','上腕二頭筋','上腕三頭筋','大臀筋','腹直筋',
-                   '腹斜筋','僧帽筋','脊柱起立筋','カーフ'] %}
-      <option value="{{ m }}">
+    <select class="form-select bg-dark text-light border-secondary" name="primary_muscle" id="primary_muscle">
+      <option value="">未設定</option>
+      {% for m in muscles %}
+      <option value="{{ m.name }}" {% if exercise.primary_muscle == m.name %}selected{% endif %}>{{ m.name }}</option>
       {% endfor %}
-    </datalist>
-    {% if exercise.primary_muscle %}
-    <div class="mt-2">
-      <span class="badge px-3 py-1" style="background:{{ muscle_bg(exercise.primary_muscle) }};border:1px solid rgba(255,255,255,0.2);color:#f8f9fa;">
-        {{ exercise.primary_muscle }}
-      </span>
-      <span class="text-secondary small ms-2">← このカード背景色が適用されます</span>
-    </div>
-    {% endif %}
+    </select>
+    <a href="{{ url_for('muscles_index') }}" class="text-secondary small mt-1 d-inline-block">
+      ＋ 主導筋リストを編集
+    </a>
   </div>
 
   {# Needs bench #}

@@ -594,9 +594,31 @@ def exercise_progress(exercise_id):
                            exercise=exercise, history=history, max_1rm=max_1rm)
 
 
+@app.route("/muscles", methods=["GET", "POST"])
+def muscles_index():
+    if request.method == "POST":
+        action = request.form.get("action")
+        if action == "create":
+            name = request.form.get("name", "").strip()
+            if name:
+                db.create_muscle(name)
+                flash(f"「{name}」を追加しました", "success")
+        elif action == "delete":
+            db.delete_muscle(int(request.form.get("muscle_id")))
+            flash("削除しました", "success")
+        elif action == "edit":
+            db.update_muscle(int(request.form.get("muscle_id")),
+                             request.form.get("name", ""))
+            flash("更新しました", "success")
+        return redirect(url_for("muscles_index"))
+    muscles = db.list_muscles()
+    return render_template("muscles/index.html", muscles=muscles)
+
+
 @app.route("/exercises/bulk-edit", methods=["GET", "POST"])
 def exercises_bulk_edit():
     exercises = db.list_exercises()
+    muscles = db.list_muscles()
     if request.method == "POST":
         updates = [
             {
@@ -610,7 +632,7 @@ def exercises_bulk_edit():
         db.bulk_update_exercise_meta(updates)
         flash("種目情報を一括更新しました", "success")
         return redirect(url_for("exercises_bulk_edit"))
-    return render_template("exercises/bulk_edit.html", exercises=exercises)
+    return render_template("exercises/bulk_edit.html", exercises=exercises, muscles=muscles)
 
 
 @app.route("/exercises/<int:exercise_id>/edit", methods=["GET", "POST"])
@@ -627,7 +649,8 @@ def exercise_meta_edit(exercise_id):
         )
         flash("種目情報を更新しました", "success")
         return redirect(url_for("exercise_progress", exercise_id=exercise_id))
-    return render_template("exercises/meta_form.html", exercise=exercise)
+    muscles = db.list_muscles()
+    return render_template("exercises/meta_form.html", exercise=exercise, muscles=muscles)
 
 
 if __name__ == "__main__":

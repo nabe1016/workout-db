@@ -198,6 +198,39 @@ def delete_session_exercise(se_id: int, session_id: int) -> None:
 
 # ── Exercises master ──────────────────────────────────────────────────────────
 
+# ── Muscles master ───────────────────────────────────────────────────────────
+
+def list_muscles() -> list:
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT id, name, sort_order FROM muscles ORDER BY sort_order, name")
+        return cur.fetchall()
+
+
+def create_muscle(name: str) -> None:
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO muscles (name) VALUES (%s) ON CONFLICT DO NOTHING",
+            (name.strip(),)
+        )
+
+
+def update_muscle(muscle_id: int, name: str) -> None:
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE muscles SET name = %s WHERE id = %s",
+            (name.strip(), muscle_id)
+        )
+
+
+def delete_muscle(muscle_id: int) -> None:
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute("DELETE FROM muscles WHERE id = %s", (muscle_id,))
+
+
 def list_exercises() -> list:
     with _conn() as conn:
         cur = conn.cursor()

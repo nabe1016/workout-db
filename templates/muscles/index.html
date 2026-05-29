@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% set back_url = url_for('exercises_bulk_edit') %}
+{% block title %}主導筋リスト{% endblock %}
+{% block nav_title %}主導筋管理{% endblock %}
+{% block nav_exercises %}active{% endblock %}
+
+{% block content %}
+<p class="text-secondary small mb-3">
+  種目設定で使う主導筋の一覧です。追加・編集・削除ができます。
+</p>
+
+{# 新規追加 #}
+<form method="post" class="mb-4">
+  <input type="hidden" name="action" value="create">
+  <div class="d-flex gap-2">
+    <input type="text" class="form-control bg-dark text-light border-secondary"
+           name="name" placeholder="例: 前鋸筋" required>
+    <button type="submit" class="btn btn-warning flex-shrink-0">追加</button>
+  </div>
+</form>
+
+{# 一覧 #}
+<div class="d-flex flex-column gap-2">
+  {% for m in muscles %}
+  <div class="card border-secondary" style="background-color:{{ muscle_bg(m.name) or 'rgba(0,0,0,0.3)' }};">
+    <div class="card-body py-2 px-3">
+      <div class="d-flex align-items-center gap-2">
+
+        {# インライン編集フォーム #}
+        <form method="post" class="d-flex gap-2 flex-grow-1 align-items-center">
+          <input type="hidden" name="action" value="edit">
+          <input type="hidden" name="muscle_id" value="{{ m.id }}">
+          <input type="text" class="form-control form-control-sm bg-dark text-light border-secondary"
+                 name="name" value="{{ m.name }}" required>
+          <button type="submit" class="btn btn-outline-secondary btn-sm flex-shrink-0">更新</button>
+        </form>
+
+        {# 削除 #}
+        <form method="post"
+              onsubmit="return confirm('「{{ m.name }}」を削除しますか？\n種目に設定されている場合は空欄になります。')">
+          <input type="hidden" name="action" value="delete">
+          <input type="hidden" name="muscle_id" value="{{ m.id }}">
+          <button type="submit" class="btn btn-outline-danger btn-sm">削除</button>
+        </form>
+
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

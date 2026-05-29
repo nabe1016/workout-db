@@ -4,19 +4,15 @@
 {% block nav_title %}一括設定{% endblock %}
 {% block nav_exercises %}active{% endblock %}
 
+{% block nav_actions %}
+<a href="{{ url_for('muscles_index') }}" class="btn btn-outline-info btn-sm">💪筋肉管理</a>
+{% endblock %}
+
 {% block content %}
 <p class="text-secondary small mb-3">
   カテゴリ・主導筋・ベンチ台をまとめて設定できます。<br>
   変更後に「保存する」を押してください。
 </p>
-
-<datalist id="muscle-list">
-  {% for m in ['広背筋','大胸筋','大腿四頭筋','ハムストリングス','大腿二頭筋',
-               '三角筋','上腕二頭筋','上腕三頭筋','大臀筋','腹直筋',
-               '腹斜筋','僧帽筋','脊柱起立筋','カーフ'] %}
-  <option value="{{ m }}">
-  {% endfor %}
-</datalist>
 
 <form method="post">
   <div class="d-flex flex-column gap-2 mb-3">
@@ -39,14 +35,15 @@
             </select>
           </div>
 
-          {# 主導筋 #}
+          {# 主導筋（プルダウン） #}
           <div class="col">
-            <input type="text"
-                   class="form-control form-control-sm bg-dark text-light border-secondary"
-                   name="primary_muscle_{{ ex.id }}"
-                   value="{{ ex.primary_muscle or '' }}"
-                   list="muscle-list"
-                   placeholder="主導筋">
+            <select class="form-select form-select-sm bg-dark text-light border-secondary"
+                    name="primary_muscle_{{ ex.id }}">
+              <option value="">未設定</option>
+              {% for m in muscles %}
+              <option value="{{ m.name }}" {% if ex.primary_muscle == m.name %}selected{% endif %}>{{ m.name }}</option>
+              {% endfor %}
+            </select>
           </div>
 
           {# ベンチ台 #}
