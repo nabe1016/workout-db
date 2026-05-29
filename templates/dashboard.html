@@ -7,34 +7,34 @@
 
 {# ── 今日のトレーニングプラン（最優先） ── #}
 {% if today_training_plan %}
-<div class="card border-warning mb-3" style="background:rgba(255,193,7,0.12);">
-  <div class="card-body py-3">
+<div class="card mb-3" style="background:rgba(255,214,10,0.10)!important;">
+  <div class="card-body py-3 px-3">
     <div class="d-flex justify-content-between align-items-start mb-2">
       <div>
-        <div class="text-warning small fw-bold mb-1">📅 今日のトレーニングプラン</div>
+        <div class="section-label" style="color:var(--yellow);">今日のプラン</div>
         <div class="fw-bold fs-5">{{ today_training_plan.name }}</div>
         {% if today_training_plan.my_set_name %}
-        <div class="text-secondary small">⚙️ {{ today_training_plan.my_set_name }}</div>
+        <div style="font-size:0.82rem;color:var(--txt-2);margin-top:0.1rem;">
+          {{ today_training_plan.my_set_name }}
+        </div>
         {% endif %}
       </div>
       <form method="post" action="{{ url_for('today_plan_delete', plan_id=today_training_plan.id) }}"
             onsubmit="return confirm('プランをキャンセルしますか？')">
-        <button class="btn btn-outline-secondary btn-sm">✕</button>
+        <button class="btn btn-outline-secondary btn-sm" style="color:var(--txt-2);">✕</button>
       </form>
     </div>
 
     {% if today_training_plan.session_id %}
-    {# トレーニング開始済み #}
     <a href="{{ url_for('session_detail', session_id=today_training_plan.session_id) }}"
        class="btn btn-warning btn-lg w-100 fw-bold">
       ▶ トレーニングを続ける
     </a>
     {% else %}
-    {# 未開始 #}
     <form method="post" action="{{ url_for('today_plan_start', plan_id=today_training_plan.id) }}">
       <button type="submit" class="btn btn-success btn-lg w-100 fw-bold"
-              style="font-size:1.2rem;letter-spacing:0.05em;">
-        🏋️ WORKOUT START!
+              style="font-size:1.1rem;letter-spacing:0.03em;">
+        WORKOUT START
       </button>
     </form>
     {% endif %}
@@ -43,30 +43,35 @@
 {% endif %}
 
 {# ── 今日の予定 ── #}
-<div class="card mb-3
-  {% if today_plan and today_plan.location == 'rest' %}border-secondary bg-secondary bg-opacity-10
-  {% elif today_plan and today_plan.location == 'home' %}border-info bg-info bg-opacity-10
-  {% else %}border-warning bg-warning bg-opacity-10{% endif %}">
-  <div class="card-body py-2">
+<div class="card mb-3">
+  <div class="card-body py-3 px-3">
     <div class="d-flex justify-content-between align-items-start">
       <div>
-        <div class="text-secondary small mb-1">{{ today.strftime('%Y年%m月%d日') }}（{{ ['月','火','水','木','金','土','日'][today.weekday()] }}）</div>
+        <div class="section-label">
+          {{ today.strftime('%Y年%m月%d日') }}（{{ ['月','火','水','木','金','土','日'][today.weekday()] }}）
+        </div>
         {% if today_plan %}
           {% if today_plan.location == 'rest' %}
-            <div class="fw-bold fs-5">😴 今日は休養日</div>
-            {% if today_plan.notes %}<div class="text-secondary small">{{ today_plan.notes }}</div>{% endif %}
+            <div class="fw-bold fs-5" style="color:var(--txt-2);">休養日</div>
+            {% if today_plan.notes %}
+            <div style="font-size:0.82rem;color:var(--txt-2);margin-top:0.1rem;">{{ today_plan.notes }}</div>
+            {% endif %}
           {% elif today_plan.location == 'home' %}
-            <div class="fw-bold fs-5">🏠 自宅トレーニング</div>
-            {% if today_plan.my_set_name %}<div class="text-info small">{{ today_plan.my_set_name }}</div>{% endif %}
+            <div class="fw-bold fs-5">自宅トレーニング</div>
+            {% if today_plan.my_set_name %}
+            <div style="font-size:0.82rem;color:var(--teal);margin-top:0.1rem;">{{ today_plan.my_set_name }}</div>
+            {% endif %}
           {% else %}
-            <div class="fw-bold fs-5">🏋️ ジムトレーニング</div>
-            {% if today_plan.my_set_name %}<div class="text-warning small">{{ today_plan.my_set_name }}</div>{% endif %}
+            <div class="fw-bold fs-5">ジムトレーニング</div>
+            {% if today_plan.my_set_name %}
+            <div style="font-size:0.82rem;color:var(--yellow);margin-top:0.1rem;">{{ today_plan.my_set_name }}</div>
+            {% endif %}
           {% endif %}
         {% else %}
-          <div class="fw-bold fs-5 text-secondary">予定が設定されていません</div>
+          <div class="fw-bold" style="color:var(--txt-2);">予定なし</div>
         {% endif %}
       </div>
-      <a href="{{ url_for('weekly_plan') }}" class="btn btn-outline-secondary btn-sm">予定を編集</a>
+      <a href="{{ url_for('weekly_plan') }}" class="btn btn-outline-secondary btn-sm">編集</a>
     </div>
 
     {% if not today_plan or today_plan.location != 'rest' %}
@@ -76,10 +81,10 @@
            class="btn btn-warning btn-lg w-100 fw-bold">
           ▶ 今日のセッションを続ける
         </a>
-      {% else %}
+      {% elif not today_training_plan %}
         <a href="{{ url_for('today') }}"
-           class="btn btn-warning btn-lg w-100 fw-bold">
-          ▶ 今日のトレーニングを開始
+           class="btn btn-outline-secondary btn-lg w-100">
+          トレーニングを開始
         </a>
       {% endif %}
     </div>
@@ -88,38 +93,44 @@
 </div>
 
 {# ── 統計 ── #}
-<div class="row g-2 mb-3">
-  <div class="col-4">
-    <div class="card bg-secondary bg-opacity-25 border-secondary text-center py-2">
-      <div class="fw-bold fs-4 text-warning">{{ stats.week_count }}</div>
-      <div class="text-secondary" style="font-size:.8rem;">今週の回数</div>
-    </div>
-  </div>
-  <div class="col-4">
-    <div class="card bg-secondary bg-opacity-25 border-secondary text-center py-2">
-      <div class="fw-bold fs-4 text-info">{{ stats.streak_weeks }}</div>
-      <div class="text-secondary" style="font-size:.8rem;">連続週</div>
-    </div>
-  </div>
-  <div class="col-4">
-    <div class="card bg-secondary bg-opacity-25 border-secondary text-center py-2">
-      <div class="fw-bold fs-4 text-light">{{ stats.total_sessions }}</div>
-      <div class="text-secondary" style="font-size:.8rem;">累計回数</div>
+<div class="card mb-3">
+  <div class="card-body px-3 py-0">
+    <div class="row g-0">
+      <div class="col-4" style="border-right:0.5px solid var(--sep);">
+        <div class="stat-block">
+          <div class="stat-value" style="color:var(--yellow);">{{ stats.week_count }}</div>
+          <div class="stat-label">今週</div>
+        </div>
+      </div>
+      <div class="col-4" style="border-right:0.5px solid var(--sep);">
+        <div class="stat-block">
+          <div class="stat-value" style="color:var(--blue);">{{ stats.streak_weeks }}</div>
+          <div class="stat-label">連続週</div>
+        </div>
+      </div>
+      <div class="col-4">
+        <div class="stat-block">
+          <div class="stat-value">{{ stats.total_sessions }}</div>
+          <div class="stat-label">累計</div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
 
 {# ── 体重 ── #}
-<div class="card bg-secondary bg-opacity-25 border-secondary mb-3">
-  <div class="card-body py-2">
+<div class="card mb-3">
+  <div class="card-body py-3 px-3">
     <div class="d-flex justify-content-between align-items-center">
       <div>
-        <div class="text-secondary small">体重</div>
+        <div class="section-label">体重</div>
         {% if latest_weight %}
-        <div class="fw-bold fs-4">{{ latest_weight.weight_kg }} <span class="fs-6 text-secondary">kg</span></div>
-        <div class="text-secondary" style="font-size:.75rem;">{{ latest_weight.logged_date.strftime('%m/%d') }}</div>
+        <div class="fw-bold fs-4" style="letter-spacing:-0.02em;">
+          {{ latest_weight.weight_kg }}<span style="font-size:0.9rem;color:var(--txt-2);font-weight:400;margin-left:0.2rem;">kg</span>
+        </div>
+        <div style="font-size:0.75rem;color:var(--txt-2);">{{ latest_weight.logged_date.strftime('%m/%d') }}</div>
         {% else %}
-        <div class="text-secondary">記録なし</div>
+        <div style="color:var(--txt-2);">記録なし</div>
         {% endif %}
       </div>
       <a href="{{ url_for('weight_log') }}" class="btn btn-outline-secondary btn-sm">記録・履歴</a>
@@ -139,36 +150,35 @@
         <span class="badge bg-secondary ms-2">{{ stats.recent_sessions|length }}</span>
         {% endif %}
         <a href="{{ url_for('sessions_list') }}"
-           class="text-secondary small ms-auto me-2"
-           onclick="event.stopPropagation()">すべて見る →</a>
+           class="ms-auto me-2"
+           style="font-size:0.82rem;color:var(--blue);text-decoration:none;"
+           onclick="event.stopPropagation()">すべて見る</a>
       </button>
     </h2>
-    <div id="recentCollapse" class="accordion-collapse collapse" aria-labelledby="recentHeading">
-      <div class="accordion-body px-0 pt-2 pb-0">
+    <div id="recentCollapse" class="accordion-collapse collapse">
+      <div class="accordion-body px-0 pt-0 pb-2">
         {% if stats.recent_sessions %}
-        <div class="d-flex flex-column gap-2">
+        <div class="d-flex flex-column px-3">
           {% for s in stats.recent_sessions %}
-          <a href="{{ url_for('session_detail', session_id=s.id) }}" class="text-decoration-none">
-            <div class="card bg-dark border-secondary">
-              <div class="card-body py-2 px-3">
-                <div class="d-flex justify-content-between align-items-center">
-                  <div>
-                    <span class="fw-bold text-light">{{ s.session_date.strftime('%m/%d') }}</span>
-                    <span class="text-secondary ms-1">（{{ s.day_of_week }}）</span>
-                    <span class="text-secondary ms-2">{{ s.exercise_count }}種目</span>
-                  </div>
-                  <span class="badge bg-warning text-dark">{{ "{:,}".format(s.total_exp or 0) }} EXP</span>
-                </div>
-              </div>
+          <a href="{{ url_for('session_detail', session_id=s.id) }}" class="text-decoration-none list-row">
+            <div class="flex-grow-1">
+              <span class="fw-bold">{{ s.session_date.strftime('%m/%d') }}</span>
+              <span style="color:var(--txt-2);font-size:0.88rem;margin-left:0.4rem;">
+                {{ s.day_of_week }} · {{ s.exercise_count }}種目
+              </span>
             </div>
+            <span class="badge bg-warning">{{ "{:,}".format(s.total_exp or 0) }} EXP</span>
           </a>
           {% endfor %}
         </div>
         {% else %}
-        <p class="text-secondary text-center small py-3">まだ記録がありません</p>
+        <p style="color:var(--txt-2);text-align:center;font-size:0.88rem;padding:1rem 0 0.5rem;">
+          まだ記録がありません
+        </p>
         {% endif %}
       </div>
     </div>
   </div>
 </div>
+
 {% endblock %}

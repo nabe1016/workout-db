@@ -1,173 +1,411 @@
-/* Dark theme overrides */
-body { font-size: 16px; }
+/* ═══════════════════════════════════════════════════════
+   Design Tokens  —  iOS-inspired dark mode
+═══════════════════════════════════════════════════════ */
+:root {
+  --bg-0:   #000000;               /* page */
+  --bg-1:   #1C1C1E;               /* card / sheet */
+  --bg-2:   #2C2C2E;               /* inner row / input */
+  --bg-3:   #3A3A3C;               /* pressed state */
+  --sep:    rgba(84,84,88,0.55);   /* separator */
 
-/* Bootstrap cards default to --bs-card-color which is dark in light-mode.
-   Force inherit so body's text-light (#f8f9fa) flows through. */
-.card {
-  color: inherit;
+  --txt-1:  #FFFFFF;
+  --txt-2:  #8E8E93;
+  --txt-3:  #48484A;
+
+  --blue:   #0A84FF;
+  --green:  #30D158;
+  --yellow: #FFD60A;
+  --red:    #FF453A;
+  --orange: #FF9F0A;
+  --teal:   #64D2FF;
+  --indigo: #5E5CE6;
+
+  --r-card: 12px;
+  --r-btn:  12px;
+  --r-sm:   8px;
+  --r-xs:   6px;
+
+  --tab-h:  56px;
+  --nav-h:  52px;
 }
 
-/* Accordion dark mode */
-.accordion-item {
+/* ── Base ────────────────────────────────────────────── */
+body {
+  background: var(--bg-0) !important;
+  color: var(--txt-1);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Typography ─────────────────────────────────────── */
+.text-secondary  { color: var(--txt-2) !important; }
+a.text-secondary { color: var(--txt-2) !important; }
+a.text-secondary:hover { color: var(--txt-1) !important; }
+.text-warning    { color: var(--yellow) !important; }
+.text-success    { color: var(--green)  !important; }
+.text-danger     { color: var(--red)    !important; }
+.text-info       { color: var(--teal)   !important; }
+
+/* ── Section label (iOS grouped list header) ─────────── */
+.section-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--txt-2);
+  padding: 0 0.25rem;
+  margin-bottom: 0.4rem;
+}
+
+/* ── Cards ───────────────────────────────────────────── */
+.card {
+  background: var(--card-bg, var(--bg-1)) !important;
+  border: none !important;
+  border-radius: var(--r-card) !important;
+  color: var(--txt-1);
+}
+a > .card:hover,
+a > .card:active {
+  background: var(--bg-2) !important;
+}
+
+/* ── Forms ───────────────────────────────────────────── */
+.form-control,
+.form-select {
+  background: var(--bg-2) !important;
+  border: none !important;
+  border-radius: var(--r-sm) !important;
+  color: var(--txt-1) !important;
+  padding: 0.7rem 0.9rem;
+}
+.form-control::placeholder { color: var(--txt-3) !important; }
+.form-control:focus,
+.form-select:focus {
+  background: var(--bg-3) !important;
+  box-shadow: 0 0 0 3px rgba(10,132,255,0.30) !important;
+  outline: none;
+}
+.form-control-lg {
+  padding: 0.85rem 1rem;
+  font-size: 1rem;
+}
+.form-label {
+  color: var(--txt-2);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.3rem;
+}
+.input-group-text {
+  background: var(--bg-2) !important;
+  border: none !important;
+  color: var(--txt-2) !important;
+}
+.form-check-input {
+  background-color: var(--bg-3) !important;
+  border: 1.5px solid var(--txt-3) !important;
+  width: 1.1rem;
+  height: 1.1rem;
+}
+.form-check-input:checked {
+  background-color: var(--green) !important;
+  border-color: var(--green) !important;
+}
+.form-check-input:focus { box-shadow: none !important; }
+.form-switch .form-check-input {
+  width: 2.2rem;
+  height: 1.25rem;
+  border-radius: 1rem !important;
+}
+
+/* ── Buttons ─────────────────────────────────────────── */
+.btn {
+  border-radius: var(--r-btn) !important;
+  font-weight: 600;
+  border: none !important;
+  letter-spacing: -0.01em;
+  transition: opacity 0.12s, transform 0.1s;
+}
+.btn:active  { transform: scale(0.96); opacity: 0.82; }
+.btn:focus   { box-shadow: none !important; }
+
+/* Filled — primary actions */
+.btn-warning {
+  background: var(--yellow) !important;
+  color: #000 !important;
+}
+.btn-success {
+  background: var(--green) !important;
+  color: #000 !important;
+}
+.btn-danger {
+  background: var(--red) !important;
+  color: #fff !important;
+}
+.btn-info {
+  background: var(--teal) !important;
+  color: #000 !important;
+}
+.btn-primary {
+  background: var(--blue) !important;
+  color: #fff !important;
+}
+.btn-secondary {
+  background: var(--bg-2) !important;
+  color: var(--txt-1) !important;
+}
+
+/* Tinted — secondary actions */
+.btn-outline-secondary {
+  background: var(--bg-2) !important;
+  color: var(--txt-2) !important;
+}
+.btn-outline-secondary:hover,
+.btn-outline-secondary:active {
+  background: var(--bg-3) !important;
+  color: var(--txt-1) !important;
+}
+.btn-outline-warning {
+  background: rgba(255,214,10,0.12) !important;
+  color: var(--yellow) !important;
+}
+.btn-outline-warning:hover,
+.btn-outline-warning:active {
+  background: rgba(255,214,10,0.22) !important;
+}
+.btn-outline-info {
+  background: rgba(100,210,255,0.12) !important;
+  color: var(--teal) !important;
+}
+.btn-outline-info:hover {
+  background: rgba(100,210,255,0.20) !important;
+}
+.btn-outline-danger {
+  background: rgba(255,69,58,0.10) !important;
+  color: var(--red) !important;
+}
+.btn-outline-danger:hover {
+  background: rgba(255,69,58,0.20) !important;
+}
+.btn-outline-success {
+  background: rgba(48,209,88,0.12) !important;
+  color: var(--green) !important;
+}
+
+/* Back button in navbar — iOS text-style */
+.btn-back {
   background: transparent !important;
-  border-color: #495057 !important;
+  color: var(--blue) !important;
+  font-size: 1rem;
+  font-weight: 400;
+  padding: 0.2rem 0 !important;
+}
+.btn-back:hover { opacity: 0.7; }
+
+.btn-sm {
+  border-radius: var(--r-sm) !important;
+  font-size: 0.82rem;
+  padding: 0.3rem 0.65rem;
+}
+
+/* ── Badges ──────────────────────────────────────────── */
+.badge {
+  border-radius: var(--r-xs) !important;
+  font-weight: 600;
+  font-size: 0.68rem;
+}
+.badge.bg-warning  { background: var(--yellow) !important; color: #000 !important; }
+.badge.bg-success  { background: var(--green)  !important; color: #000 !important; }
+.badge.bg-danger   { background: var(--red)    !important; }
+.badge.bg-info     { background: var(--teal)   !important; color: #000 !important; }
+.badge.bg-secondary {
+  background: var(--bg-3) !important;
+  color: var(--txt-2) !important;
+}
+
+/* ── Alerts ──────────────────────────────────────────── */
+.alert {
+  border: none !important;
+  border-radius: var(--r-sm) !important;
+  font-size: 0.88rem;
+  font-weight: 500;
+}
+.alert-success { background: rgba(48,209,88,0.14)  !important; color: var(--green)  !important; }
+.alert-warning { background: rgba(255,214,10,0.14) !important; color: var(--yellow) !important; }
+.alert-danger  { background: rgba(255,69,58,0.14)  !important; color: var(--red)    !important; }
+.alert-info    { background: rgba(100,210,255,0.14)!important; color: var(--teal)   !important; }
+.btn-close     { filter: invert(1); opacity: 0.5; }
+
+/* ── Accordion ───────────────────────────────────────── */
+.accordion-item {
+  background: var(--bg-1) !important;
+  border: none !important;
+  border-radius: var(--r-card) !important;
+  overflow: hidden;
 }
 .accordion-button {
-  background: transparent !important;
-  color: #f8f9fa !important;
+  background: var(--bg-1) !important;
+  color: var(--txt-1) !important;
+  font-weight: 600;
   box-shadow: none !important;
-  padding: 0.65rem 0;
+  padding: 0.9rem 1.1rem;
 }
 .accordion-button:not(.collapsed) {
-  color: #ffc107 !important;
+  background: var(--bg-1) !important;
+  color: var(--yellow) !important;
 }
 .accordion-button::after {
-  filter: brightness(0) invert(1);
+  filter: brightness(0) invert(0.55);
 }
 .accordion-button:not(.collapsed)::after {
-  filter: brightness(0.8) sepia(1) hue-rotate(5deg) saturate(5);
+  filter: brightness(0.9) sepia(1) hue-rotate(8deg) saturate(5);
 }
+.accordion-collapse { background: var(--bg-1) !important; }
+.accordion-body     { padding: 0 0.75rem 0.75rem; }
 
-/* Improve text-secondary contrast on dark bg (#6c757d → #adb5bd) */
-.text-secondary {
-  color: #adb5bd !important;
+/* ── Top Navbar ──────────────────────────────────────── */
+.top-nav {
+  position: sticky;
+  top: 0;
+  z-index: 1020;
+  min-height: var(--nav-h);
+  background: rgba(28,28,30,0.88);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 0.5px solid var(--sep);
+  display: flex;
+  align-items: center;
+  padding: 0 1rem;
+  gap: 0.5rem;
 }
-a.text-secondary {
-  color: #adb5bd !important;
+.top-nav .nav-title {
+  flex: 1;
+  text-align: center;
+  font-weight: 600;
+  font-size: 1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-a.text-secondary:hover {
-  color: #ced4da !important;
+.top-nav .nav-left,
+.top-nav .nav-right {
+  flex: 0 0 auto;
+  min-width: 60px;
 }
+.top-nav .nav-right { text-align: right; }
 
-.form-control, .form-select {
-  color: #f8f9fa !important;
-}
-.form-control::placeholder {
-  color: #6c757d !important;
-}
-.form-control:focus, .form-select:focus {
-  border-color: #ffc107 !important;
-  box-shadow: 0 0 0 0.15rem rgba(255,193,7,.25) !important;
-}
-
-/* Cards tappable on mobile */
-a > .card:hover, a > .card:active {
-  border-color: #adb5bd !important;
-}
-
-/* Set toggle buttons */
-.set-btn {
-  font-size: 1.8rem;
-  min-height: 3.5rem;
-}
-
-/* Bottom navigation */
+/* ── Bottom Tab Bar ──────────────────────────────────── */
 .bottom-nav {
   position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  bottom: 0; left: 0; right: 0;
   z-index: 1030;
+  background: rgba(28,28,30,0.92);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-top: 0.5px solid var(--sep);
   padding-bottom: env(safe-area-inset-bottom);
+  display: flex;
 }
-
+.bottom-nav-inner {
+  display: flex;
+  width: 100%;
+  justify-content: space-around;
+}
 .bottom-nav-item {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-decoration: none;
-  color: #adb5bd;
-  padding: 0.5rem 1rem;
+  color: var(--txt-2);
+  padding: 0.5rem 0.5rem 0.3rem;
   min-width: 4rem;
   transition: color 0.15s;
+  gap: 0.05rem;
 }
+.bottom-nav-item.active { color: var(--blue); }
+.bottom-nav-item:hover  { color: var(--blue); }
+.bottom-nav-icon  { font-size: 1.3rem; line-height: 1.2; }
+.bottom-nav-label { font-size: 0.62rem; font-weight: 500; letter-spacing: 0.01em; }
 
-.bottom-nav-item.active,
-.bottom-nav-item:hover {
-  color: #ffc107;
-}
-
-.bottom-nav-today {
-  background: #ffc107;
-  border-radius: 50%;
-  width: 3rem;
-  height: 3rem;
-  padding: 0;
-  color: #212529 !important;
-  font-weight: bold;
-  flex-direction: row;
-  gap: 0;
-}
-
-.bottom-nav-today .bottom-nav-label {
-  display: none;
-}
-
-.bottom-nav-today .bottom-nav-icon {
-  font-size: 1.4rem;
-}
-
-.bottom-nav-icon {
-  font-size: 1.3rem;
-  line-height: 1;
-}
-
-.bottom-nav-label {
-  font-size: 0.65rem;
-  margin-top: 0.15rem;
-}
-
-/* Offset content so bottom nav doesn't cover it */
+/* ── Content area ────────────────────────────────────── */
 .main-content {
-  padding-bottom: calc(6rem + env(safe-area-inset-bottom));
+  padding-bottom: calc(var(--tab-h) + 1.5rem + env(safe-area-inset-bottom));
 }
 
-/* Sticky action bar — stays just above the bottom nav */
+/* ── Sticky action bar ───────────────────────────────── */
 .sticky-action-bar {
   position: sticky;
-  bottom: calc(4rem + env(safe-area-inset-bottom));
+  bottom: calc(var(--tab-h) + env(safe-area-inset-bottom));
   z-index: 100;
   padding-top: 0.5rem;
-  background: #212529;
+  background: var(--bg-0);
 }
 
-/* Table on small screens */
-@media (max-width: 400px) {
-  .table { font-size: 0.75rem; }
+/* ── Sortable drag ───────────────────────────────────── */
+.sortable-ghost  { opacity: 0.25; }
+.sortable-chosen { box-shadow: 0 6px 24px rgba(0,0,0,0.7); }
+.drag-handle:active { color: var(--yellow) !important; cursor: grabbing; }
+
+/* ── Set toggle buttons ──────────────────────────────── */
+.set-btn { font-size: 1.8rem; min-height: 3.5rem; }
+
+/* ── Exercise card accent strip ──────────────────────── */
+.exercise-card {
+  position: relative;
+  overflow: hidden;
+}
+.exercise-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--accent-color, transparent);
+  border-radius: 3px 0 0 3px;
 }
 
-/* Sortable drag feedback */
-.sortable-ghost {
-  opacity: 0.4;
-  background: #495057 !important;
+/* ── Skipped exercise ────────────────────────────────── */
+.se-skipped { opacity: 0.32; }
+.se-skipped .fw-bold.text-info { text-decoration: line-through; }
+
+/* ── Muscle conflict badge ───────────────────────────── */
+.muscle-conflict-badge { font-size: 0.6rem !important; vertical-align: middle; }
+
+/* ── Table ───────────────────────────────────────────── */
+.table { color: var(--txt-1) !important; }
+.table-dark { background: transparent !important; }
+@media (max-width: 400px) { .table { font-size: 0.75rem; } }
+
+/* ── Last-value hint ─────────────────────────────────── */
+.last-value-hint { font-size: 0.75rem; color: var(--txt-2); margin-top: 0.2rem; }
+
+/* ── Stat block ──────────────────────────────────────── */
+.stat-block {
+  text-align: center;
+  padding: 0.85rem 0.5rem;
 }
-.sortable-chosen {
-  background: #343a40 !important;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+.stat-block .stat-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
 }
-.drag-handle:active {
-  cursor: grabbing;
-  color: #ffc107 !important;
+.stat-block .stat-label {
+  font-size: 0.7rem;
+  color: var(--txt-2);
+  margin-top: 0.15rem;
+  font-weight: 500;
 }
 
-/* Skipped exercise */
-.se-skipped {
-  opacity: 0.38;
+/* ── iOS-style list row ──────────────────────────────── */
+.list-row {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 0;
+  gap: 0.75rem;
+  border-bottom: 0.5px solid var(--sep);
 }
-.se-skipped .fw-bold.text-info {
-  text-decoration: line-through;
-}
-
-/* Muscle conflict badge (injected by JS) */
-.muscle-conflict-badge {
-  font-size: 0.6rem !important;
-  vertical-align: middle;
-}
-
-/* Last-values hint */
-.last-value-hint {
-  font-size: 0.75rem;
-  color: #adb5bd;
-  margin-top: 0.2rem;
-}
+.list-row:last-child { border-bottom: none; }

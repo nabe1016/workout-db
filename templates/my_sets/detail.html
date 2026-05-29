@@ -12,13 +12,14 @@
 {% endblock %}
 
 {% block content %}
-<div class="card bg-secondary bg-opacity-25 border-warning mb-3">
-  <div class="card-body py-2">
+<div class="card mb-3">
+  <div class="card-body py-3 px-3">
     <div class="d-flex justify-content-between align-items-start">
       <div>
-        <div class="fw-bold fs-4 text-warning">{{ my_set.name }}</div>
+        <div class="section-label">マイセット</div>
+        <div class="fw-bold fs-5" style="color:var(--yellow);">{{ my_set.name }}</div>
         {% if my_set.description %}
-        <div class="text-secondary small">{{ my_set.description }}</div>
+        <div style="font-size:0.82rem;color:var(--txt-2);margin-top:0.1rem;">{{ my_set.description }}</div>
         {% endif %}
       </div>
       <a href="{{ url_for('my_set_edit', my_set_id=my_set.id) }}"
@@ -38,8 +39,8 @@
       action="{{ url_for('my_set_exercises_bulk_delete', my_set_id=my_set.id) }}">
 <div class="d-flex flex-column gap-2 mb-4" id="sortable-list">
   {% for ex in exercises %}
-  <div class="card border-secondary" data-id="{{ ex.id }}"
-       style="{% if ex.primary_muscle %}background-color:{{ muscle_bg(ex.primary_muscle) }};{% else %}background-color:rgba(0,0,0,0.3);{% endif %}">
+  <div class="card" data-id="{{ ex.id }}"
+       style="{% if ex.primary_muscle %}--card-bg:{{ muscle_bg(ex.primary_muscle) }};{% endif %}">
     <div class="card-body py-2 px-3">
       <div class="d-flex align-items-center gap-2">
 

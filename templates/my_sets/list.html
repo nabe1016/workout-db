@@ -5,40 +5,39 @@
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
-  <h5 class="mb-0">マイセット <span class="badge bg-secondary">{{ my_sets|length }}</span></h5>
+  <span class="fw-bold fs-5">マイセット</span>
+  <span class="badge bg-secondary">{{ my_sets|length }}</span>
 </div>
 
 {% if my_sets %}
-<div class="d-flex flex-column gap-2">
-  {% for ms in my_sets %}
-  <a href="{{ url_for('my_set_detail', my_set_id=ms.id) }}" class="text-decoration-none">
-    <div class="card bg-secondary bg-opacity-25 border-secondary">
-      <div class="card-body py-3">
-        <div class="d-flex justify-content-between align-items-center">
-          <div>
-            <div class="fw-bold fs-5 text-warning">{{ ms.name }}</div>
-            {% if ms.description %}
-            <div class="text-secondary small">{{ ms.description }}</div>
-            {% endif %}
-          </div>
-          <span class="badge bg-secondary">{{ ms.exercise_count }} 種目</span>
-        </div>
+<div class="card">
+  <div class="card-body px-3 py-0">
+    {% for ms in my_sets %}
+    <a href="{{ url_for('my_set_detail', my_set_id=ms.id) }}" class="text-decoration-none list-row">
+      <div class="flex-grow-1">
+        <div class="fw-bold" style="color:var(--yellow);">{{ ms.name }}</div>
+        {% if ms.description %}
+        <div style="font-size:0.78rem;color:var(--txt-2);">{{ ms.description }}</div>
+        {% endif %}
       </div>
-    </div>
-  </a>
-  {% endfor %}
+      <span class="badge bg-secondary">{{ ms.exercise_count }}種目</span>
+    </a>
+    {% endfor %}
+  </div>
 </div>
 {% else %}
-<div class="text-center text-secondary mt-5">
-  <div style="font-size:3rem;">⚙️</div>
-  <p class="mt-2">マイセットがまだありません。</p>
-  <p class="small">よく使うトレーニングメニューを登録しておくと、<br>ワンタップでセッションに反映できます。</p>
+<div class="text-center" style="color:var(--txt-2);margin-top:4rem;">
+  <div style="font-size:2.5rem;margin-bottom:0.75rem;">☰</div>
+  <p>マイセットがまだありません</p>
+  <p style="font-size:0.85rem;">よく使うトレーニングメニューを登録しておくと<br>ワンタップでセッションに反映できます</p>
 </div>
 {% endif %}
 
 <a href="{{ url_for('my_set_new') }}"
-   class="btn btn-warning btn-lg rounded-circle position-fixed shadow"
-   style="bottom:5rem;right:1.5rem;width:3.5rem;height:3.5rem;font-size:1.5rem;line-height:1;padding:0;display:flex;align-items:center;justify-content:center;">
+   class="btn btn-warning position-fixed shadow"
+   style="bottom:calc(var(--tab-h) + env(safe-area-inset-bottom) + 1rem);right:1.25rem;
+          width:3.2rem;height:3.2rem;border-radius:50%!important;font-size:1.5rem;
+          padding:0;display:flex;align-items:center;justify-content:center;">
   +
 </a>
 {% endblock %}

@@ -5,32 +5,30 @@
 
 {% block content %}
 {# Session header #}
-<div class="card bg-secondary bg-opacity-25 border-secondary mb-3">
-  <div class="card-body py-2">
-    <div class="d-flex justify-content-between align-items-center">
+<div class="card mb-3">
+  <div class="card-body py-3 px-3">
+    <div class="d-flex justify-content-between align-items-center mb-2">
       <div>
-        <div class="fw-bold fs-4">
+        <div class="section-label">セッション</div>
+        <div class="fw-bold fs-5">
           {{ session.session_date.strftime('%Y/%m/%d') }}（{{ session.day_of_week }}）
         </div>
         {% if session.start_time and session.end_time %}
-        <div class="text-secondary">
+        <div style="font-size:0.82rem;color:var(--txt-2);margin-top:0.1rem;">
           {{ session.start_time.strftime('%H:%M') }} – {{ session.end_time.strftime('%H:%M') }}
         </div>
         {% endif %}
-        {% if session.rep_count %}
-        <div class="text-secondary small">{{ session.rep_count }} 回 / セット</div>
-        {% endif %}
       </div>
       <div class="text-end">
-        <div class="fs-4 fw-bold text-warning" id="total-exp">
+        <div class="fw-bold" style="font-size:1.5rem;letter-spacing:-0.02em;color:var(--yellow);" id="total-exp">
           {{ "{:,}".format(session.total_exp or 0) }}
         </div>
-        <div class="text-secondary small">EXP</div>
+        <div style="font-size:0.7rem;color:var(--txt-2);">EXP</div>
       </div>
     </div>
-    <div class="d-flex gap-2 mt-2">
+    <div class="d-flex gap-2">
       <a href="{{ url_for('session_finish', session_id=session.id) }}"
-         class="btn btn-success btn-sm flex-fill fw-bold">🎉 終了・アドバイス</a>
+         class="btn btn-success btn-sm flex-fill fw-bold">終了・アドバイス</a>
       <a href="{{ url_for('session_edit', session_id=session.id) }}"
          class="btn btn-outline-secondary btn-sm">編集</a>
       <form method="post" action="{{ url_for('session_delete', session_id=session.id) }}"
@@ -53,11 +51,11 @@
       action="{{ url_for('session_exercises_bulk_delete', session_id=session.id) }}">
 <div class="d-flex flex-column gap-2 mb-3" id="session-sortable">
   {% for ex in exercises %}
-  <div class="card border-secondary{% if ex.skipped %} se-skipped{% endif %}"
+  <div class="card exercise-card{% if ex.skipped %} se-skipped{% endif %}"
        id="ex-card-{{ ex.id }}" data-id="{{ ex.id }}"
        data-primary-muscle="{{ ex.primary_muscle or '' }}"
        data-skipped="{{ 'true' if ex.skipped else 'false' }}"
-       style="{% if ex.primary_muscle %}background-color:{{ muscle_bg(ex.primary_muscle) }};{% else %}background-color:rgba(0,0,0,0.3);{% endif %}">
+       style="{% if ex.primary_muscle %}--card-bg:{{ muscle_bg(ex.primary_muscle) }};{% endif %}">
     <div class="card-body py-2 px-3">
       <div class="d-flex align-items-start gap-2">
         <div class="ex-checkbox-wrap align-self-center" style="display:none;">
@@ -138,33 +136,29 @@
 </div>
 </form>
 
-{# 3-way entry (compact) when exercises exist #}
+{# Entry shortcuts (compact) when exercises exist #}
 <div class="d-flex gap-2 mb-2">
   <a href="{{ url_for('session_apply_my_set', session_id=session.id) }}"
-     class="btn btn-outline-warning btn-sm flex-fill">⚙️ マイセット</a>
+     class="btn btn-outline-warning btn-sm flex-fill">マイセット</a>
   <a href="{{ url_for('session_copy_from', session_id=session.id) }}"
-     class="btn btn-outline-info btn-sm flex-fill">📋 直近</a>
+     class="btn btn-outline-info btn-sm flex-fill">直近からコピー</a>
 </div>
 
 {% else %}
-{# Empty state — 3-way entry #}
-<div class="text-center mb-3">
-  <div style="font-size:3rem;">🏋️</div>
-  <p class="text-secondary mt-2 mb-4">トレーニングを開始しましょう</p>
-</div>
-<div class="d-flex flex-column gap-3 mb-3">
-  <a href="{{ url_for('session_apply_my_set', session_id=session.id) }}"
-     class="btn btn-warning btn-lg fw-bold">
-    ⚙️ マイセットから入力
-  </a>
-  <a href="{{ url_for('session_copy_from', session_id=session.id) }}"
-     class="btn btn-info btn-lg fw-bold">
-    📋 直近のメニューから入力
-  </a>
-  <a href="{{ url_for('exercise_new', session_id=session.id) }}"
-     class="btn btn-outline-secondary btn-lg">
-    ＋ 自身で選択して入力
-  </a>
+{# Empty state #}
+<div class="card mb-3">
+  <div class="card-body text-center py-5">
+    <div style="font-size:2.5rem;margin-bottom:0.75rem;">🏋️</div>
+    <p style="color:var(--txt-2);margin-bottom:1.5rem;">トレーニングを開始しましょう</p>
+    <div class="d-flex flex-column gap-2">
+      <a href="{{ url_for('session_apply_my_set', session_id=session.id) }}"
+         class="btn btn-warning btn-lg fw-bold">マイセットから入力</a>
+      <a href="{{ url_for('session_copy_from', session_id=session.id) }}"
+         class="btn btn-outline-info btn-lg">直近のメニューから入力</a>
+      <a href="{{ url_for('exercise_new', session_id=session.id) }}"
+         class="btn btn-outline-secondary btn-lg">種目を選んで追加</a>
+    </div>
+  </div>
 </div>
 {% endif %}
 

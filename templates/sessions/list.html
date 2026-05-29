@@ -1,51 +1,50 @@
 {% extends "base.html" %}
 {% block title %}セッション一覧{% endblock %}
-{% block nav_title %}一覧{% endblock %}
+{% block nav_title %}記録{% endblock %}
 {% block nav_sessions %}active{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
-  <h5 class="mb-0">セッション一覧 <span class="badge bg-secondary">{{ sessions|length }}</span></h5>
+  <span class="fw-bold fs-5">セッション</span>
+  <span class="badge bg-secondary">{{ sessions|length }}</span>
 </div>
 
 {% if sessions %}
-<div class="d-flex flex-column gap-2">
-  {% for s in sessions %}
-  <a href="{{ url_for('session_detail', session_id=s.id) }}" class="text-decoration-none">
-    <div class="card bg-secondary bg-opacity-25 border-secondary">
-      <div class="card-body py-3">
-        <div class="d-flex justify-content-between align-items-start">
-          <div>
-            <div class="fw-bold fs-5">
-              {{ s.session_date.strftime('%Y/%m/%d') }}
-              <span class="text-secondary fs-6">（{{ s.day_of_week }}）</span>
-            </div>
-            {% if s.start_time and s.end_time %}
-            <div class="text-secondary small">
-              {{ s.start_time.strftime('%H:%M') }} – {{ s.end_time.strftime('%H:%M') }}
-            </div>
-            {% endif %}
-          </div>
-          <div class="text-end">
-            <div class="badge bg-warning text-dark fs-6">
-              {{ "{:,}".format(s.total_exp or 0) }} EXP
-            </div>
-            <div class="text-secondary small mt-1">{{ s.exercise_count }} 種目</div>
-          </div>
+<div class="card">
+  <div class="card-body px-3 py-0">
+    {% for s in sessions %}
+    <a href="{{ url_for('session_detail', session_id=s.id) }}" class="text-decoration-none list-row">
+      <div class="flex-grow-1">
+        <div class="fw-bold">
+          {{ s.session_date.strftime('%Y/%m/%d') }}
+          <span style="color:var(--txt-2);font-weight:400;font-size:0.88rem;">（{{ s.day_of_week }}）</span>
         </div>
+        {% if s.start_time and s.end_time %}
+        <div style="font-size:0.78rem;color:var(--txt-2);">
+          {{ s.start_time.strftime('%H:%M') }} – {{ s.end_time.strftime('%H:%M') }}
+          · {{ s.exercise_count }}種目
+        </div>
+        {% else %}
+        <div style="font-size:0.78rem;color:var(--txt-2);">{{ s.exercise_count }}種目</div>
+        {% endif %}
       </div>
-    </div>
-  </a>
-  {% endfor %}
+      <span class="badge bg-warning">{{ "{:,}".format(s.total_exp or 0) }} EXP</span>
+    </a>
+    {% endfor %}
+  </div>
 </div>
 {% else %}
-<p class="text-secondary text-center mt-5">まだセッションがありません。</p>
+<div class="text-center" style="color:var(--txt-2);margin-top:4rem;">
+  <div style="font-size:2.5rem;margin-bottom:0.75rem;">📋</div>
+  <p>まだセッションがありません</p>
+</div>
 {% endif %}
 
-<!-- FAB -->
 <a href="{{ url_for('session_new') }}"
-   class="btn btn-warning btn-lg rounded-circle position-fixed shadow"
-   style="bottom:1.5rem;right:1.5rem;width:3.5rem;height:3.5rem;font-size:1.5rem;line-height:1;padding:0;display:flex;align-items:center;justify-content:center;">
+   class="btn btn-warning position-fixed shadow"
+   style="bottom:calc(var(--tab-h) + env(safe-area-inset-bottom) + 1rem);right:1.25rem;
+          width:3.2rem;height:3.2rem;border-radius:50%!important;font-size:1.5rem;
+          padding:0;display:flex;align-items:center;justify-content:center;">
   +
 </a>
 {% endblock %}
