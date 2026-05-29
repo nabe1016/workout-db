@@ -18,7 +18,7 @@
   <div class="d-flex flex-column gap-2 mb-3">
     {% for ex in exercises %}
     <div class="card border-secondary"
-         style="{% if ex.primary_muscle %}background-color:{{ muscle_bg(ex.primary_muscle) }};{% else %}background-color:rgba(0,0,0,0.3);{% endif %}">
+         style="{% if ex.body_part %}--card-bg:{{ category_bg(ex.body_part) }};{% endif %}">
       <div class="card-body py-2 px-3">
         <div class="fw-bold text-info mb-2">{{ ex.name }}</div>
         <div class="row g-2 align-items-center">

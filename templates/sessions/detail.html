@@ -41,13 +41,10 @@
 
 {# Exercise list #}
 {% if exercises %}
-<div class="d-flex justify-content-between align-items-center mb-1">
+<div class="d-flex justify-content-between align-items-center mb-2">
   {% include "partials/muscle_legend.html" %}
   <button type="button" id="select-mode-btn"
           class="btn btn-outline-secondary btn-sm flex-shrink-0 ms-2">選択</button>
-</div>
-<div style="font-size:0.72rem;color:var(--txt-3);margin-bottom:0.4rem;">
-  ≡ 長押しでドラッグ並び替え
 </div>
 
 <form id="bulk-delete-form" method="post"
@@ -58,7 +55,7 @@
        id="ex-card-{{ ex.id }}" data-id="{{ ex.id }}"
        data-primary-muscle="{{ ex.primary_muscle or '' }}"
        data-skipped="{{ 'true' if ex.skipped else 'false' }}"
-       style="{% if ex.primary_muscle %}--card-bg:{{ muscle_bg(ex.primary_muscle) }};{% endif %}">
+       style="{% if ex.body_part %}--card-bg:{{ category_bg(ex.body_part) }};{% endif %}">
     <div class="card-body py-2 px-3">
       <div class="d-flex align-items-start gap-2">
         <div class="ex-checkbox-wrap align-self-center" style="display:none;">

@@ -15,7 +15,7 @@
   <span class="badge bg-secondary bg-opacity-50">{{ exercise.body_part }}</span>
   {% endif %}
   {% if exercise.primary_muscle %}
-  <span class="badge px-2" style="background:{{ muscle_bg(exercise.primary_muscle) }};border:1px solid rgba(255,255,255,0.2);color:#f8f9fa;">{{ exercise.primary_muscle }}</span>
+  <span class="badge px-2" style="background:var(--bg-2);color:var(--txt-2);">{{ exercise.primary_muscle }}</span>
   {% endif %}
   {% if exercise.needs_bench %}
   <span class="badge" style="background:rgba(255,193,7,0.2);border:1px solid rgba(255,193,7,0.4);color:#ffc107;">🪑 ベンチ台</span>
