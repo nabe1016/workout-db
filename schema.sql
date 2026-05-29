@@ -61,6 +61,9 @@ CREATE TABLE IF NOT EXISTS my_set_exercises (
 
 CREATE INDEX IF NOT EXISTS idx_mse_my_set ON my_set_exercises(my_set_id);
 
+ALTER TABLE exercises ADD COLUMN IF NOT EXISTS body_part      TEXT;
+ALTER TABLE exercises ADD COLUMN IF NOT EXISTS needs_bench    BOOLEAN DEFAULT FALSE;
+ALTER TABLE exercises ADD COLUMN IF NOT EXISTS primary_muscle TEXT;
 ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS set4_completed  BOOLEAN;
 ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS set5_completed  BOOLEAN;
 ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS set6_completed  BOOLEAN;

@@ -10,9 +10,23 @@
   {% for ex in exercises %}
   <a href="{{ url_for('exercise_progress', exercise_id=ex.id) }}"
      class="text-decoration-none">
-    <div class="card bg-secondary bg-opacity-25 border-secondary">
-      <div class="card-body py-3">
-        <span class="fw-bold text-info">{{ ex.name }}</span>
+    <div class="card border-secondary"
+         style="background-color:{{ muscle_bg(ex.primary_muscle) or 'rgba(108,117,125,0.15)' }};">
+      <div class="card-body py-2 px-3">
+        <div class="d-flex justify-content-between align-items-center">
+          <span class="fw-bold text-info">{{ ex.name }}</span>
+          <div class="d-flex gap-1">
+            {% if ex.body_part %}
+            <span class="badge bg-secondary bg-opacity-50" style="font-size:0.65rem;">{{ ex.body_part }}</span>
+            {% endif %}
+            {% if ex.needs_bench %}
+            <span class="badge" style="background:rgba(255,193,7,0.2);border:1px solid rgba(255,193,7,0.4);color:#ffc107;font-size:0.65rem;">🪑</span>
+            {% endif %}
+          </div>
+        </div>
+        {% if ex.primary_muscle %}
+        <div class="text-secondary" style="font-size:0.78rem;">{{ ex.primary_muscle }}</div>
+        {% endif %}
       </div>
     </div>
   </a>

@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% set back_url = url_for('exercise_progress', exercise_id=exercise.id) %}
+{% block title %}{{ exercise.name }} 編集{% endblock %}
+{% block nav_title %}種目設定{% endblock %}
+
+{% block content %}
+<h5 class="mb-1 text-info">{{ exercise.name }}</h5>
+<p class="text-secondary small mb-4">カテゴリ・主導筋・ベンチ台設定</p>
+
+<form method="post">
+  {# Body part #}
+  <div class="mb-4">
+    <label class="form-label fw-bold">カテゴリ</label>
+    <div class="d-flex gap-2 flex-wrap">
+      {% for bp in ['上肢', '下肢', '体幹'] %}
+      <div class="form-check form-check-inline">
+        <input class="form-check-input" type="radio" name="body_part"
+               id="bp_{{ bp }}" value="{{ bp }}"
+               {% if exercise.body_part == bp %}checked{% endif %}>
+        <label class="form-check-label" for="bp_{{ bp }}">{{ bp }}</label>
+      </div>
+      {% endfor %}
+      <div class="form-check form-check-inline">
+        <input class="form-check-input" type="radio" name="body_part"
+               id="bp_none" value=""
+               {% if not exercise.body_part %}checked{% endif %}>
+        <label class="form-check-label text-secondary" for="bp_none">未設定</label>
+      </div>
+    </div>
+  </div>
+
+  {# Primary muscle #}
+  <div class="mb-4">
+    <label class="form-label fw-bold">主導筋 <span class="text-secondary small">（カード背景色の基準）</span></label>
+    <input type="text" class="form-control bg-dark text-light border-secondary"
+           name="primary_muscle"
+           value="{{ exercise.primary_muscle or '' }}"
+           list="muscle-list"
+           placeholder="例: 広背筋">
+    <datalist id="muscle-list">
+      {% for m in ['広背筋','大胸筋','大腿四頭筋','ハムストリングス','大腿二頭筋',
+                   '三角筋','上腕二頭筋','上腕三頭筋','大臀筋','腹直筋',
+                   '腹斜筋','僧帽筋','脊柱起立筋','カーフ'] %}
+      <option value="{{ m }}">
+      {% endfor %}
+    </datalist>
+    {% if exercise.primary_muscle %}
+    <div class="mt-2">
+      <span class="badge px-3 py-1" style="background:{{ muscle_bg(exercise.primary_muscle) }};border:1px solid rgba(255,255,255,0.2);color:#f8f9fa;">
+        {{ exercise.primary_muscle }}
+      </span>
+      <span class="text-secondary small ms-2">← このカード背景色が適用されます</span>
+    </div>
+    {% endif %}
+  </div>
+
+  {# Needs bench #}
+  <div class="mb-4">
+    <div class="form-check form-switch">
+      <input class="form-check-input" type="checkbox" role="switch"
+             id="needs_bench" name="needs_bench"
+             {% if exercise.needs_bench %}checked{% endif %}>
+      <label class="form-check-label fw-bold" for="needs_bench">
+        🪑 ベンチ台が必要
+      </label>
+    </div>
+    <div class="text-secondary small mt-1">
+      ワークアウト中にベンチ台の空き確認が必要な種目にチェック
+    </div>
+  </div>
+
+  <button type="submit" class="btn btn-warning btn-lg w-100">保存</button>
+</form>
+{% endblock %}

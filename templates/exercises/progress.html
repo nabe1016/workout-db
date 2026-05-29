@@ -4,7 +4,22 @@
 {% block nav_title %}推移{% endblock %}
 
 {% block content %}
-<h5 class="mb-1">{{ exercise.name }}</h5>
+<div class="d-flex justify-content-between align-items-start mb-1">
+  <h5 class="mb-0">{{ exercise.name }}</h5>
+  <a href="{{ url_for('exercise_meta_edit', exercise_id=exercise.id) }}"
+     class="btn btn-outline-secondary btn-sm">設定</a>
+</div>
+<div class="d-flex gap-2 flex-wrap mb-3">
+  {% if exercise.body_part %}
+  <span class="badge bg-secondary bg-opacity-50">{{ exercise.body_part }}</span>
+  {% endif %}
+  {% if exercise.primary_muscle %}
+  <span class="badge px-2" style="background:{{ muscle_bg(exercise.primary_muscle) }};border:1px solid rgba(255,255,255,0.2);color:#f8f9fa;">{{ exercise.primary_muscle }}</span>
+  {% endif %}
+  {% if exercise.needs_bench %}
+  <span class="badge" style="background:rgba(255,193,7,0.2);border:1px solid rgba(255,193,7,0.4);color:#ffc107;">🪑 ベンチ台</span>
+  {% endif %}
+</div>
 <p class="text-secondary small mb-3">{{ history|length }} セッション</p>
 
 {% if history %}

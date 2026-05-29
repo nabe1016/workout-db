@@ -36,6 +36,25 @@ def run_migrations():
 
 run_migrations()
 
+# Primary muscle → card background color (dark-mode pastels)
+_MUSCLE_BG = {
+    "広背筋":           "rgba(13,110,253,0.18)",
+    "大胸筋":           "rgba(25,135,84,0.18)",
+    "大腿四頭筋":       "rgba(111,66,193,0.18)",
+    "ハムストリングス": "rgba(253,126,20,0.18)",
+    "大腿二頭筋":       "rgba(253,126,20,0.18)",
+    "三角筋":           "rgba(32,201,151,0.18)",
+    "上腕二頭筋":       "rgba(214,51,132,0.18)",
+    "上腕三頭筋":       "rgba(255,193,7,0.18)",
+    "大臀筋":           "rgba(220,53,69,0.18)",
+    "腹直筋":           "rgba(13,202,240,0.18)",
+    "腹斜筋":           "rgba(13,202,240,0.18)",
+    "僧帽筋":           "rgba(102,16,242,0.18)",
+    "脊柱起立筋":       "rgba(108,117,125,0.28)",
+    "カーフ":           "rgba(102,16,242,0.18)",
+}
+app.jinja_env.globals['muscle_bg'] = lambda m: _MUSCLE_BG.get(m or "", "")
+
 
 def _parse_date(s: str):
     try:
@@ -573,6 +592,23 @@ def exercise_progress(exercise_id):
     max_1rm = max((r["one_rep_max"] for r in history if r["one_rep_max"]), default=1)
     return render_template("exercises/progress.html",
                            exercise=exercise, history=history, max_1rm=max_1rm)
+
+
+@app.route("/exercises/<int:exercise_id>/edit", methods=["GET", "POST"])
+def exercise_meta_edit(exercise_id):
+    exercise = db.get_exercise(exercise_id)
+    if exercise is None:
+        return redirect(url_for("exercises_index"))
+    if request.method == "POST":
+        db.update_exercise_meta(
+            exercise_id,
+            body_part=request.form.get("body_part") or None,
+            needs_bench=request.form.get("needs_bench") == "on",
+            primary_muscle=request.form.get("primary_muscle") or None,
+        )
+        flash("種目情報を更新しました", "success")
+        return redirect(url_for("exercise_progress", exercise_id=exercise_id))
+    return render_template("exercises/meta_form.html", exercise=exercise)
 
 
 if __name__ == "__main__":

@@ -31,7 +31,8 @@
 <div class="text-secondary small mb-2 ms-1">≡ を長押ししてドラッグで並び替え</div>
 <div class="d-flex flex-column gap-2 mb-4" id="sortable-list">
   {% for ex in exercises %}
-  <div class="card bg-dark border-secondary" data-id="{{ ex.id }}">
+  <div class="card border-secondary" data-id="{{ ex.id }}"
+       style="{% if ex.primary_muscle %}background-color:{{ muscle_bg(ex.primary_muscle) }};{% else %}background-color:rgba(0,0,0,0.3);{% endif %}">
     <div class="card-body py-2 px-3">
       <div class="d-flex align-items-center gap-2">
 
@@ -42,9 +43,17 @@
         </div>
 
         <div class="flex-grow-1">
-          <div class="fw-bold text-info">{{ ex.exercise_name }}</div>
-          {% if ex.muscle_groups %}
-          <div class="text-secondary small">{{ ex.muscle_groups }}</div>
+          <div class="d-flex align-items-center gap-1 flex-wrap">
+            <span class="fw-bold text-info">{{ ex.exercise_name }}</span>
+            {% if ex.body_part %}
+            <span class="badge bg-secondary bg-opacity-50" style="font-size:0.6rem;">{{ ex.body_part }}</span>
+            {% endif %}
+            {% if ex.needs_bench %}
+            <span class="badge" style="background:rgba(255,193,7,0.25);border:1px solid rgba(255,193,7,0.5);color:#ffc107;font-size:0.6rem;">🪑</span>
+            {% endif %}
+          </div>
+          {% if ex.muscle_groups or ex.primary_muscle %}
+          <div class="text-secondary small">{{ ex.muscle_groups or ex.primary_muscle }}</div>
           {% endif %}
           <div class="d-flex flex-wrap gap-2 mt-1 small text-secondary">
             {% if ex.one_rep_max %}<span>1RM: <strong class="text-light">{{ ex.one_rep_max }}kg</strong></span>{% endif %}

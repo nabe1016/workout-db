@@ -50,7 +50,8 @@ def get_session_with_exercises(session_id: int):
         cur.execute("SELECT * FROM workout_sessions WHERE id = %s", (session_id,))
         session = cur.fetchone()
         cur.execute("""
-            SELECT se.*, ex.name AS exercise_name
+            SELECT se.*, ex.name AS exercise_name,
+                   ex.body_part, ex.needs_bench, ex.primary_muscle
             FROM session_exercises se
             JOIN exercises ex ON ex.id = se.exercise_id
             WHERE se.session_id = %s
@@ -200,15 +201,31 @@ def delete_session_exercise(se_id: int, session_id: int) -> None:
 def list_exercises() -> list:
     with _conn() as conn:
         cur = conn.cursor()
-        cur.execute("SELECT id, name FROM exercises ORDER BY name")
+        cur.execute("""
+            SELECT id, name, body_part, needs_bench, primary_muscle
+            FROM exercises ORDER BY name
+        """)
         return cur.fetchall()
 
 
 def get_exercise(exercise_id: int):
     with _conn() as conn:
         cur = conn.cursor()
-        cur.execute("SELECT id, name FROM exercises WHERE id = %s", (exercise_id,))
+        cur.execute("""
+            SELECT id, name, body_part, needs_bench, primary_muscle
+            FROM exercises WHERE id = %s
+        """, (exercise_id,))
         return cur.fetchone()
+
+
+def update_exercise_meta(exercise_id: int, body_part, needs_bench: bool, primary_muscle) -> None:
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            UPDATE exercises
+            SET body_part = %s, needs_bench = %s, primary_muscle = %s
+            WHERE id = %s
+        """, (body_part or None, bool(needs_bench), primary_muscle or None, exercise_id))
 
 
 # ── My Sets ───────────────────────────────────────────────────────────────────
@@ -239,7 +256,8 @@ def get_my_set_with_exercises(my_set_id: int):
         cur.execute("SELECT * FROM my_sets WHERE id = %s", (my_set_id,))
         my_set = cur.fetchone()
         cur.execute("""
-            SELECT mse.*, ex.name AS exercise_name
+            SELECT mse.*, ex.name AS exercise_name,
+                   ex.body_part, ex.needs_bench, ex.primary_muscle
             FROM my_set_exercises mse
             JOIN exercises ex ON ex.id = mse.exercise_id
             WHERE mse.my_set_id = %s
