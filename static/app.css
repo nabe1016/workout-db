@@ -7,6 +7,27 @@ body { font-size: 16px; }
   color: inherit;
 }
 
+/* Accordion dark mode */
+.accordion-item {
+  background: transparent !important;
+  border-color: #495057 !important;
+}
+.accordion-button {
+  background: transparent !important;
+  color: #f8f9fa !important;
+  box-shadow: none !important;
+  padding: 0.65rem 0;
+}
+.accordion-button:not(.collapsed) {
+  color: #ffc107 !important;
+}
+.accordion-button::after {
+  filter: brightness(0) invert(1);
+}
+.accordion-button:not(.collapsed)::after {
+  filter: brightness(0.8) sepia(1) hue-rotate(5deg) saturate(5);
+}
+
 /* Improve text-secondary contrast on dark bg (#6c757d → #adb5bd) */
 .text-secondary {
   color: #adb5bd !important;

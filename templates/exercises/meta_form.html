@@ -2,6 +2,7 @@
 {% set back_url = url_for('exercise_progress', exercise_id=exercise.id) %}
 {% block title %}{{ exercise.name }} 編集{% endblock %}
 {% block nav_title %}種目設定{% endblock %}
+{% block nav_exercises %}active{% endblock %}
 
 {% block content %}
 <h5 class="mb-1 text-info">{{ exercise.name }}</h5>

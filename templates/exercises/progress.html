@@ -2,6 +2,7 @@
 {% set back_url = request.referrer or url_for('sessions_list') %}
 {% block title %}{{ exercise.name }} 推移{% endblock %}
 {% block nav_title %}推移{% endblock %}
+{% block nav_exercises %}active{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-start mb-1">

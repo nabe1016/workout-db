@@ -594,6 +594,25 @@ def exercise_progress(exercise_id):
                            exercise=exercise, history=history, max_1rm=max_1rm)
 
 
+@app.route("/exercises/bulk-edit", methods=["GET", "POST"])
+def exercises_bulk_edit():
+    exercises = db.list_exercises()
+    if request.method == "POST":
+        updates = [
+            {
+                "exercise_id": ex["id"],
+                "body_part": request.form.get(f"body_part_{ex['id']}") or None,
+                "needs_bench": request.form.get(f"needs_bench_{ex['id']}") == "on",
+                "primary_muscle": request.form.get(f"primary_muscle_{ex['id']}") or None,
+            }
+            for ex in exercises
+        ]
+        db.bulk_update_exercise_meta(updates)
+        flash("種目情報を一括更新しました", "success")
+        return redirect(url_for("exercises_bulk_edit"))
+    return render_template("exercises/bulk_edit.html", exercises=exercises)
+
+
 @app.route("/exercises/<int:exercise_id>/edit", methods=["GET", "POST"])
 def exercise_meta_edit(exercise_id):
     exercise = db.get_exercise(exercise_id)

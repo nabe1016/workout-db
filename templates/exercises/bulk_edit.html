@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% set back_url = url_for('exercises_index') %}
+{% block title %}種目一括設定{% endblock %}
+{% block nav_title %}一括設定{% endblock %}
+{% block nav_exercises %}active{% endblock %}
+
+{% block content %}
+<p class="text-secondary small mb-3">
+  カテゴリ・主導筋・ベンチ台をまとめて設定できます。<br>
+  変更後に「保存する」を押してください。
+</p>
+
+<datalist id="muscle-list">
+  {% for m in ['広背筋','大胸筋','大腿四頭筋','ハムストリングス','大腿二頭筋',
+               '三角筋','上腕二頭筋','上腕三頭筋','大臀筋','腹直筋',
+               '腹斜筋','僧帽筋','脊柱起立筋','カーフ'] %}
+  <option value="{{ m }}">
+  {% endfor %}
+</datalist>
+
+<form method="post">
+  <div class="d-flex flex-column gap-2 mb-3">
+    {% for ex in exercises %}
+    <div class="card border-secondary"
+         style="{% if ex.primary_muscle %}background-color:{{ muscle_bg(ex.primary_muscle) }};{% else %}background-color:rgba(0,0,0,0.3);{% endif %}">
+      <div class="card-body py-2 px-3">
+        <div class="fw-bold text-info mb-2">{{ ex.name }}</div>
+        <div class="row g-2 align-items-center">
+
+          {# カテゴリ #}
+          <div class="col-auto">
+            <select class="form-select form-select-sm bg-dark text-light border-secondary"
+                    name="body_part_{{ ex.id }}"
+                    style="min-width:5.5rem;">
+              <option value="">未設定</option>
+              {% for bp in ['上肢','下肢','体幹'] %}
+              <option value="{{ bp }}" {% if ex.body_part == bp %}selected{% endif %}>{{ bp }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          {# 主導筋 #}
+          <div class="col">
+            <input type="text"
+                   class="form-control form-control-sm bg-dark text-light border-secondary"
+                   name="primary_muscle_{{ ex.id }}"
+                   value="{{ ex.primary_muscle or '' }}"
+                   list="muscle-list"
+                   placeholder="主導筋">
+          </div>
+
+          {# ベンチ台 #}
+          <div class="col-auto">
+            <div class="form-check mb-0">
+              <input class="form-check-input" type="checkbox"
+                     name="needs_bench_{{ ex.id }}"
+                     id="nb_{{ ex.id }}"
+                     {% if ex.needs_bench %}checked{% endif %}>
+              <label class="form-check-label small" for="nb_{{ ex.id }}">🪑</label>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="sticky-action-bar">
+    <button type="submit" class="btn btn-warning btn-lg w-100">保存する</button>
+  </div>
+</form>
+{% endblock %}

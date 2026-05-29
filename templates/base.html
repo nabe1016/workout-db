@@ -46,10 +46,10 @@
       <span class="bottom-nav-icon">🏠</span>
       <span class="bottom-nav-label">ホーム</span>
     </a>
-    <a href="{{ url_for('today') }}"
-       class="bottom-nav-item bottom-nav-today">
-      <span class="bottom-nav-icon">▶</span>
-      <span class="bottom-nav-label">今日</span>
+    <a href="{{ url_for('exercises_bulk_edit') }}"
+       class="bottom-nav-item {% block nav_exercises %}{% endblock %}">
+      <span class="bottom-nav-icon">💪</span>
+      <span class="bottom-nav-label">種目</span>
     </a>
     <a href="{{ url_for('my_sets_list') }}"
        class="bottom-nav-item {% block nav_mysets %}{% endblock %}">

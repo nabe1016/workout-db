@@ -228,6 +228,19 @@ def update_exercise_meta(exercise_id: int, body_part, needs_bench: bool, primary
         """, (body_part or None, bool(needs_bench), primary_muscle or None, exercise_id))
 
 
+def bulk_update_exercise_meta(updates: list) -> None:
+    """updates: list of {exercise_id, body_part, needs_bench, primary_muscle}"""
+    with _conn() as conn:
+        cur = conn.cursor()
+        for u in updates:
+            cur.execute("""
+                UPDATE exercises
+                SET body_part = %s, needs_bench = %s, primary_muscle = %s
+                WHERE id = %s
+            """, (u["body_part"] or None, bool(u["needs_bench"]),
+                  u["primary_muscle"] or None, u["exercise_id"]))
+
+
 # ── My Sets ───────────────────────────────────────────────────────────────────
 
 def list_my_sets() -> list:
@@ -707,7 +720,7 @@ def get_dashboard_stats() -> dict:
             else:
                 break
 
-        # Recent sessions (last 5)
+        # Recent sessions (last 3)
         cur.execute("""
             SELECT ws.id, ws.session_date, ws.day_of_week, ws.total_exp,
                    COUNT(se.id) AS exercise_count
@@ -715,7 +728,7 @@ def get_dashboard_stats() -> dict:
             LEFT JOIN session_exercises se ON se.session_id = ws.id
             GROUP BY ws.id
             ORDER BY ws.session_date DESC
-            LIMIT 5
+            LIMIT 3
         """)
         recent_sessions = cur.fetchall()
 

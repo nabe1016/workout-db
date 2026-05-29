@@ -3,6 +3,10 @@
 {% block nav_title %}種目{% endblock %}
 {% block nav_exercises %}active{% endblock %}
 
+{% block nav_actions %}
+<a href="{{ url_for('exercises_bulk_edit') }}" class="btn btn-outline-warning btn-sm">一括設定</a>
+{% endblock %}
+
 {% block content %}
 <h5 class="mb-3">種目一覧 <span class="badge bg-secondary">{{ exercises|length }}</span></h5>
 
