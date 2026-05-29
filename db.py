@@ -1,6 +1,7 @@
 """Database access layer for workout_report."""
 
 import os
+import datetime
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
@@ -8,6 +9,14 @@ from psycopg2.extras import RealDictCursor
 _DATABASE_URL = os.environ.get("DATABASE_URL", "dbname=workout_report")
 if _DATABASE_URL.startswith("postgres://"):
     _DATABASE_URL = _DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+_JST = datetime.timezone(datetime.timedelta(hours=9))
+
+def _today() -> datetime.date:
+    return datetime.datetime.now(_JST).date()
+
+def _now_jst() -> datetime.datetime:
+    return datetime.datetime.now(_JST)
 
 DOW_MAP = {0: "月", 1: "火", 2: "水", 3: "木", 4: "金", 5: "土", 6: "日"}
 
@@ -648,7 +657,7 @@ def get_last_exercise_values(exercise_id: int, exclude_session_id: int = None):
 
 def get_today_plan():
     import datetime
-    today = datetime.date.today()
+    today = _today()
     with _conn() as conn:
         cur = conn.cursor()
         cur.execute("""
@@ -677,8 +686,8 @@ def save_today_plan(plan_date, name: str, my_set_id) -> int:
 def start_today_plan(plan_id: int) -> int:
     """Create (or reuse) today's session, apply my_set, link to plan. Returns session_id."""
     import datetime
-    today = datetime.date.today()
-    now = datetime.datetime.now()
+    today = _today()
+    now = _now_jst()
 
     with _conn() as conn:
         cur = conn.cursor()
@@ -750,7 +759,7 @@ def delete_today_plan(plan_id: int) -> None:
 
 def get_today_session():
     import datetime
-    today = datetime.date.today()
+    today = _today()
     with _conn() as conn:
         cur = conn.cursor()
         cur.execute("SELECT id FROM workout_sessions WHERE session_date = %s", (today,))
@@ -804,7 +813,7 @@ def update_weekly_schedule(day_of_week: int, location: str,
 
 def get_today_schedule():
     import datetime
-    dow = datetime.date.today().weekday()
+    dow = _today().weekday()
     with _conn() as conn:
         cur = conn.cursor()
         cur.execute("""
@@ -885,7 +894,7 @@ def get_dashboard_stats() -> dict:
         """)
         weeks = [r["wk"] for r in cur.fetchall()]
         streak = 0
-        today_week = datetime.date.today() - datetime.timedelta(days=datetime.date.today().weekday())
+        today_week = _today() - datetime.timedelta(days=_today().weekday())
         for i, wk in enumerate(weeks):
             expected = today_week - datetime.timedelta(weeks=i)
             if wk.date() == expected:
@@ -926,7 +935,7 @@ def finish_session(session_id: int, post_notes: str) -> None:
                 end_time    = COALESCE(end_time, %s::time),
                 post_notes  = %s
             WHERE id = %s
-        """, (datetime.datetime.now().strftime("%H:%M"), post_notes or None, session_id))
+        """, (_now_jst().strftime("%H:%M"), post_notes or None, session_id))
 
 
 def build_advice(session, exercises: list) -> tuple:

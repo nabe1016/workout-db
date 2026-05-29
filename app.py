@@ -8,6 +8,14 @@ import db
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "workout-secret-key-dev")
 
+_JST = datetime.timezone(datetime.timedelta(hours=9))
+
+def _today() -> datetime.date:
+    return datetime.datetime.now(_JST).date()
+
+def _now_jst() -> datetime.datetime:
+    return datetime.datetime.now(_JST)
+
 
 def run_migrations():
     import psycopg2
@@ -100,7 +108,7 @@ def dashboard():
                            today_training_plan=today_training_plan,
                            latest_weight=latest_weight,
                            today_session=today_session,
-                           today=datetime.date.today())
+                           today=_today())
 
 
 @app.route("/today")
@@ -109,8 +117,8 @@ def today():
     if row:
         return redirect(url_for("session_detail", session_id=row["id"]))
     session_id = db.create_session(
-        session_date=datetime.date.today(),
-        start_time=datetime.datetime.now().strftime("%H:%M"),
+        session_date=_today(),
+        start_time=_now_jst().strftime("%H:%M"),
         end_time=None,
         rep_count=None,
     )
@@ -124,7 +132,7 @@ def today():
 def today_plan_new():
     my_set_id = _parse_int(request.args.get("my_set_id"))
     my_set = db.get_my_set(my_set_id) if my_set_id else None
-    today = datetime.date.today()
+    today = _today()
     dow = ["月", "火", "水", "木", "金", "土", "日"][today.weekday()]
     preset_name = f"{today.month}/{today.day}({dow})"
     if my_set:
@@ -142,7 +150,7 @@ def today_plan_save():
     if not name:
         flash("名前を入力してください", "warning")
         return redirect(request.referrer or url_for("dashboard"))
-    db.save_today_plan(datetime.date.today(), name, my_set_id)
+    db.save_today_plan(_today(), name, my_set_id)
     flash(f"「{name}」を今日のプランとして保存しました", "success")
     return redirect(url_for("dashboard"))
 
@@ -163,7 +171,7 @@ def today_plan_delete(plan_id):
 @app.route("/my-sets/<int:my_set_id>/start-now", methods=["POST"])
 def my_set_start_now(my_set_id):
     """Create session immediately from a my_set and redirect to it."""
-    today = datetime.date.today()
+    today = _today()
     dow = ["月", "火", "水", "木", "金", "土", "日"][today.weekday()]
     row = db.get_today_session()
     if row:
@@ -171,7 +179,7 @@ def my_set_start_now(my_set_id):
     else:
         session_id = db.create_session(
             session_date=today,
-            start_time=datetime.datetime.now().strftime("%H:%M"),
+            start_time=_now_jst().strftime("%H:%M"),
             end_time=None,
             rep_count=None,
         )
@@ -194,7 +202,7 @@ def session_new():
             flash("日付を入力してください。", "danger")
             return render_template("sessions/form.html",
                                    session=None,
-                                   today=datetime.date.today().isoformat())
+                                   today=_today().isoformat())
         session_id = db.create_session(
             session_date=d,
             start_time=request.form.get("start_time") or None,
@@ -206,7 +214,7 @@ def session_new():
 
     return render_template("sessions/form.html",
                            session=None,
-                           today=datetime.date.today().isoformat())
+                           today=_today().isoformat())
 
 
 @app.route("/sessions/<int:session_id>")
@@ -388,7 +396,7 @@ def weight_log():
     logs = db.list_weight_log(limit=60)
     latest = db.get_latest_weight()
     return render_template("weight_log.html", logs=logs, latest=latest,
-                           today=datetime.date.today().isoformat())
+                           today=_today().isoformat())
 
 
 @app.route("/weight/add", methods=["POST"])
