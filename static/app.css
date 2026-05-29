@@ -382,6 +382,48 @@ a > .card:active {
 /* ── Last-value hint ─────────────────────────────────── */
 .last-value-hint { font-size: 0.75rem; color: var(--txt-2); margin-top: 0.2rem; }
 
+/* ── Muscle legend ───────────────────────────────────── */
+.muscle-legend-wrap {
+  cursor: pointer;
+}
+.muscle-legend-wrap summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+  user-select: none;
+}
+.muscle-legend-wrap summary::-webkit-details-marker { display: none; }
+.legend-chips-preview {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+}
+.legend-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.legend-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.5rem;
+  padding: 0.4rem 0.1rem 0.2rem;
+}
+.legend-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  color: var(--txt-2);
+  background: var(--bg-1);
+  padding: 0.2rem 0.5rem 0.2rem 0.3rem;
+  border-radius: 20px;
+}
+
 /* ── Stat block ──────────────────────────────────────── */
 .stat-block {
   text-align: center;

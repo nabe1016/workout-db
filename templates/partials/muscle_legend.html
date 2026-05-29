@@ -1,0 +1,19 @@
+{# カードの色は主導筋グループを示す — タップで開閉 #}
+<details class="muscle-legend-wrap mb-2">
+  <summary class="muscle-legend-summary">
+    <span style="color:var(--txt-2);font-size:0.75rem;">カードの色 = 主導筋</span>
+    <span class="legend-chips-preview">
+      {% for item in muscle_legend %}
+      <span class="legend-dot" style="background:rgba({{ item.rgb }},0.75);"></span>
+      {% endfor %}
+    </span>
+  </summary>
+  <div class="legend-chips mt-1">
+    {% for item in muscle_legend %}
+    <span class="legend-chip">
+      <span class="legend-dot" style="background:rgba({{ item.rgb }},0.75);"></span>
+      <span>{{ item.label }}</span>
+    </span>
+    {% endfor %}
+  </div>
+</details>
