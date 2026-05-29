@@ -46,7 +46,10 @@
 <div class="text-secondary small mb-2 ms-1">≡ を長押ししてドラッグで並び替え</div>
 <div class="d-flex flex-column gap-2 mb-3" id="session-sortable">
   {% for ex in exercises %}
-  <div class="card border-secondary" id="ex-card-{{ ex.id }}" data-id="{{ ex.id }}"
+  <div class="card border-secondary{% if ex.skipped %} se-skipped{% endif %}"
+       id="ex-card-{{ ex.id }}" data-id="{{ ex.id }}"
+       data-primary-muscle="{{ ex.primary_muscle or '' }}"
+       data-skipped="{{ 'true' if ex.skipped else 'false' }}"
        style="{% if ex.primary_muscle %}background-color:{{ muscle_bg(ex.primary_muscle) }};{% else %}background-color:rgba(0,0,0,0.3);{% endif %}">
     <div class="card-body py-2 px-3">
       <div class="d-flex align-items-start gap-2">
@@ -104,6 +107,10 @@
         </div>
 
         <div class="d-flex flex-column gap-1 ms-2">
+          <button type="button"
+                  class="skip-btn btn btn-sm {% if ex.skipped %}btn-warning{% else %}btn-outline-secondary{% endif %}"
+                  data-se-id="{{ ex.id }}"
+                  title="スキップ">⏭</button>
           <a href="{{ url_for('exercise_edit', session_id=session.id, se_id=ex.id) }}"
              class="btn btn-outline-secondary btn-sm">編集</a>
           <form method="post"
@@ -178,6 +185,7 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ids: ids })
         });
+        checkMuscleConflicts();
       }
     });
   }
@@ -231,6 +239,50 @@
         .finally(function () { btn.disabled = false; });
     });
   });
+
+  // ── Skip toggle ───────────────────────────────────────────────────────────
+  document.querySelectorAll('.skip-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var seId = btn.dataset.seId;
+      btn.disabled = true;
+      fetch('/api/se/' + seId + '/skip', { method: 'POST' })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          var card = document.getElementById('ex-card-' + seId);
+          if (card) {
+            card.dataset.skipped = data.skipped ? 'true' : 'false';
+            card.classList.toggle('se-skipped', data.skipped);
+          }
+          btn.classList.toggle('btn-warning', data.skipped);
+          btn.classList.toggle('btn-outline-secondary', !data.skipped);
+          checkMuscleConflicts();
+        })
+        .catch(function () {})
+        .finally(function () { btn.disabled = false; });
+    });
+  });
+
+  // ── Muscle conflict detection ─────────────────────────────────────────────
+  function checkMuscleConflicts() {
+    document.querySelectorAll('.muscle-conflict-badge').forEach(function (el) { el.remove(); });
+    var cards = Array.from(document.querySelectorAll('#session-sortable [data-id]'));
+    var active = cards.filter(function (c) { return c.dataset.skipped !== 'true'; });
+    for (var i = 1; i < active.length; i++) {
+      var prev = active[i - 1].dataset.primaryMuscle;
+      var curr = active[i].dataset.primaryMuscle;
+      if (prev && curr && prev === curr) {
+        var nameRow = active[i].querySelector('.d-flex.align-items-center.gap-1');
+        if (nameRow) {
+          var badge = document.createElement('span');
+          badge.className = 'badge bg-warning text-dark muscle-conflict-badge';
+          badge.textContent = '⚠️ 連続';
+          nameRow.appendChild(badge);
+        }
+      }
+    }
+  }
+
+  checkMuscleConflicts();
 })();
 </script>
 {% endblock %}

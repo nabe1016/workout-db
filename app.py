@@ -508,11 +508,17 @@ def session_exercises_reorder(session_id):
 
 @app.route("/api/se/<int:se_id>/toggle/<int:set_num>", methods=["POST"])
 def toggle_set(se_id, set_num):
-    if set_num not in (1, 2, 3):
+    if set_num not in range(1, 11):
         return jsonify({"error": "invalid set_num"}), 400
     result = db.toggle_set_completion(se_id, set_num)
     if result is None:
         return jsonify({"error": "not found"}), 404
+    return jsonify(result)
+
+
+@app.route("/api/se/<int:se_id>/skip", methods=["POST"])
+def api_toggle_skip(se_id):
+    result = db.toggle_skip_exercise(se_id)
     return jsonify(result)
 
 

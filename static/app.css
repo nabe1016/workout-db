@@ -151,6 +151,20 @@ a > .card:hover, a > .card:active {
   color: #ffc107 !important;
 }
 
+/* Skipped exercise */
+.se-skipped {
+  opacity: 0.38;
+}
+.se-skipped .fw-bold.text-info {
+  text-decoration: line-through;
+}
+
+/* Muscle conflict badge (injected by JS) */
+.muscle-conflict-badge {
+  font-size: 0.6rem !important;
+  vertical-align: middle;
+}
+
 /* Last-values hint */
 .last-value-hint {
   font-size: 0.75rem;

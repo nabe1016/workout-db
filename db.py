@@ -196,6 +196,19 @@ def delete_session_exercise(se_id: int, session_id: int) -> None:
     recalculate_session_exp(session_id)
 
 
+def toggle_skip_exercise(se_id: int) -> dict:
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            UPDATE session_exercises
+            SET skipped = NOT COALESCE(skipped, false)
+            WHERE id = %s
+            RETURNING skipped
+        """, (se_id,))
+        row = cur.fetchone()
+    return {"skipped": bool(row["skipped"])}
+
+
 # ── Exercises master ──────────────────────────────────────────────────────────
 
 # ── Muscles master ───────────────────────────────────────────────────────────
