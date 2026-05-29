@@ -4,6 +4,13 @@
 {% block nav_title %}マイセット詳細{% endblock %}
 {% block nav_mysets %}active{% endblock %}
 
+{% block nav_actions %}
+<a href="{{ url_for('my_set_exercise_new', my_set_id=my_set.id) }}"
+   class="btn btn-outline-warning btn-sm">➕🏋️</a>
+<a href="{{ url_for('my_set_load_from_session', my_set_id=my_set.id) }}"
+   class="btn btn-outline-info btn-sm">🗂️➡️</a>
+{% endblock %}
+
 {% block content %}
 <div class="card bg-secondary bg-opacity-25 border-warning mb-3">
   <div class="card-body py-2">
@@ -74,18 +81,6 @@
 </div>
 {% endif %}
 
-<div class="sticky-action-bar">
-  <div class="d-flex gap-2 mb-2">
-    {% if exercises %}
-    <a href="{{ url_for('my_set_load_from_session', my_set_id=my_set.id) }}"
-       class="btn btn-outline-info btn-sm flex-fill">
-      📋 セッションから読み込む
-    </a>
-    {% endif %}
-  </div>
-  <a href="{{ url_for('my_set_exercise_new', my_set_id=my_set.id) }}"
-     class="btn btn-warning btn-lg w-100">+ 種目を追加</a>
-</div>
 
 {% if exercises %}
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>

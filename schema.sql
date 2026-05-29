@@ -61,6 +61,13 @@ CREATE TABLE IF NOT EXISTS my_set_exercises (
 
 CREATE INDEX IF NOT EXISTS idx_mse_my_set ON my_set_exercises(my_set_id);
 
+ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS set4_completed  BOOLEAN;
+ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS set5_completed  BOOLEAN;
+ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS set6_completed  BOOLEAN;
+ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS set7_completed  BOOLEAN;
+ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS set8_completed  BOOLEAN;
+ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS set9_completed  BOOLEAN;
+ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS set10_completed BOOLEAN;
 ALTER TABLE my_sets ADD COLUMN IF NOT EXISTS location TEXT DEFAULT 'gym';
 ALTER TABLE workout_sessions ADD COLUMN IF NOT EXISTS finished_at TIMESTAMP;
 ALTER TABLE workout_sessions ADD COLUMN IF NOT EXISTS post_notes TEXT;

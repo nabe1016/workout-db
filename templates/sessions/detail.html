@@ -68,19 +68,26 @@
             {% if ex.reps %}<span>{{ ex.reps }}rep</span>{% endif %}
           </div>
 
-          {# Inline set toggle buttons #}
-          <div class="d-flex gap-2 mt-2 align-items-center">
-            {% for i in [1, 2, 3] %}
-            {% set completed = ex["set%d_completed" % i] %}
+          {# Inline set toggle buttons (1–5 default, +button reveals 6–10) #}
+          <div class="d-flex gap-2 mt-2 align-items-center flex-wrap" id="sets-row-{{ ex.id }}">
+            {% for i in range(1, 11) %}
+            {% set completed = ex.get("set%d_completed" % i) %}
+            {% set is_extra = i > 5 %}
             <button type="button"
-                    class="set-toggle-btn btn btn-sm fw-bold {% if completed %}btn-success{% else %}btn-outline-secondary{% endif %}"
+                    class="set-toggle-btn btn btn-sm fw-bold
+                           {% if completed %}btn-success{% else %}btn-outline-secondary{% endif %}
+                           {% if is_extra and not completed %}d-none extra-set-btn{% elif is_extra %}extra-set-btn{% endif %}"
                     data-se-id="{{ ex.id }}"
                     data-set-num="{{ i }}"
                     data-completed="{{ 'true' if completed else 'false' }}"
                     style="min-width:2.8rem;min-height:2.8rem;font-size:1.1rem;">
-              {% if completed %}O{% else %}X{% endif %}
+              {{ 'O' if completed else 'X' }}
             </button>
             {% endfor %}
+            <button type="button"
+                    class="add-set-btn btn btn-sm btn-outline-warning"
+                    data-se-id="{{ ex.id }}"
+                    style="min-width:2.8rem;min-height:2.8rem;font-size:1.1rem;">＋</button>
             <span class="badge bg-warning text-dark ms-1 exp-badge-{{ ex.id }}">
               {{ "{:,}".format(ex.exp_earned) }} EXP
             </span>
@@ -165,6 +172,29 @@
       }
     });
   }
+
+  // ── Add-set button (+) ───────────────────────────────────────────────────
+  document.querySelectorAll('.add-set-btn').forEach(function (addBtn) {
+    var seId = addBtn.dataset.seId;
+    var row = document.getElementById('sets-row-' + seId);
+
+    function nextHiddenSet() {
+      return row.querySelector('.extra-set-btn.d-none');
+    }
+    function allVisible() {
+      return !nextHiddenSet();
+    }
+
+    if (allVisible()) addBtn.style.display = 'none';
+
+    addBtn.addEventListener('click', function () {
+      var target = nextHiddenSet();
+      if (target) {
+        target.classList.remove('d-none');
+        if (allVisible()) addBtn.style.display = 'none';
+      }
+    });
+  });
 
   // ── Set toggle ────────────────────────────────────────────────────────────
   document.querySelectorAll('.set-toggle-btn').forEach(function (btn) {

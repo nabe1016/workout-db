@@ -428,12 +428,8 @@ def toggle_set_completion(se_id: int, set_num: int) -> dict:
         if se is None:
             return None
 
-        new_val = not se[col]
-        completions = {
-            1: se["set1_completed"],
-            2: se["set2_completed"],
-            3: se["set3_completed"],
-        }
+        new_val = not bool(se[col])
+        completions = {i: bool(se.get(f"set{i}_completed")) for i in range(1, 11)}
         completions[set_num] = new_val
         completed_count = sum(1 for v in completions.values() if v)
 
@@ -733,9 +729,7 @@ def build_advice(session, exercises: list) -> tuple:
     """Return (advice_list, intensity_label)."""
     total_exp = session["total_exp"] or 0
     completed_sets = sum(
-        (1 if ex["set1_completed"] else 0) +
-        (1 if ex["set2_completed"] else 0) +
-        (1 if ex["set3_completed"] else 0)
+        sum(1 for i in range(1, 11) if ex.get(f"set{i}_completed"))
         for ex in exercises
     )
 

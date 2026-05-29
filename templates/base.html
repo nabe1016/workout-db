@@ -15,13 +15,14 @@
 <body class="bg-dark text-light">
 
 <nav class="navbar navbar-dark bg-dark border-bottom border-secondary sticky-top">
-  <div class="container-fluid">
+  <div class="container-fluid gap-2">
     {% if back_url %}
-    <a class="btn btn-outline-secondary btn-sm me-2" href="{{ back_url }}">‹ 戻る</a>
+    <a class="btn btn-outline-secondary btn-sm flex-shrink-0" href="{{ back_url }}">‹ 戻る</a>
     {% else %}
-    <span class="navbar-brand mb-0 h5">💪 Workout</span>
+    <span class="navbar-brand mb-0 h5 flex-shrink-0">💪 Workout</span>
     {% endif %}
-    <span class="text-secondary small">{% block nav_title %}{% endblock %}</span>
+    <div class="d-flex gap-1 flex-grow-1">{% block nav_actions %}{% endblock %}</div>
+    <span class="text-secondary small flex-shrink-0">{% block nav_title %}{% endblock %}</span>
   </div>
 </nav>
 
