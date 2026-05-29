@@ -93,20 +93,57 @@ CREATE TABLE IF NOT EXISTS muscles (
     sort_order INTEGER DEFAULT 0
 );
 
-INSERT INTO muscles (name, sort_order) VALUES ('広背筋',           1)  ON CONFLICT DO NOTHING;
-INSERT INTO muscles (name, sort_order) VALUES ('大胸筋',           2)  ON CONFLICT DO NOTHING;
-INSERT INTO muscles (name, sort_order) VALUES ('大腿四頭筋',       3)  ON CONFLICT DO NOTHING;
-INSERT INTO muscles (name, sort_order) VALUES ('ハムストリングス', 4)  ON CONFLICT DO NOTHING;
-INSERT INTO muscles (name, sort_order) VALUES ('大腿二頭筋',       5)  ON CONFLICT DO NOTHING;
-INSERT INTO muscles (name, sort_order) VALUES ('三角筋',           6)  ON CONFLICT DO NOTHING;
-INSERT INTO muscles (name, sort_order) VALUES ('上腕二頭筋',       7)  ON CONFLICT DO NOTHING;
-INSERT INTO muscles (name, sort_order) VALUES ('上腕三頭筋',       8)  ON CONFLICT DO NOTHING;
-INSERT INTO muscles (name, sort_order) VALUES ('大臀筋',           9)  ON CONFLICT DO NOTHING;
-INSERT INTO muscles (name, sort_order) VALUES ('腹直筋',           10) ON CONFLICT DO NOTHING;
-INSERT INTO muscles (name, sort_order) VALUES ('腹斜筋',           11) ON CONFLICT DO NOTHING;
-INSERT INTO muscles (name, sort_order) VALUES ('僧帽筋',           12) ON CONFLICT DO NOTHING;
+-- 上肢（胸）
+INSERT INTO muscles (name, sort_order) VALUES ('大胸筋',           1)  ON CONFLICT DO NOTHING;
+INSERT INTO muscles (name, sort_order) VALUES ('小胸筋',           2)  ON CONFLICT DO NOTHING;
+INSERT INTO muscles (name, sort_order) VALUES ('前鋸筋',           3)  ON CONFLICT DO NOTHING;
+-- 上肢（背中）
+INSERT INTO muscles (name, sort_order) VALUES ('広背筋',           10) ON CONFLICT DO NOTHING;
+INSERT INTO muscles (name, sort_order) VALUES ('僧帽筋',           11) ON CONFLICT DO NOTHING;
+INSERT INTO muscles (name, sort_order) VALUES ('菱形筋',           12) ON CONFLICT DO NOTHING;
 INSERT INTO muscles (name, sort_order) VALUES ('脊柱起立筋',       13) ON CONFLICT DO NOTHING;
-INSERT INTO muscles (name, sort_order) VALUES ('カーフ',           14) ON CONFLICT DO NOTHING;
+INSERT INTO muscles (name, sort_order) VALUES ('多裂筋',           14) ON CONFLICT DO NOTHING;
+-- 上肢（肩）
+INSERT INTO muscles (name, sort_order) VALUES ('三角筋',           20) ON CONFLICT DO NOTHING;
+INSERT INTO muscles (name, sort_order) VALUES ('三角筋前部',       21) ON CONFLICT DO NOTHING;
+INSERT INTO muscles (name, sort_order) VALUES ('三角筋中部',       22) ON CONFLICT DO NOTHING;
+INSERT INTO muscles (name, sort_order) VALUES ('三角筋後部',       23) ON CONFLICT DO NOTHING;
+INSERT INTO muscles (name, sort_order) VALUES ('棘下筋',           24) ON CONFLICT DO NOTHING;
+INSERT INTO muscles (name, sort_order) VALUES ('棘上筋',           25) ON CONFLICT DO NOTHING;
+INSERT INTO muscles (name, sort_order) VALUES ('小円筋',           26) ON CONFLICT DO NOTHING;
+-- 上肢（腕）
+INSERT INTO muscles (name, sort_order) VALUES ('上腕二頭筋',       30) ON CONFLICT DO NOTHING;
+INSERT INTO muscles (name, sort_order) VALUES ('上腕三頭筋',       31) ON CONFLICT DO NOTHING;
+INSERT INTO muscles (name, sort_order) VALUES ('上腕筋',           32) ON CONFLICT DO NOTHING;
+INSERT INTO muscles (name, sort_order) VALUES ('腕橈骨筋',         33) ON CONFLICT DO NOTHING;
+INSERT INTO muscles (name, sort_order) VALUES ('前腕屈筋群',       34) ON CONFLICT DO NOTHING;
+INSERT INTO muscles (name, sort_order) VALUES ('前腕伸筋群',       35) ON CONFLICT DO NOTHING;
+-- 体幹
+INSERT INTO muscles (name, sort_order) VALUES ('腹直筋',           40) ON CONFLICT DO NOTHING;
+INSERT INTO muscles (name, sort_order) VALUES ('腹斜筋',           41) ON CONFLICT DO NOTHING;
+INSERT INTO muscles (name, sort_order) VALUES ('外腹斜筋',         42) ON CONFLICT DO NOTHING;
+INSERT INTO muscles (name, sort_order) VALUES ('内腹斜筋',         43) ON CONFLICT DO NOTHING;
+INSERT INTO muscles (name, sort_order) VALUES ('腹横筋',           44) ON CONFLICT DO NOTHING;
+INSERT INTO muscles (name, sort_order) VALUES ('腸腰筋',           45) ON CONFLICT DO NOTHING;
+-- 下肢（臀部）
+INSERT INTO muscles (name, sort_order) VALUES ('大臀筋',           50) ON CONFLICT DO NOTHING;
+INSERT INTO muscles (name, sort_order) VALUES ('中臀筋',           51) ON CONFLICT DO NOTHING;
+INSERT INTO muscles (name, sort_order) VALUES ('小臀筋',           52) ON CONFLICT DO NOTHING;
+-- 下肢（大腿）
+INSERT INTO muscles (name, sort_order) VALUES ('大腿四頭筋',       60) ON CONFLICT DO NOTHING;
+INSERT INTO muscles (name, sort_order) VALUES ('大腿直筋',         61) ON CONFLICT DO NOTHING;
+INSERT INTO muscles (name, sort_order) VALUES ('外側広筋',         62) ON CONFLICT DO NOTHING;
+INSERT INTO muscles (name, sort_order) VALUES ('内側広筋',         63) ON CONFLICT DO NOTHING;
+INSERT INTO muscles (name, sort_order) VALUES ('ハムストリングス', 64) ON CONFLICT DO NOTHING;
+INSERT INTO muscles (name, sort_order) VALUES ('大腿二頭筋',       65) ON CONFLICT DO NOTHING;
+INSERT INTO muscles (name, sort_order) VALUES ('半腱様筋',         66) ON CONFLICT DO NOTHING;
+INSERT INTO muscles (name, sort_order) VALUES ('内転筋群',         67) ON CONFLICT DO NOTHING;
+INSERT INTO muscles (name, sort_order) VALUES ('大内転筋',         68) ON CONFLICT DO NOTHING;
+-- 下肢（下腿）
+INSERT INTO muscles (name, sort_order) VALUES ('腓腹筋',           70) ON CONFLICT DO NOTHING;
+INSERT INTO muscles (name, sort_order) VALUES ('ヒラメ筋',         71) ON CONFLICT DO NOTHING;
+INSERT INTO muscles (name, sort_order) VALUES ('カーフ',           72) ON CONFLICT DO NOTHING;
+INSERT INTO muscles (name, sort_order) VALUES ('前脛骨筋',         73) ON CONFLICT DO NOTHING;
 
 ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS set4_completed  BOOLEAN;
 ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS set5_completed  BOOLEAN;
