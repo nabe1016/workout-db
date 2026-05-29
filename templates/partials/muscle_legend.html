@@ -1,10 +1,7 @@
-{# カードの色はカテゴリ（部位）を示す #}
-<div class="d-flex align-items-center gap-2 flex-wrap" style="font-size:0.75rem;color:var(--txt-2);">
-  <span>カード色:</span>
+<div class="d-flex gap-2 mb-3">
   {% for item in category_legend %}
-  <span class="d-inline-flex align-items-center gap-1">
-    <span style="width:10px;height:10px;border-radius:50%;background:rgba({{ item.rgb }},0.75);display:inline-block;flex-shrink:0;"></span>
-    {{ item.label }}
-  </span>
+  <div style="flex:1;background:rgba({{ item.rgb }},0.18);border-radius:10px;padding:0.35rem 0;text-align:center;">
+    <span style="font-size:0.8rem;font-weight:700;color:rgba({{ item.rgb }},1);letter-spacing:0.02em;">{{ item.label }}</span>
+  </div>
   {% endfor %}
 </div>
