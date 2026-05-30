@@ -64,7 +64,7 @@ def get_session_with_exercises(session_id: int):
             FROM session_exercises se
             JOIN exercises ex ON ex.id = se.exercise_id
             WHERE se.session_id = %s
-            ORDER BY COALESCE(se.sort_order, 999), se.id
+            ORDER BY COALESCE(se.completed, false), COALESCE(se.sort_order, 999), se.id
         """, (session_id,))
         exercises = cur.fetchall()
         return session, exercises
@@ -228,6 +228,19 @@ def toggle_skip_exercise(se_id: int) -> dict:
         """, (se_id,))
         row = cur.fetchone()
     return {"skipped": bool(row["skipped"])}
+
+
+def toggle_complete_exercise(se_id: int) -> dict:
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            UPDATE session_exercises
+            SET completed = NOT COALESCE(completed, false)
+            WHERE id = %s
+            RETURNING completed
+        """, (se_id,))
+        row = cur.fetchone()
+    return {"completed": bool(row["completed"])}
 
 
 # ── Exercises master ──────────────────────────────────────────────────────────
@@ -544,7 +557,7 @@ def toggle_set_completion(se_id: int, set_num: int) -> dict:
 
         weight = se["weight_low_load"] if se["weight_low_load"] else se["weight_setting"]
         reps = se["reps"] or se["session_rep_count"] or 0
-        exp = round((weight or 0) * reps * completed_count)
+        exp = round((weight or 1) * reps * completed_count)
 
         cur.execute(f"""
             UPDATE session_exercises

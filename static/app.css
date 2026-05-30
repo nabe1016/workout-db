@@ -371,6 +371,10 @@ a > .card:active {
 .se-skipped { opacity: 0.32; }
 .se-skipped .fw-bold.text-info { text-decoration: line-through; }
 
+/* ── Completed exercise ──────────────────────────────── */
+.se-completed { --card-bg: rgba(48,209,88,0.12) !important; opacity: 0.72; }
+.se-completed .fw-bold.text-info { color: var(--green) !important; }
+
 /* ── Muscle conflict badge ───────────────────────────── */
 .muscle-conflict-badge { font-size: 0.6rem !important; vertical-align: middle; }
 

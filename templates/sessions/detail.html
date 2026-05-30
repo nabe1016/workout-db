@@ -2,6 +2,10 @@
 {% set back_url = url_for('sessions_list') %}
 {% block title %}{{ session.session_date.strftime('%m/%d') }}（{{ session.day_of_week }}）{% endblock %}
 {% block nav_title %}詳細{% endblock %}
+{% block nav_actions %}
+<a href="{{ url_for('exercise_new', session_id=session.id) }}"
+   class="btn btn-outline-warning btn-sm">＋🏋️</a>
+{% endblock %}
 
 {% block content %}
 {% include "partials/muscle_legend.html" %}
@@ -52,10 +56,11 @@
       action="{{ url_for('session_exercises_bulk_delete', session_id=session.id) }}">
 <div class="d-flex flex-column gap-2 mb-3" id="session-sortable">
   {% for ex in exercises %}
-  <div class="card exercise-card{% if ex.skipped %} se-skipped{% endif %}"
+  <div class="card exercise-card{% if ex.skipped %} se-skipped{% elif ex.completed %} se-completed{% endif %}"
        id="ex-card-{{ ex.id }}" data-id="{{ ex.id }}"
        data-primary-muscle="{{ ex.primary_muscle or '' }}"
        data-skipped="{{ 'true' if ex.skipped else 'false' }}"
+       data-completed="{{ 'true' if ex.completed else 'false' }}"
        style="{% if ex.body_part %}--card-bg:{{ category_bg(ex.body_part) }};{% endif %}">
     <div class="card-body py-2 px-3">
       <div class="d-flex align-items-start gap-2">
@@ -119,6 +124,10 @@
 
         <div class="d-flex flex-column gap-1 ms-2">
           <button type="button"
+                  class="complete-btn btn btn-sm {% if ex.completed %}btn-success{% else %}btn-outline-secondary{% endif %}"
+                  data-se-id="{{ ex.id }}"
+                  title="完了">✓</button>
+          <button type="button"
                   class="skip-btn btn btn-sm {% if ex.skipped %}btn-warning{% else %}btn-outline-secondary{% endif %}"
                   data-se-id="{{ ex.id }}"
                   title="スキップ">⏭</button>
@@ -163,18 +172,10 @@
 </div>
 {% endif %}
 
-{% if exercises %}
-<div class="sticky-action-bar">
-  <div id="normal-action-bar">
-    <a href="{{ url_for('exercise_new', session_id=session.id) }}"
-       class="btn btn-warning btn-lg w-100">+ 種目を追加</a>
-  </div>
-  <div id="bulk-delete-bar" style="display:none;">
-    <button id="bulk-delete-btn" type="submit" form="bulk-delete-form"
-            class="btn btn-danger btn-lg w-100" disabled>選択してください</button>
-  </div>
+<div class="sticky-action-bar" id="bulk-delete-bar" style="display:none;">
+  <button id="bulk-delete-btn" type="submit" form="bulk-delete-form"
+          class="btn btn-danger btn-lg w-100" disabled>選択してください</button>
 </div>
-{% endif %}
 
 {% if exercises %}
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
@@ -276,6 +277,45 @@
     });
   });
 
+  // ── Complete toggle ───────────────────────────────────────────────────────
+  function moveToBottom(card) {
+    var list = document.getElementById('session-sortable');
+    list.appendChild(card);
+  }
+  function moveToTop(card) {
+    var list = document.getElementById('session-sortable');
+    var first = list.querySelector('[data-completed="false"][data-skipped="false"]');
+    list.insertBefore(card, first || list.firstChild);
+  }
+
+  document.querySelectorAll('.complete-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var seId = btn.dataset.seId;
+      btn.disabled = true;
+      fetch('/api/se/' + seId + '/complete', { method: 'POST' })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          var card = document.getElementById('ex-card-' + seId);
+          if (card) {
+            card.dataset.completed = data.completed ? 'true' : 'false';
+            card.classList.toggle('se-completed', data.completed);
+            if (data.completed) {
+              card.classList.remove('se-skipped');
+              card.dataset.skipped = 'false';
+              moveToBottom(card);
+            } else {
+              moveToTop(card);
+            }
+          }
+          btn.classList.toggle('btn-success', data.completed);
+          btn.classList.toggle('btn-outline-secondary', !data.completed);
+          checkMuscleConflicts();
+        })
+        .catch(function () {})
+        .finally(function () { btn.disabled = false; });
+    });
+  });
+
   // ── Select mode ──────────────────────────────────────────────────────────
   var selectMode = false;
   var selectBtn = document.getElementById('select-mode-btn');
@@ -292,7 +332,7 @@
       document.querySelectorAll('.drag-handle').forEach(function (el) {
         el.style.display = selectMode ? 'none' : '';
       });
-      document.querySelectorAll('.skip-btn').forEach(function (el) {
+      document.querySelectorAll('.skip-btn, .complete-btn').forEach(function (el) {
         el.style.display = selectMode ? 'none' : '';
       });
 
@@ -305,10 +345,8 @@
 
   function updateBulkBar() {
     var count = document.querySelectorAll('.ex-checkbox:checked').length;
-    var normalBar = document.getElementById('normal-action-bar');
     var bulkBar = document.getElementById('bulk-delete-bar');
     var deleteBtn = document.getElementById('bulk-delete-btn');
-    if (normalBar) normalBar.style.display = selectMode ? 'none' : '';
     if (bulkBar) bulkBar.style.display = selectMode ? '' : 'none';
     if (deleteBtn) {
       deleteBtn.textContent = count > 0 ? count + '件を削除' : '選択してください';

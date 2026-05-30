@@ -498,6 +498,12 @@ def api_toggle_skip(se_id):
     return jsonify(result)
 
 
+@app.route("/api/se/<int:se_id>/complete", methods=["POST"])
+def api_toggle_complete(se_id):
+    result = db.toggle_complete_exercise(se_id)
+    return jsonify(result)
+
+
 # ── My Sets ───────────────────────────────────────────────────────────────────
 
 @app.route("/my-sets")
