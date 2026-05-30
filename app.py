@@ -223,8 +223,14 @@ def session_detail(session_id):
     if session is None:
         flash("セッションが見つかりません。", "danger")
         return redirect(url_for("sessions_list"))
+    category_exp = {"上肢": 0, "下肢": 0, "体幹": 0}
+    for ex in exercises:
+        bp = ex.get("body_part")
+        if bp in category_exp:
+            category_exp[bp] += ex.get("exp_earned") or 0
     return render_template("sessions/detail.html",
-                           session=session, exercises=exercises)
+                           session=session, exercises=exercises,
+                           category_exp=category_exp)
 
 
 @app.route("/sessions/<int:session_id>/edit", methods=["GET", "POST"])
