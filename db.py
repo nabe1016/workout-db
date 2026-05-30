@@ -555,7 +555,7 @@ def toggle_set_completion(se_id: int, set_num: int) -> dict:
         completions[set_num] = new_val
         completed_count = sum(1 for v in completions.values() if v)
 
-        weight = se["weight_low_load"] if se["weight_low_load"] else se["weight_setting"]
+        weight = se["weight_setting"] if se["weight_setting"] else se["weight_low_load"]
         reps = se["reps"] or se["session_rep_count"] or 0
         exp = round((weight or 1) * reps * completed_count)
 

@@ -132,7 +132,7 @@
     const sessReps = parseInt(document.getElementById('session_rep_count').value) || 0;
     const reps     = (repsEl.value ? parseInt(repsEl.value) : 0) || sessReps;
 
-    const weight = (!isNaN(lowLoad) && lowLoad > 0) ? lowLoad : setting;
+    const weight = (setting > 0) ? setting : ((!isNaN(lowLoad) && lowLoad > 0) ? lowLoad : 1);
 
     const doneBtns = document.querySelectorAll('.set-btn[data-completed="true"]');
     const exp = Math.round(weight * reps * doneBtns.length);
