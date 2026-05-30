@@ -243,6 +243,60 @@ def toggle_complete_exercise(se_id: int) -> dict:
     return {"completed": bool(row["completed"])}
 
 
+def quick_edit_se(se_id: int, one_rep_max=None, reps=None,
+                  low_load_pct=None, load_mode=None) -> dict | None:
+    """Inline update of 1RM / reps / low_load_pct / load_mode. Recalculates weights and EXP."""
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM session_exercises WHERE id = %s", (se_id,))
+        se = cur.fetchone()
+        if se is None:
+            return None
+
+        new_orm  = one_rep_max  if one_rep_max  is not None else se["one_rep_max"]
+        new_reps = reps         if reps         is not None else se["reps"]
+        new_pct  = float(low_load_pct) if low_load_pct is not None \
+                   else float(se.get("low_load_pct") or 30)
+        new_mode = load_mode if load_mode is not None else (se.get("load_mode") or "high")
+
+        if new_orm:
+            new_ws  = round(float(new_orm) * 0.8, 1)
+            new_wl  = round(float(new_orm) * new_pct / 100, 1)
+        else:
+            new_ws = se["weight_setting"]
+            new_wl = se["weight_low_load"]
+
+        completions = {i: bool(se.get(f"set{i}_completed")) for i in range(1, 11)}
+        completed_count = sum(1 for v in completions.values() if v)
+        w = (new_wl if new_mode == "low" else new_ws) or (new_wl or new_ws)
+        exp = round((w or 1) * (new_reps or 0) * completed_count)
+
+        cur.execute("""
+            UPDATE session_exercises
+            SET one_rep_max=%s, weight_pct80=%s, weight_setting=%s, weight_low_load=%s,
+                reps=%s, load_mode=%s, low_load_pct=%s, exp_earned=%s
+            WHERE id = %s
+        """, (new_orm, new_ws, new_ws, new_wl, new_reps, new_mode, new_pct, exp, se_id))
+        session_id = se["session_id"]
+
+    recalculate_session_exp(session_id)
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT total_exp FROM workout_sessions WHERE id = %s", (session_id,))
+        total = cur.fetchone()["total_exp"]
+
+    return {
+        "one_rep_max":       new_orm,
+        "weight_setting":    new_ws,
+        "weight_low_load":   new_wl,
+        "reps":              new_reps,
+        "load_mode":         new_mode,
+        "low_load_pct":      new_pct,
+        "exp_earned":        exp,
+        "session_total_exp": total,
+    }
+
+
 # ── Exercises master ──────────────────────────────────────────────────────────
 
 # ── Muscles master ───────────────────────────────────────────────────────────
@@ -555,7 +609,11 @@ def toggle_set_completion(se_id: int, set_num: int) -> dict:
         completions[set_num] = new_val
         completed_count = sum(1 for v in completions.values() if v)
 
-        weight = se["weight_setting"] if se["weight_setting"] else se["weight_low_load"]
+        mode = se.get("load_mode") or "high"
+        if mode == "low":
+            weight = se["weight_low_load"] if se["weight_low_load"] else se["weight_setting"]
+        else:
+            weight = se["weight_setting"] if se["weight_setting"] else se["weight_low_load"]
         reps = se["reps"] or se["session_rep_count"] or 0
         exp = round((weight or 1) * reps * completed_count)
 

@@ -510,6 +510,21 @@ def api_toggle_complete(se_id):
     return jsonify(result)
 
 
+@app.route("/api/se/<int:se_id>/quick-edit", methods=["POST"])
+def api_quick_edit_se(se_id):
+    data = request.get_json(force=True) or {}
+    result = db.quick_edit_se(
+        se_id,
+        one_rep_max=data.get("one_rep_max"),
+        reps=data.get("reps"),
+        low_load_pct=data.get("low_load_pct"),
+        load_mode=data.get("load_mode"),
+    )
+    if result is None:
+        return jsonify({"error": "not found"}), 404
+    return jsonify(result)
+
+
 # ── My Sets ───────────────────────────────────────────────────────────────────
 
 @app.route("/my-sets")

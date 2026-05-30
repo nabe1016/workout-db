@@ -89,11 +89,75 @@
           {% if ex.muscle_groups or ex.primary_muscle %}
           <div class="text-secondary small">{{ ex.muscle_groups or ex.primary_muscle }}</div>
           {% endif %}
-          <div class="d-flex flex-wrap gap-2 mt-1 small text-secondary">
-            {% if ex.one_rep_max %}<span>1RM: <strong class="text-light">{{ ex.one_rep_max }}kg</strong></span>{% endif %}
-            {% if ex.weight_setting %}<span>高: <strong class="text-light">{{ ex.weight_setting }}kg</strong></span>{% endif %}
-            {% if ex.weight_low_load %}<span>低: <strong class="text-light">{{ ex.weight_low_load }}kg</strong></span>{% endif %}
-            {% if ex.reps %}<span>{{ ex.reps }}rep</span>{% endif %}
+          {# Weight / load-mode row #}
+          {% set mode = ex.load_mode or 'high' %}
+          <div class="d-flex align-items-center gap-2 mt-1 flex-wrap">
+            {% if ex.one_rep_max %}
+            <span class="text-secondary" style="font-size:0.75rem;">1RM: <strong class="text-light">{{ ex.one_rep_max }}kg</strong></span>
+            {% endif %}
+
+            {# High / Low toggle pill #}
+            <div class="d-inline-flex" style="border:1px solid var(--sep);border-radius:6px;overflow:hidden;">
+              <button type="button" class="load-mode-btn btn py-0 px-2"
+                      data-se-id="{{ ex.id }}" data-mode="high"
+                      style="border-radius:0;font-size:0.72rem;min-width:2.4rem;height:1.6rem;
+                             background:{% if mode != 'low' %}var(--blue);color:#fff{% else %}transparent;color:var(--txt-2){% endif %};">
+                高
+              </button>
+              <button type="button" class="load-mode-btn btn py-0 px-2"
+                      data-se-id="{{ ex.id }}" data-mode="low"
+                      style="border-radius:0;font-size:0.72rem;min-width:2.4rem;height:1.6rem;
+                             background:{% if mode == 'low' %}var(--orange);color:#000{% else %}transparent;color:var(--txt-2){% endif %};">
+                低
+              </button>
+            </div>
+
+            {# Active weight #}
+            <span class="fw-bold" id="active-weight-{{ ex.id }}" style="font-size:0.88rem;">
+              {% if mode == 'low' and ex.weight_low_load %}
+                <span style="color:var(--orange);">{{ ex.weight_low_load }}kg</span><span class="text-secondary" style="font-size:0.7rem;"> ({{ (ex.low_load_pct or 30) | int }}%)</span>
+              {% elif ex.weight_setting %}
+                <span style="color:var(--blue);">{{ ex.weight_setting }}kg</span>
+              {% endif %}
+            </span>
+
+            {# Rep range hint #}
+            <span class="text-secondary" id="rep-hint-{{ ex.id }}" style="font-size:0.78rem;">
+              {% if ex.reps %}{{ ex.reps }}rep{% else %}{% if mode == 'low' %}20-40 rep{% else %}8-12 rep{% endif %}{% endif %}
+            </span>
+
+            {# Adjust toggle #}
+            <button type="button" class="adjust-toggle-btn btn btn-sm btn-outline-secondary ms-auto"
+                    data-se-id="{{ ex.id }}"
+                    style="font-size:0.65rem;padding:0.15rem 0.5rem;line-height:1.5;">⚙</button>
+          </div>
+
+          {# Inline adjust panel #}
+          <div class="adjust-panel mt-2 p-2" id="adjust-{{ ex.id }}"
+               style="display:none;background:rgba(255,255,255,0.05);border-radius:8px;">
+            <div class="d-flex gap-2 align-items-end flex-wrap">
+              <div>
+                <div class="section-label" style="margin-bottom:0.2rem;">1RM kg</div>
+                <input type="number" class="form-control form-control-sm adjust-input"
+                       data-se-id="{{ ex.id }}" data-field="one_rep_max"
+                       value="{{ ex.one_rep_max or '' }}" step="0.5" min="0"
+                       style="width:5.5rem;">
+              </div>
+              <div>
+                <div class="section-label" style="margin-bottom:0.2rem;">Reps</div>
+                <input type="number" class="form-control form-control-sm adjust-input"
+                       data-se-id="{{ ex.id }}" data-field="reps"
+                       value="{{ ex.reps or '' }}" step="1" min="1"
+                       style="width:4rem;">
+              </div>
+              <div>
+                <div class="section-label" style="margin-bottom:0.2rem;">低負荷%</div>
+                <input type="number" class="form-control form-control-sm adjust-input"
+                       data-se-id="{{ ex.id }}" data-field="low_load_pct"
+                       value="{{ (ex.low_load_pct or 30) | int }}" step="5" min="10" max="80"
+                       style="width:4.5rem;">
+              </div>
+            </div>
           </div>
 
           {# Inline set toggle buttons (1–5 default, +button reveals 6–10) #}
@@ -385,6 +449,103 @@
   }
 
   checkMuscleConflicts();
+
+  // ── Load-mode toggle (高/低) ──────────────────────────────────────────────
+  function applyQuickEdit(seId, data) {
+    var isLow = data.load_mode === 'low';
+    var card  = document.getElementById('ex-card-' + seId);
+    if (!card) return;
+
+    // Toggle pill styles
+    var highBtn = card.querySelector('.load-mode-btn[data-mode="high"]');
+    var lowBtn  = card.querySelector('.load-mode-btn[data-mode="low"]');
+    if (highBtn) { highBtn.style.background = isLow ? 'transparent' : 'var(--blue)'; highBtn.style.color = isLow ? 'var(--txt-2)' : '#fff'; }
+    if (lowBtn)  { lowBtn.style.background  = isLow ? 'var(--orange)' : 'transparent'; lowBtn.style.color  = isLow ? '#000' : 'var(--txt-2)'; }
+
+    // Active weight display
+    var wEl = document.getElementById('active-weight-' + seId);
+    if (wEl) {
+      if (isLow && data.weight_low_load) {
+        var pct = Math.round(data.low_load_pct || 30);
+        wEl.innerHTML = '<span style="color:var(--orange);">' + data.weight_low_load + 'kg</span>'
+                      + '<span class="text-secondary" style="font-size:0.7rem;"> (' + pct + '%)</span>';
+      } else if (data.weight_setting) {
+        wEl.innerHTML = '<span style="color:var(--blue);">' + data.weight_setting + 'kg</span>';
+      }
+    }
+
+    // Rep hint
+    var rEl = document.getElementById('rep-hint-' + seId);
+    if (rEl) rEl.textContent = data.reps ? data.reps + 'rep' : (isLow ? '20-40 rep' : '8-12 rep');
+
+    // EXP badge
+    var expEl = document.querySelector('.exp-badge-' + seId);
+    if (expEl) expEl.textContent = (data.exp_earned || 0).toLocaleString() + ' EXP';
+
+    // Session total EXP
+    var totalEl = document.getElementById('total-exp');
+    if (totalEl && data.session_total_exp !== undefined) totalEl.textContent = data.session_total_exp.toLocaleString();
+
+    // Sync adjust inputs
+    if (data.one_rep_max != null) {
+      var ormIn = card.querySelector('[data-field="one_rep_max"]');
+      if (ormIn) ormIn.value = data.one_rep_max;
+    }
+    if (data.reps != null) {
+      var repsIn = card.querySelector('[data-field="reps"]');
+      if (repsIn) repsIn.value = data.reps;
+    }
+    if (data.low_load_pct != null) {
+      var pctIn = card.querySelector('[data-field="low_load_pct"]');
+      if (pctIn) pctIn.value = Math.round(data.low_load_pct);
+    }
+  }
+
+  document.querySelectorAll('.load-mode-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var seId = btn.dataset.seId;
+      btn.disabled = true;
+      fetch('/api/se/' + seId + '/quick-edit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ load_mode: btn.dataset.mode })
+      })
+      .then(function (r) { return r.json(); })
+      .then(function (data) { applyQuickEdit(seId, data); })
+      .catch(function () {})
+      .finally(function () { btn.disabled = false; });
+    });
+  });
+
+  // ── Adjust panel toggle ────────────────────────────────────────────────────
+  document.querySelectorAll('.adjust-toggle-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var panel = document.getElementById('adjust-' + btn.dataset.seId);
+      if (!panel) return;
+      var open = panel.style.display !== 'none';
+      panel.style.display = open ? 'none' : '';
+      btn.style.color = open ? '' : 'var(--yellow)';
+    });
+  });
+
+  // ── Adjust inputs (save on blur) ───────────────────────────────────────────
+  document.querySelectorAll('.adjust-input').forEach(function (input) {
+    input.addEventListener('blur', function () {
+      var val = parseFloat(input.value);
+      if (isNaN(val) || val <= 0) return;
+      var payload = {};
+      payload[input.dataset.field] = val;
+      fetch('/api/se/' + input.dataset.seId + '/quick-edit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      .then(function (r) { return r.json(); })
+      .then(function (data) { applyQuickEdit(input.dataset.seId, data); })
+      .catch(function () {});
+    });
+  });
+
 })();
 </script>
 {% endblock %}
