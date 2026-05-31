@@ -88,7 +88,7 @@
               <span class="badge" style="font-size:0.56rem;padding:0.12rem 0.35rem;background:{{ category_bg(ex.body_part) }};color:rgba(255,255,255,0.9);border-radius:4px;">{{ ex.body_part }}</span>
               {% endif %}
               {% if ex.primary_muscle %}
-              <span class="text-secondary" style="font-size:0.72rem;">·</span>
+              <span class="text-secondary" style="font-size:0.72rem;">主導筋:</span>
               <strong style="color:var(--yellow);font-size:0.75rem;font-weight:700;">{{ ex.primary_muscle }}</strong>
               {% endif %}
             </div>
@@ -99,7 +99,23 @@
 
             {# 種目毎の表示ブロック #}
             <div style="flex:1;min-width:0;">
-              <div style="font-size:0.76rem;line-height:1.7;">
+              {# 高/低トグル - フルwidth・明確なボタン表示 #}
+              <div class="d-flex mb-1" style="border:1.5px solid var(--sep);border-radius:7px;overflow:hidden;">
+                <button type="button" class="load-mode-btn btn flex-fill fw-bold"
+                        data-se-id="{{ ex.id }}" data-mode="high"
+                        style="border-radius:0;font-size:0.72rem;height:2rem;
+                               background:{% if mode != 'low' %}var(--blue);color:#fff{% else %}rgba(255,255,255,0.04);color:var(--txt-2){% endif %};">
+                  高負荷
+                </button>
+                <div style="width:1.5px;background:var(--sep);flex-shrink:0;"></div>
+                <button type="button" class="load-mode-btn btn flex-fill fw-bold"
+                        data-se-id="{{ ex.id }}" data-mode="low"
+                        style="border-radius:0;font-size:0.72rem;height:2rem;
+                               background:{% if mode == 'low' %}var(--orange);color:#000{% else %}rgba(255,255,255,0.04);color:var(--txt-2){% endif %};">
+                  低負荷
+                </button>
+              </div>
+              <div style="font-size:0.76rem;line-height:1.7;margin-top:0.25rem;">
                 {% if ex.one_rep_max %}
                 <div class="d-flex">
                   <span class="text-secondary" style="width:2.8em;flex-shrink:0;">1RM</span>
@@ -122,22 +138,6 @@
                   <span class="text-secondary" style="width:2.8em;flex-shrink:0;">rep</span>
                   <span id="rep-val-{{ ex.id }}">: <strong class="text-light">{% if ex.reps %}{{ ex.reps }}{% else %}{% if mode == 'low' %}20-30{% else %}8-12{% endif %}{% endif %}</strong></span>
                 </div>
-              </div>
-              {# 高/低トグル - フルwidth・明確なボタン表示 #}
-              <div class="d-flex mt-1" style="border:1.5px solid var(--sep);border-radius:7px;overflow:hidden;">
-                <button type="button" class="load-mode-btn btn flex-fill fw-bold"
-                        data-se-id="{{ ex.id }}" data-mode="high"
-                        style="border-radius:0;font-size:0.72rem;height:2rem;
-                               background:{% if mode != 'low' %}var(--blue);color:#fff{% else %}rgba(255,255,255,0.04);color:var(--txt-2){% endif %};">
-                  高負荷
-                </button>
-                <div style="width:1.5px;background:var(--sep);flex-shrink:0;"></div>
-                <button type="button" class="load-mode-btn btn flex-fill fw-bold"
-                        data-se-id="{{ ex.id }}" data-mode="low"
-                        style="border-radius:0;font-size:0.72rem;height:2rem;
-                               background:{% if mode == 'low' %}var(--orange);color:#000{% else %}rgba(255,255,255,0.04);color:var(--txt-2){% endif %};">
-                  低負荷
-                </button>
               </div>
               <div class="d-flex align-items-center gap-2 mt-1">
                 <button type="button" class="adjust-toggle-btn btn btn-sm btn-outline-secondary"
@@ -341,6 +341,13 @@
 
           var totalEl = document.getElementById('total-exp');
           if (totalEl) totalEl.textContent = data.session_total_exp.toLocaleString();
+
+          if (data.category_exp) {
+            Object.keys(data.category_exp).forEach(function (cat) {
+              var el = document.getElementById('cat-exp-' + cat);
+              if (el) el.textContent = data.category_exp[cat].toLocaleString();
+            });
+          }
         })
         .catch(function () {})
         .finally(function () { btn.disabled = false; });

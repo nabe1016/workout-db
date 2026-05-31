@@ -632,12 +632,24 @@ def toggle_set_completion(se_id: int, set_num: int) -> dict:
         cur = conn.cursor()
         cur.execute("SELECT total_exp FROM workout_sessions WHERE id = %s", (session_id,))
         total = cur.fetchone()["total_exp"]
+        cur.execute("""
+            SELECT ex.body_part, COALESCE(SUM(se.exp_earned), 0) AS cat_exp
+            FROM session_exercises se
+            JOIN exercises ex ON ex.id = se.exercise_id
+            WHERE se.session_id = %s
+            GROUP BY ex.body_part
+        """, (session_id,))
+        category_exp = {"上肢": 0, "下肢": 0, "体幹": 0}
+        for row in cur.fetchall():
+            if row["body_part"] in category_exp:
+                category_exp[row["body_part"]] = int(row["cat_exp"])
 
     return {
         "set_num": set_num,
         "completed": new_val,
         "exp_earned": exp,
         "session_total_exp": total,
+        "category_exp": category_exp,
     }
 
 
