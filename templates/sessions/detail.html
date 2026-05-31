@@ -87,12 +87,11 @@
               {% if ex.body_part %}
               <span class="badge" style="font-size:0.56rem;padding:0.12rem 0.35rem;background:{{ category_bg(ex.body_part) }};color:rgba(255,255,255,0.9);border-radius:4px;">{{ ex.body_part }}</span>
               {% endif %}
+              {% if ex.primary_muscle %}
+              <span class="text-secondary" style="font-size:0.72rem;">·</span>
+              <strong style="color:var(--yellow);font-size:0.75rem;font-weight:700;">{{ ex.primary_muscle }}</strong>
+              {% endif %}
             </div>
-            {% if ex.primary_muscle %}
-            <div style="font-size:0.75rem;margin-top:0.1rem;padding-left:1.4rem;">
-              <span class="text-secondary">主導筋 </span><strong style="color:var(--yellow);letter-spacing:0.01em;">{{ ex.primary_muscle }}</strong>
-            </div>
-            {% endif %}
           </div>
 
           {# 種目毎の表示ブロック ＋ 完了セット数操作ブロック #}
@@ -107,20 +106,6 @@
                   <span>: <strong class="text-light">{{ ex.one_rep_max }}kg</strong></span>
                 </div>
                 {% endif %}
-                <div class="d-flex align-items-center">
-                  <span class="text-secondary" style="width:2.8em;flex-shrink:0;">負荷</span>
-                  <span>: </span>
-                  <div class="d-inline-flex ms-1" style="border:1px solid var(--sep);border-radius:4px;overflow:hidden;">
-                    <button type="button" class="load-mode-btn btn py-0 px-1"
-                            data-se-id="{{ ex.id }}" data-mode="high"
-                            style="border-radius:0;font-size:0.62rem;height:1.2rem;line-height:1;
-                                   background:{% if mode != 'low' %}var(--blue);color:#fff{% else %}transparent;color:var(--txt-2){% endif %};">高</button>
-                    <button type="button" class="load-mode-btn btn py-0 px-1"
-                            data-se-id="{{ ex.id }}" data-mode="low"
-                            style="border-radius:0;font-size:0.62rem;height:1.2rem;line-height:1;
-                                   background:{% if mode == 'low' %}var(--orange);color:#000{% else %}transparent;color:var(--txt-2){% endif %};">低</button>
-                  </div>
-                </div>
                 <div class="d-flex">
                   <span class="text-secondary" style="width:2.8em;flex-shrink:0;">重量</span>
                   <span id="weight-val-{{ ex.id }}">
@@ -137,6 +122,22 @@
                   <span class="text-secondary" style="width:2.8em;flex-shrink:0;">rep</span>
                   <span id="rep-val-{{ ex.id }}">: <strong class="text-light">{% if ex.reps %}{{ ex.reps }}{% else %}{% if mode == 'low' %}20-30{% else %}8-12{% endif %}{% endif %}</strong></span>
                 </div>
+              </div>
+              {# 高/低トグル - フルwidth・明確なボタン表示 #}
+              <div class="d-flex mt-1" style="border:1.5px solid var(--sep);border-radius:7px;overflow:hidden;">
+                <button type="button" class="load-mode-btn btn flex-fill fw-bold"
+                        data-se-id="{{ ex.id }}" data-mode="high"
+                        style="border-radius:0;font-size:0.72rem;height:2rem;
+                               background:{% if mode != 'low' %}var(--blue);color:#fff{% else %}rgba(255,255,255,0.04);color:var(--txt-2){% endif %};">
+                  高負荷
+                </button>
+                <div style="width:1.5px;background:var(--sep);flex-shrink:0;"></div>
+                <button type="button" class="load-mode-btn btn flex-fill fw-bold"
+                        data-se-id="{{ ex.id }}" data-mode="low"
+                        style="border-radius:0;font-size:0.72rem;height:2rem;
+                               background:{% if mode == 'low' %}var(--orange);color:#000{% else %}rgba(255,255,255,0.04);color:var(--txt-2){% endif %};">
+                  低負荷
+                </button>
               </div>
               <div class="d-flex align-items-center gap-2 mt-1">
                 <button type="button" class="adjust-toggle-btn btn btn-sm btn-outline-secondary"
@@ -222,12 +223,12 @@
                   style="width:2.5rem;height:3rem;font-size:1.1rem;padding:0;border-radius:7px;">⏭</button>
           <a href="{{ url_for('exercise_edit', session_id=session.id, se_id=ex.id) }}"
              class="btn btn-outline-secondary" title="編集"
-             style="width:2.5rem;height:2.2rem;font-size:1rem;padding:0;display:flex;align-items:center;justify-content:center;border-radius:7px;text-decoration:none;">📝</a>
+             style="width:2.5rem;height:1.7rem;font-size:0.78rem;padding:0;display:flex;align-items:center;justify-content:center;border-radius:5px;text-decoration:none;">📝</a>
           <form method="post"
                 action="{{ url_for('exercise_delete', session_id=session.id, se_id=ex.id) }}"
                 onsubmit="return confirm('削除しますか？')" style="width:2.5rem;">
             <button class="btn btn-outline-danger" title="削除"
-                    style="width:2.5rem;height:2.2rem;font-size:1rem;padding:0;border-radius:7px;">🗑️</button>
+                    style="width:2.5rem;height:1.7rem;font-size:0.78rem;padding:0;border-radius:5px;">🗑️</button>
           </form>
         </div>
 
