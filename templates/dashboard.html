@@ -74,7 +74,6 @@
       <a href="{{ url_for('weekly_plan') }}" class="btn btn-outline-secondary btn-sm">編集</a>
     </div>
 
-    {% if not today_plan or today_plan.location != 'rest' %}
     <div class="mt-2">
       {% if today_session %}
         <a href="{{ url_for('session_detail', session_id=today_session.id) }}"
@@ -82,13 +81,19 @@
           ▶ 今日のセッションを続ける
         </a>
       {% elif not today_training_plan %}
+        {% if today_plan and today_plan.location == 'rest' %}
+        <a href="{{ url_for('today') }}"
+           class="btn btn-outline-secondary w-100" style="font-size:0.9rem;">
+          💪 今日もトレーニングする
+        </a>
+        {% else %}
         <a href="{{ url_for('today') }}"
            class="btn btn-outline-secondary btn-lg w-100">
           トレーニングを開始
         </a>
+        {% endif %}
       {% endif %}
     </div>
-    {% endif %}
   </div>
 </div>
 

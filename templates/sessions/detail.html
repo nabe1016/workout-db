@@ -264,6 +264,17 @@
 </div>
 {% endif %}
 
+{# 終了スティッキーバー（常時表示、セレクトモード時は非表示） #}
+{% if exercises %}
+<div class="sticky-action-bar" id="finish-bar">
+  <a href="{{ url_for('session_finish', session_id=session.id) }}"
+     class="btn btn-success btn-lg w-100 fw-bold" style="letter-spacing:0.04em;">
+    ✅ トレーニング終了
+  </a>
+</div>
+{% endif %}
+
+{# 一括削除バー（セレクトモード時のみ表示） #}
 <div class="sticky-action-bar" id="bulk-delete-bar" style="display:none;">
   <button id="bulk-delete-btn" type="submit" form="bulk-delete-form"
           class="btn btn-danger btn-lg w-100" disabled>選択してください</button>
@@ -415,6 +426,8 @@
       document.querySelectorAll('.skip-btn, .complete-btn').forEach(function (el) {
         el.style.display = selectMode ? 'none' : '';
       });
+      var finishBar = document.getElementById('finish-bar');
+      if (finishBar) finishBar.style.display = selectMode ? 'none' : '';
 
       if (!selectMode) {
         document.querySelectorAll('.ex-checkbox').forEach(function (cb) { cb.checked = false; });

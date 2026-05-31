@@ -1010,12 +1010,8 @@ def finish_session(session_id: int, post_notes: str) -> None:
 
 
 def build_advice(session, exercises: list) -> tuple:
-    """Return (advice_list, intensity_label)."""
+    """Return (advice_list, intensity_label, overload_tips)."""
     total_exp = session["total_exp"] or 0
-    completed_sets = sum(
-        sum(1 for i in range(1, 11) if ex.get(f"set{i}_completed"))
-        for ex in exercises
-    )
 
     if total_exp >= 8000:
         intensity = "high"
@@ -1023,12 +1019,6 @@ def build_advice(session, exercises: list) -> tuple:
         intensity = "medium"
     else:
         intensity = "light"
-
-    muscle_set = set()
-    for ex in exercises:
-        if ex.get("muscle_groups"):
-            for mg in ex["muscle_groups"].split(","):
-                muscle_set.add(mg.strip())
 
     advice = []
 
@@ -1046,22 +1036,18 @@ def build_advice(session, exercises: list) -> tuple:
                         "title": "軽めのトレーニング完了",
                         "body": f"{total_exp:,} EXP 獲得。軽負荷セッションは回復を促進します。翌日もトレーニング可能です。"})
 
-    # 栄養
     advice.append({"icon": "🍗", "cat": "栄養",
                     "title": "トレーニング後30分以内に",
                     "body": "プロテイン20〜30g ＋ 糖質（バナナ・ご飯など）を摂取すると筋タンパク合成が最大化されます。"})
 
-    # 睡眠
     advice.append({"icon": "😴", "cat": "睡眠",
                     "title": "睡眠が最強のリカバリー",
                     "body": "成長ホルモンは深い睡眠中に最も多く分泌されます。今夜は7〜9時間を確保し、就寝1時間前はスマホを置きましょう。"})
 
-    # 水分
     advice.append({"icon": "💧", "cat": "水分",
                     "title": "水分補給を忘れずに",
                     "body": "トレーニング後2〜3時間かけて水500ml〜1L補給を。尿が薄い黄色になれば十分な水分量のサインです。"})
 
-    # 翌日の目安
     if intensity == "high":
         advice.append({"icon": "🗓️", "cat": "翌日の目安",
                         "title": "明日の身体の状態を確認",
@@ -1071,4 +1057,52 @@ def build_advice(session, exercises: list) -> tuple:
                         "title": "明日は積極的リカバリーを",
                         "body": "ウォーキングや軽いストレッチで血流を促進すると回復が早まります。翌日のコンディションも記録してみましょう。"})
 
-    return advice, intensity
+    # ── 漸進性過負荷の分析 ────────────────────────────────────────────────────
+    overload_tips = []
+    for ex in exercises:
+        name = ex.get("exercise_name") or "この種目"
+        mode = ex.get("load_mode") or "high"
+        reps = ex.get("reps") or 0
+        done = sum(1 for i in range(1, 11) if ex.get(f"set{i}_completed"))
+        if done < 3 or reps <= 0:
+            continue
+
+        if mode == "low":
+            if reps >= 30:
+                pct = float(ex.get("low_load_pct") or 30)
+                new_pct = round(pct + 5)
+                if new_pct <= 60:
+                    overload_tips.append({
+                        "icon": "📈", "name": name,
+                        "title": "低負荷%を上げましょう",
+                        "body": f"{reps}rep × {done}セット達成！次回は低負荷% を {int(pct)}% → {new_pct}% に上げてみましょう。"
+                    })
+                else:
+                    overload_tips.append({
+                        "icon": "🚀", "name": name,
+                        "title": "高負荷へ切り替えのチャンス",
+                        "body": f"低負荷で{reps}rep × {done}セット達成！次回は高負荷（1RM×80%）での8-12repに挑戦しましょう。"
+                    })
+            elif reps < 30:
+                new_reps = reps + 2
+                overload_tips.append({
+                    "icon": "📊", "name": name,
+                    "title": "rep数を増やしましょう",
+                    "body": f"低負荷{reps}rep × {done}セット達成！次回は {reps} → {new_reps} rep に増やしてみましょう。30repで重量アップです。"
+                })
+        else:
+            if reps >= 12:
+                overload_tips.append({
+                    "icon": "📈", "name": name,
+                    "title": "次回は重量アップのチャンス！",
+                    "body": f"高負荷{reps}rep × {done}セット達成！1RMを更新して重量を1段階上げましょう。重量アップ後はrep数を8に戻してOKです。"
+                })
+            else:
+                new_reps = reps + 1
+                overload_tips.append({
+                    "icon": "📊", "name": name,
+                    "title": f"次回は {new_reps} rep を目標に",
+                    "body": f"高負荷{reps}rep × {done}セット達成！次回は {reps} → {new_reps} rep に増やしましょう。12repで重量アップです。"
+                })
+
+    return advice, intensity, overload_tips

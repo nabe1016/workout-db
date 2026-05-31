@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% set back_url = url_for('session_detail', session_id=session.id) %}
-{% block title %}リカバリーアドバイス{% endblock %}
-{% block nav_title %}アドバイス{% endblock %}
+{% block title %}トレーニング結果{% endblock %}
+{% block nav_title %}結果・アドバイス{% endblock %}
 
 {% block content %}
 {# Header #}
@@ -14,50 +14,79 @@
   <h4 class="mt-1">充実したトレーニング！</h4>
   {% else %}
   <div style="font-size:3rem;">✅</div>
-  <h4 class="mt-1">軽めのセッション完了！</h4>
+  <h4 class="mt-1">お疲れ様でした！</h4>
   {% endif %}
   <div class="text-secondary small">{{ session.session_date.strftime('%Y/%m/%d') }}（{{ session.day_of_week }}）</div>
 </div>
 
 {# Stats #}
-<div class="card bg-secondary bg-opacity-25 border-secondary mb-4">
-  <div class="card-body">
-    <div class="row text-center g-0">
-      <div class="col-4 border-end border-secondary">
-        <div class="fs-3 fw-bold text-warning">{{ "{:,}".format(session.total_exp or 0) }}</div>
-        <div class="text-secondary small">EXP</div>
+<div class="card mb-3">
+  <div class="card-body px-3 py-0">
+    <div class="row g-0">
+      <div class="col-4" style="border-right:0.5px solid var(--sep);">
+        <div class="stat-block">
+          <div class="stat-value" style="color:var(--yellow);">{{ "{:,}".format(session.total_exp or 0) }}</div>
+          <div class="stat-label">EXP</div>
+        </div>
       </div>
-      <div class="col-4 border-end border-secondary">
-        <div class="fs-3 fw-bold text-info">{{ exercises | length }}</div>
-        <div class="text-secondary small">種目</div>
+      <div class="col-4" style="border-right:0.5px solid var(--sep);">
+        <div class="stat-block">
+          <div class="stat-value" style="color:var(--teal);">{{ exercises | length }}</div>
+          <div class="stat-label">種目</div>
+        </div>
       </div>
       <div class="col-4">
-        <div class="fs-3 fw-bold text-success">{{ completed_count }}</div>
-        <div class="text-secondary small">完全完了</div>
+        <div class="stat-block">
+          <div class="stat-value" style="color:var(--green);">{{ completed_count }}</div>
+          <div class="stat-label">完全完了</div>
+        </div>
       </div>
     </div>
-    {% if session.post_notes %}
-    <div class="border-top border-secondary mt-2 pt-2 text-secondary small">
-      "{{ session.post_notes }}"
-    </div>
-    {% endif %}
   </div>
 </div>
 
-{# Advice cards #}
-<h6 class="text-secondary mb-2">今日のリカバリーアドバイス</h6>
+{% if session.post_notes %}
+<div class="card mb-3">
+  <div class="card-body py-2 px-3">
+    <div class="section-label mb-1">今日のメモ</div>
+    <div style="font-size:0.88rem;color:var(--txt-2);">"{{ session.post_notes }}"</div>
+  </div>
+</div>
+{% endif %}
+
+{# ── 次回への提案（漸進性過負荷） ── #}
+{% if overload_tips %}
+<div class="section-label mb-2">次回へ向けて</div>
 <div class="d-flex flex-column gap-2 mb-4">
-  {% for tip in advice %}
-  <div class="card bg-dark border-secondary">
+  {% for tip in overload_tips %}
+  <div class="card" style="--card-bg:rgba(255,214,10,0.07);">
     <div class="card-body py-2 px-3">
       <div class="d-flex gap-2 align-items-start">
-        <span style="font-size:1.5rem;line-height:1.4;">{{ tip.icon }}</span>
+        <span style="font-size:1.4rem;line-height:1.4;flex-shrink:0;">{{ tip.icon }}</span>
         <div>
-          <div class="d-flex align-items-center gap-2">
-            <span class="badge bg-secondary" style="font-size:.65rem;">{{ tip.cat }}</span>
-          </div>
-          <div class="fw-bold mt-1">{{ tip.title }}</div>
-          <div class="text-secondary small mt-1">{{ tip.body }}</div>
+          <div style="font-size:0.72rem;color:var(--yellow);font-weight:700;letter-spacing:0.04em;text-transform:uppercase;margin-bottom:0.1rem;">{{ tip.name }}</div>
+          <div class="fw-bold" style="font-size:0.88rem;">{{ tip.title }}</div>
+          <div class="text-secondary" style="font-size:0.78rem;margin-top:0.15rem;">{{ tip.body }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{# ── リカバリーアドバイス ── #}
+<div class="section-label mb-2">今日のリカバリー</div>
+<div class="d-flex flex-column gap-2 mb-4">
+  {% for tip in advice %}
+  <div class="card">
+    <div class="card-body py-2 px-3">
+      <div class="d-flex gap-2 align-items-start">
+        <span style="font-size:1.4rem;line-height:1.4;flex-shrink:0;">{{ tip.icon }}</span>
+        <div>
+          <div style="font-size:0.65rem;color:var(--txt-2);font-weight:600;letter-spacing:0.04em;text-transform:uppercase;margin-bottom:0.1rem;">{{ tip.cat }}</div>
+          <div class="fw-bold" style="font-size:0.88rem;">{{ tip.title }}</div>
+          <div class="text-secondary" style="font-size:0.78rem;margin-top:0.15rem;">{{ tip.body }}</div>
         </div>
       </div>
     </div>
@@ -65,13 +94,13 @@
   {% endfor %}
 </div>
 
-{# Next action #}
-<div class="d-flex flex-column gap-2">
+{# Next actions #}
+<div class="d-flex flex-column gap-2 mb-3">
   <a href="{{ url_for('weight_log') }}" class="btn btn-outline-info btn-lg w-100">
     ⚖️ 今日の体重を記録する
   </a>
-  <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-lg w-100">
-    🏠 ダッシュボードへ
+  <a href="{{ url_for('dashboard') }}" class="btn btn-warning btn-lg w-100 fw-bold">
+    🏠 ホームへ戻る
   </a>
 </div>
 {% endblock %}

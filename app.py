@@ -447,7 +447,7 @@ def session_advice(session_id):
     session, exercises = db.get_session_with_exercises(session_id)
     if session is None:
         return redirect(url_for("sessions_list"))
-    advice, intensity = db.build_advice(session, exercises)
+    advice, intensity, overload_tips = db.build_advice(session, exercises)
     completed_count = sum(
         1 for ex in exercises
         if ex["set1_completed"] and ex["set2_completed"] and ex["set3_completed"]
@@ -455,6 +455,7 @@ def session_advice(session_id):
     return render_template("sessions/advice.html",
                            session=session, exercises=exercises,
                            advice=advice, intensity=intensity,
+                           overload_tips=overload_tips,
                            completed_count=completed_count)
 
 

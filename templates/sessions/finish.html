@@ -1,30 +1,30 @@
 {% extends "base.html" %}
 {% set back_url = url_for('session_detail', session_id=session.id) %}
 {% block title %}トレーニング終了{% endblock %}
-{% block nav_title %}終了{% endblock %}
+{% block nav_title %}終了確認{% endblock %}
 
 {% block content %}
 <div class="text-center mb-4">
-  <div style="font-size:3.5rem;">🎉</div>
-  <h4 class="mt-2">お疲れ様でした！</h4>
-  <div class="text-secondary">{{ session.session_date.strftime('%Y/%m/%d') }}（{{ session.day_of_week }}）</div>
+  <div style="font-size:3rem;">🎉</div>
+  <h4 class="mt-2 fw-bold">お疲れ様でした！</h4>
+  <div class="text-secondary small">{{ session.session_date.strftime('%Y/%m/%d') }}（{{ session.day_of_week }}）</div>
 </div>
 
-<div class="card bg-secondary bg-opacity-25 border-secondary mb-4">
-  <div class="card-body">
-    <div class="row text-center g-0">
-      <div class="col-4 border-end border-secondary">
-        <div class="fs-3 fw-bold text-warning">{{ "{:,}".format(session.total_exp or 0) }}</div>
-        <div class="text-secondary small">EXP</div>
+{# Stats summary #}
+<div class="card mb-4">
+  <div class="card-body px-3 py-0">
+    <div class="row g-0">
+      <div class="col-6" style="border-right:0.5px solid var(--sep);">
+        <div class="stat-block">
+          <div class="stat-value" style="color:var(--yellow);">{{ "{:,}".format(session.total_exp or 0) }}</div>
+          <div class="stat-label">EXP</div>
+        </div>
       </div>
-      <div class="col-4 border-end border-secondary">
-        <div class="fs-3 fw-bold text-info">{{ exercises | length }}</div>
-        <div class="text-secondary small">種目数</div>
-      </div>
-      <div class="col-4">
-        {% set done = exercises | selectattr('set1_completed') | selectattr('set2_completed') | selectattr('set3_completed') | list | length %}
-        <div class="fs-3 fw-bold text-success">{{ done }}</div>
-        <div class="text-secondary small">完全完了</div>
+      <div class="col-6">
+        <div class="stat-block">
+          <div class="stat-value" style="color:var(--teal);">{{ exercises | length }}</div>
+          <div class="stat-label">種目数</div>
+        </div>
       </div>
     </div>
   </div>
@@ -32,13 +32,21 @@
 
 <form method="post">
   <div class="mb-4">
-    <label class="form-label">今日の一言メモ <span class="text-secondary small">（任意）</span></label>
-    <textarea class="form-control bg-dark text-light border-secondary"
-              name="post_notes" rows="3"
+    <label class="form-label">一言メモ <span class="text-secondary" style="font-weight:400;text-transform:none;letter-spacing:0;">（任意）</span></label>
+    <textarea class="form-control"
+              name="post_notes" rows="2"
               placeholder="今日の調子、気づいたこと、次回への備忘録など...">{{ session.post_notes or '' }}</textarea>
   </div>
-  <button type="submit" class="btn btn-warning btn-lg w-100 fw-bold">
-    完了してアドバイスを見る →
+  <button type="submit" class="btn btn-success btn-lg w-100 fw-bold"
+          style="font-size:1.1rem;letter-spacing:0.03em;">
+    結果・アドバイスを見る →
   </button>
 </form>
+
+<div class="mt-3 text-center">
+  <a href="{{ url_for('session_detail', session_id=session.id) }}"
+     class="text-secondary" style="font-size:0.85rem;text-decoration:none;">
+    ← トレーニングに戻る
+  </a>
+</div>
 {% endblock %}
