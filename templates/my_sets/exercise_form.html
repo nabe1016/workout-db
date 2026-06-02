@@ -11,7 +11,7 @@
   <div class="mb-3">
     <label class="form-label">種目 <span class="text-danger">*</span></label>
     <select class="form-select form-select-lg bg-dark text-light border-secondary"
-            name="exercise_id" required>
+            name="exercise_id" id="exercise_id_select">
       <option value="">選択してください</option>
       {% for ex in all_exercises %}
       <option value="{{ ex.id }}" {% if mse and mse.exercise_id == ex.id %}selected{% endif %}>
@@ -20,6 +20,19 @@
       {% endfor %}
     </select>
   </div>
+
+  {% if not mse %}
+  <div class="mb-3">
+    <label class="form-label text-secondary small">または新しい種目名を入力</label>
+    <input type="text" class="form-control bg-dark text-light border-secondary"
+           name="new_exercise_name" id="new_exercise_name"
+           placeholder="例: バックエクステンション（未登録の場合）"
+           autocomplete="off">
+    <div class="form-text text-secondary" style="font-size:0.75rem;">
+      一覧にない種目は名前を入力して追加できます。選択と入力どちらか一方のみ有効です。
+    </div>
+  </div>
+  {% endif %}
 
   <div class="mb-3">
     <label class="form-label">1RM (kg)</label>

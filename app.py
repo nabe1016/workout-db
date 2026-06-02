@@ -587,20 +587,31 @@ def my_set_exercise_new(my_set_id):
         return redirect(url_for("my_sets_list"))
     all_exercises = db.list_exercises()
     if request.method == "POST":
+        new_exercise_name = (request.form.get("new_exercise_name") or "").strip()
         exercise_id = _parse_int(request.form.get("exercise_id"))
-        if not exercise_id:
-            flash("種目を選択してください。", "danger")
+
+        if new_exercise_name:
+            exercise_id = db.get_or_create_exercise(new_exercise_name)
+        elif not exercise_id:
+            flash("種目を選択するか、新しい種目名を入力してください。", "danger")
             return render_template("my_sets/exercise_form.html",
                                    my_set=my_set, mse=None, all_exercises=all_exercises)
-        db.create_my_set_exercise(
-            my_set_id=my_set_id,
-            exercise_id=exercise_id,
-            one_rep_max=_parse_float(request.form.get("one_rep_max")),
-            weight_setting=_parse_float(request.form.get("weight_setting")),
-            weight_low_load=_parse_float(request.form.get("weight_low_load")),
-            reps=_parse_int(request.form.get("reps")),
-            muscle_groups=request.form.get("muscle_groups") or None,
-        )
+        try:
+            db.create_my_set_exercise(
+                my_set_id=my_set_id,
+                exercise_id=exercise_id,
+                one_rep_max=_parse_float(request.form.get("one_rep_max")),
+                weight_setting=_parse_float(request.form.get("weight_setting")),
+                weight_low_load=_parse_float(request.form.get("weight_low_load")),
+                reps=_parse_int(request.form.get("reps")),
+                muscle_groups=request.form.get("muscle_groups") or None,
+            )
+        except Exception as e:
+            import logging
+            logging.exception("Failed to add exercise to my_set")
+            flash(f"種目の追加に失敗しました: {e}", "danger")
+            return render_template("my_sets/exercise_form.html",
+                                   my_set=my_set, mse=None, all_exercises=all_exercises)
         flash("種目を追加しました。", "success")
         return redirect(url_for("my_set_detail", my_set_id=my_set_id))
     return render_template("my_sets/exercise_form.html",

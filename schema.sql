@@ -61,11 +61,37 @@ CREATE TABLE IF NOT EXISTS my_set_exercises (
 
 CREATE INDEX IF NOT EXISTS idx_mse_my_set ON my_set_exercises(my_set_id);
 
+-- Ensure UNIQUE index exists even if the inline UNIQUE constraint was missed on older deployments
+CREATE UNIQUE INDEX IF NOT EXISTS idx_mse_unique ON my_set_exercises(my_set_id, exercise_id);
+
 ALTER TABLE exercises ADD COLUMN IF NOT EXISTS body_part      TEXT;
 ALTER TABLE exercises ADD COLUMN IF NOT EXISTS needs_bench    BOOLEAN DEFAULT FALSE;
 ALTER TABLE exercises ADD COLUMN IF NOT EXISTS primary_muscle TEXT;
 
--- Seed known exercise metadata (only when not yet set)
+-- Seed exercises (insert if not yet present, then set metadata)
+INSERT INTO exercises (name) VALUES ('シーテッドロー')           ON CONFLICT (name) DO NOTHING;
+INSERT INTO exercises (name) VALUES ('ラットアイソレータ')        ON CONFLICT (name) DO NOTHING;
+INSERT INTO exercises (name) VALUES ('カーフ＆トゥレイズ')        ON CONFLICT (name) DO NOTHING;
+INSERT INTO exercises (name) VALUES ('カーフ&トゥレイズ')         ON CONFLICT (name) DO NOTHING;
+INSERT INTO exercises (name) VALUES ('レッグプレス')              ON CONFLICT (name) DO NOTHING;
+INSERT INTO exercises (name) VALUES ('トータルヒップ')            ON CONFLICT (name) DO NOTHING;
+INSERT INTO exercises (name) VALUES ('インクライントーソ')        ON CONFLICT (name) DO NOTHING;
+INSERT INTO exercises (name) VALUES ('レッグエクステンション')    ON CONFLICT (name) DO NOTHING;
+INSERT INTO exercises (name) VALUES ('シーテッドレッグカール')    ON CONFLICT (name) DO NOTHING;
+INSERT INTO exercises (name) VALUES ('バックエクステンション')    ON CONFLICT (name) DO NOTHING;
+INSERT INTO exercises (name) VALUES ('アブアイソレーター')        ON CONFLICT (name) DO NOTHING;
+INSERT INTO exercises (name) VALUES ('チェストプレス')            ON CONFLICT (name) DO NOTHING;
+INSERT INTO exercises (name) VALUES ('アームエクステンション')    ON CONFLICT (name) DO NOTHING;
+INSERT INTO exercises (name) VALUES ('アームカール')              ON CONFLICT (name) DO NOTHING;
+INSERT INTO exercises (name) VALUES ('バーベルスクワット')        ON CONFLICT (name) DO NOTHING;
+INSERT INTO exercises (name) VALUES ('ブルガリアンスクワット')    ON CONFLICT (name) DO NOTHING;
+INSERT INTO exercises (name) VALUES ('インクラインアームカール')  ON CONFLICT (name) DO NOTHING;
+INSERT INTO exercises (name) VALUES ('インクラインダンベルプレス') ON CONFLICT (name) DO NOTHING;
+INSERT INTO exercises (name) VALUES ('ベンチプレス')              ON CONFLICT (name) DO NOTHING;
+INSERT INTO exercises (name) VALUES ('ベンチダンベルサイドレイズ') ON CONFLICT (name) DO NOTHING;
+INSERT INTO exercises (name) VALUES ('ランニング')                ON CONFLICT (name) DO NOTHING;
+
+-- Seed exercise metadata (only when not yet set)
 UPDATE exercises SET body_part='上肢', needs_bench=false, primary_muscle='広背筋'     WHERE name='シーテッドロー'           AND body_part IS NULL;
 UPDATE exercises SET body_part='上肢', needs_bench=false, primary_muscle='広背筋'     WHERE name='ラットアイソレータ'        AND body_part IS NULL;
 UPDATE exercises SET body_part='下肢', needs_bench=false, primary_muscle='カーフ'     WHERE name='カーフ＆トゥレイズ'        AND body_part IS NULL;

@@ -332,6 +332,17 @@ def delete_muscle(muscle_id: int) -> None:
         cur.execute("DELETE FROM muscles WHERE id = %s", (muscle_id,))
 
 
+def get_or_create_exercise(name: str) -> int:
+    name = name.strip()
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO exercises (name) VALUES (%s) ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING id",
+            (name,)
+        )
+        return cur.fetchone()["id"]
+
+
 def list_exercises() -> list:
     with _conn() as conn:
         cur = conn.cursor()
