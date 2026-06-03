@@ -57,7 +57,13 @@ CATEGORY_LEGEND = [
     {"label": "体幹", "rgb": "0,199,190"},
 ]
 
+_CATEGORY_RGB = {
+    "上肢": "10,132,255",
+    "下肢": "255,159,10",
+    "体幹": "0,199,190",
+}
 app.jinja_env.globals['category_bg']     = lambda bp: _CATEGORY_BG.get(bp or "", "")
+app.jinja_env.globals['category_bg_rgb'] = lambda bp: _CATEGORY_RGB.get(bp or "", "128,128,128")
 app.jinja_env.globals['category_legend'] = CATEGORY_LEGEND
 
 
@@ -282,10 +288,11 @@ def exercise_new(session_id):
             return render_template("exercises/form.html",
                                    session=session, se=None, exercises=exercises,
                                    last_values=None)
+        one_rep_max = _parse_float(request.form.get("one_rep_max"))
         db.create_session_exercise(
             session_id=session_id,
             exercise_id=exercise_id,
-            one_rep_max=_parse_float(request.form.get("one_rep_max")),
+            one_rep_max=one_rep_max,
             weight_setting=_parse_float(request.form.get("weight_setting")),
             weight_low_load=_parse_float(request.form.get("weight_low_load")),
             reps=_parse_int(request.form.get("reps")),
@@ -295,6 +302,8 @@ def exercise_new(session_id):
             exp_earned=_parse_int(request.form.get("exp_earned")) or 0,
             muscle_groups=request.form.get("muscle_groups") or None,
         )
+        if one_rep_max:
+            db.update_exercise_one_rep_max(exercise_id, one_rep_max)
         flash("種目を追加しました。", "success")
         return redirect(url_for("session_detail", session_id=session_id))
 
@@ -320,11 +329,12 @@ def exercise_edit(session_id, se_id):
             flash("種目を選択してください。", "danger")
             return render_template("exercises/form.html",
                                    session=session, se=se, exercises=exercises)
+        one_rep_max = _parse_float(request.form.get("one_rep_max"))
         db.update_session_exercise(
             se_id=se_id,
             session_id=session_id,
             exercise_id=exercise_id,
-            one_rep_max=_parse_float(request.form.get("one_rep_max")),
+            one_rep_max=one_rep_max,
             weight_setting=_parse_float(request.form.get("weight_setting")),
             weight_low_load=_parse_float(request.form.get("weight_low_load")),
             reps=_parse_int(request.form.get("reps")),
@@ -334,6 +344,8 @@ def exercise_edit(session_id, se_id):
             exp_earned=_parse_int(request.form.get("exp_earned")) or 0,
             muscle_groups=request.form.get("muscle_groups") or None,
         )
+        if one_rep_max:
+            db.update_exercise_one_rep_max(exercise_id, one_rep_max)
         flash("種目を更新しました。", "success")
         return redirect(url_for("session_detail", session_id=session_id))
 
@@ -694,8 +706,9 @@ def session_apply_my_set_execute(session_id, my_set_id):
 
 @app.route("/exercises")
 def exercises_index():
-    exercises = db.list_exercises()
-    return render_template("exercises/index.html", exercises=exercises)
+    exercises = db.list_exercises_with_latest_data()
+    null_count = sum(1 for ex in exercises if not ex['has_log_data'])
+    return render_template("exercises/index.html", exercises=exercises, null_count=null_count)
 
 
 # ── Exercise progress ─────────────────────────────────────────────────────────
@@ -758,16 +771,31 @@ def exercise_meta_edit(exercise_id):
     if exercise is None:
         return redirect(url_for("exercises_index"))
     if request.method == "POST":
-        db.update_exercise_meta(
+        selected_muscles = request.form.getlist("primary_muscle")
+        db.update_exercise_full(
             exercise_id,
             body_part=request.form.get("body_part") or None,
             needs_bench=request.form.get("needs_bench") == "on",
-            primary_muscle=request.form.get("primary_muscle") or None,
+            primary_muscle=",".join(selected_muscles) if selected_muscles else None,
+            one_rep_max=_parse_float(request.form.get("one_rep_max")),
+            reps=_parse_int(request.form.get("reps")),
+            weight_low_load=_parse_float(request.form.get("weight_low_load")),
+            reps_low=_parse_int(request.form.get("reps_low")),
         )
         flash("種目情報を更新しました", "success")
-        return redirect(url_for("exercise_progress", exercise_id=exercise_id))
+        return redirect(url_for("exercises_index"))
     muscles = db.list_muscles()
     return render_template("exercises/meta_form.html", exercise=exercise, muscles=muscles)
+
+
+@app.route("/exercises/<int:exercise_id>/delete", methods=["POST"])
+def exercise_delete_master(exercise_id):
+    error = db.delete_exercise(exercise_id)
+    if error:
+        flash(error, "danger")
+    else:
+        flash("種目を削除しました", "success")
+    return redirect(url_for("exercises_index"))
 
 
 if __name__ == "__main__":

@@ -1,18 +1,19 @@
 {% extends "base.html" %}
-{% set back_url = url_for('exercise_progress', exercise_id=exercise.id) %}
+{% set back_url = url_for('exercises_index') %}
 {% block title %}{{ exercise.name }} 編集{% endblock %}
-{% block nav_title %}種目設定{% endblock %}
+{% block nav_title %}種目編集{% endblock %}
 {% block nav_exercises %}active{% endblock %}
 
 {% block content %}
 <h5 class="mb-1 text-info">{{ exercise.name }}</h5>
-<p class="text-secondary small mb-4">カテゴリ・主導筋・ベンチ台設定</p>
+<p class="text-secondary small mb-4">種目マスタの設定</p>
 
 <form method="post">
-  {# Body part #}
+
+  {# ── カテゴリ ──────────────────────────────────────── #}
   <div class="mb-4">
     <label class="form-label fw-bold">カテゴリ</label>
-    <div class="d-flex gap-2 flex-wrap">
+    <div class="d-flex gap-3 flex-wrap">
       {% for bp in ['上肢', '下肢', '体幹'] %}
       <div class="form-check form-check-inline">
         <input class="form-check-input" type="radio" name="body_part"
@@ -30,21 +31,27 @@
     </div>
   </div>
 
-  {# Primary muscle #}
+  {# ── 主導筋（複数選択） ───────────────────────────── #}
   <div class="mb-4">
-    <label class="form-label fw-bold">主導筋 <span class="text-secondary small">（カード背景色の基準）</span></label>
-    <select class="form-select bg-dark text-light border-secondary" name="primary_muscle" id="primary_muscle">
-      <option value="">未設定</option>
+    <label class="form-label fw-bold">主導筋 <span class="text-secondary small">（複数選択可）</span></label>
+    {% set selected_muscles = (exercise.primary_muscle or '').split(',') | map('trim') | list %}
+    <div class="d-flex flex-wrap gap-2">
       {% for m in muscles %}
-      <option value="{{ m.name }}" {% if exercise.primary_muscle == m.name %}selected{% endif %}>{{ m.name }}</option>
+      <div class="form-check mb-0">
+        <input class="form-check-input" type="checkbox"
+               name="primary_muscle" value="{{ m.name }}"
+               id="pm_{{ m.id }}"
+               {% if m.name in selected_muscles %}checked{% endif %}>
+        <label class="form-check-label small" for="pm_{{ m.id }}">{{ m.name }}</label>
+      </div>
       {% endfor %}
-    </select>
-    <a href="{{ url_for('muscles_index') }}" class="text-secondary small mt-1 d-inline-block">
-      ＋ 主導筋リストを編集
+    </div>
+    <a href="{{ url_for('muscles_index') }}" class="text-secondary small mt-2 d-inline-block">
+      ＋ 筋肉リストを編集
     </a>
   </div>
 
-  {# Needs bench #}
+  {# ── ベンチ台 ─────────────────────────────────────── #}
   <div class="mb-4">
     <div class="form-check form-switch">
       <input class="form-check-input" type="checkbox" role="switch"
@@ -54,11 +61,48 @@
         🪑 ベンチ台が必要
       </label>
     </div>
+  </div>
+
+  {# ── 1RM ──────────────────────────────────────────── #}
+  <div class="mb-3">
+    <label class="form-label fw-bold">1RM <span class="text-secondary fw-normal">(kg)</span></label>
+    <input type="number" class="form-control bg-dark text-light border-secondary"
+           name="one_rep_max" inputmode="decimal" step="0.1" min="0"
+           value="{{ exercise.one_rep_max or '' }}"
+           placeholder="例: 80.0">
     <div class="text-secondary small mt-1">
-      ワークアウト中にベンチ台の空き確認が必要な種目にチェック
+      トレーニング記録保存時に自動更新されます。手動で上書きも可能。
     </div>
   </div>
 
-  <button type="submit" class="btn btn-warning btn-lg w-100">保存</button>
+  {# ── 高負荷 ───────────────────────────────────────── #}
+  <div class="mb-3">
+    <label class="form-label fw-bold">高負荷rep数</label>
+    <input type="number" class="form-control bg-dark text-light border-secondary"
+           name="reps" inputmode="numeric" min="1" max="200"
+           value="{{ exercise.reps or '' }}"
+           placeholder="未設定 = 暫定8rep">
+    <div class="text-secondary small mt-1">高負荷時のウェイトは 1RM×80% で自動計算されます。</div>
+  </div>
+
+  {# ── 低負荷 ───────────────────────────────────────── #}
+  <div class="row g-2 mb-3">
+    <div class="col-6">
+      <label class="form-label fw-bold">低負荷ウェイト <span class="text-secondary fw-normal">(kg)</span></label>
+      <input type="number" class="form-control bg-dark text-light border-secondary"
+             name="weight_low_load" inputmode="decimal" step="0.1" min="0"
+             value="{{ exercise.weight_low_load or '' }}"
+             placeholder="未設定 = 1RM×50%">
+    </div>
+    <div class="col-6">
+      <label class="form-label fw-bold">低負荷rep数</label>
+      <input type="number" class="form-control bg-dark text-light border-secondary"
+             name="reps_low" inputmode="numeric" min="1" max="200"
+             value="{{ exercise.reps_low or '' }}"
+             placeholder="未設定 = 暫定20rep">
+    </div>
+  </div>
+
+  <button type="submit" class="btn btn-warning btn-lg w-100 mt-2">保存</button>
 </form>
 {% endblock %}

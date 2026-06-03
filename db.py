@@ -342,11 +342,63 @@ def list_exercises() -> list:
         return cur.fetchall()
 
 
+def list_exercises_with_latest_data() -> list:
+    """All exercises with master data + fallback from latest session logs. Derived cols computed in Python."""
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT
+                e.id, e.name, e.body_part, e.needs_bench, e.primary_muscle,
+                e.one_rep_max    AS stored_orm,
+                e.reps           AS stored_reps,
+                e.weight_low_load AS stored_wll,
+                e.reps_low       AS stored_reps_low,
+                COALESCE(e.one_rep_max,     orm_log.one_rep_max)   AS one_rep_max,
+                COALESCE(e.reps,            reps_log.reps)         AS eff_reps,
+                COALESCE(e.weight_low_load, wll_log.weight_low_load) AS eff_wll
+            FROM exercises e
+            LEFT JOIN LATERAL (
+                SELECT se.one_rep_max FROM session_exercises se
+                JOIN workout_sessions ws ON ws.id = se.session_id
+                WHERE se.exercise_id = e.id AND se.one_rep_max IS NOT NULL
+                ORDER BY ws.session_date DESC LIMIT 1
+            ) orm_log ON true
+            LEFT JOIN LATERAL (
+                SELECT se.reps FROM session_exercises se
+                JOIN workout_sessions ws ON ws.id = se.session_id
+                WHERE se.exercise_id = e.id AND se.reps IS NOT NULL
+                ORDER BY ws.session_date DESC LIMIT 1
+            ) reps_log ON true
+            LEFT JOIN LATERAL (
+                SELECT se.weight_low_load FROM session_exercises se
+                JOIN workout_sessions ws ON ws.id = se.session_id
+                WHERE se.exercise_id = e.id AND se.weight_low_load IS NOT NULL
+                ORDER BY ws.session_date DESC LIMIT 1
+            ) wll_log ON true
+            ORDER BY e.body_part NULLS LAST, e.name
+        """)
+        rows = cur.fetchall()
+
+    result = []
+    for row in rows:
+        r = dict(row)
+        orm = r['one_rep_max']
+        r['high_load_weight'] = round(orm * 0.8, 1) if orm else None
+        r['high_load_reps']   = r['eff_reps'] or 8
+        wll = r['eff_wll']
+        r['low_load_weight']  = wll if wll else (round(orm * 0.5, 1) if orm else None)
+        r['low_load_reps']    = r['stored_reps_low'] or 20
+        r['has_log_data']     = orm is not None
+        result.append(r)
+    return result
+
+
 def get_exercise(exercise_id: int):
     with _conn() as conn:
         cur = conn.cursor()
         cur.execute("""
-            SELECT id, name, body_part, needs_bench, primary_muscle
+            SELECT id, name, body_part, needs_bench, primary_muscle,
+                   one_rep_max, reps, weight_low_load, reps_low
             FROM exercises WHERE id = %s
         """, (exercise_id,))
         return cur.fetchone()
@@ -360,6 +412,42 @@ def update_exercise_meta(exercise_id: int, body_part, needs_bench: bool, primary
             SET body_part = %s, needs_bench = %s, primary_muscle = %s
             WHERE id = %s
         """, (body_part or None, bool(needs_bench), primary_muscle or None, exercise_id))
+
+
+def update_exercise_full(exercise_id: int, body_part, needs_bench: bool, primary_muscle,
+                          one_rep_max, reps, weight_low_load, reps_low) -> None:
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            UPDATE exercises
+            SET body_part=%s, needs_bench=%s, primary_muscle=%s,
+                one_rep_max=%s, reps=%s, weight_low_load=%s, reps_low=%s
+            WHERE id=%s
+        """, (body_part or None, bool(needs_bench), primary_muscle or None,
+              one_rep_max, reps, weight_low_load, reps_low, exercise_id))
+
+
+def update_exercise_one_rep_max(exercise_id: int, one_rep_max: float) -> None:
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute("UPDATE exercises SET one_rep_max = %s WHERE id = %s",
+                    (one_rep_max, exercise_id))
+
+
+def delete_exercise(exercise_id: int) -> str | None:
+    """Returns error message if exercise is in use, None on success."""
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) FROM session_exercises WHERE exercise_id = %s", (exercise_id,))
+        count = cur.fetchone()[0]
+        if count > 0:
+            return f"このメニューはトレーニングログ {count} 件で使われているため削除できません"
+        cur.execute("SELECT COUNT(*) FROM my_set_exercises WHERE exercise_id = %s", (exercise_id,))
+        count = cur.fetchone()[0]
+        if count > 0:
+            return f"このメニューはマイセット {count} 件で使われているため削除できません"
+        cur.execute("DELETE FROM exercises WHERE id = %s", (exercise_id,))
+        return None
 
 
 def bulk_update_exercise_meta(updates: list) -> None:

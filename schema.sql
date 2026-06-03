@@ -64,6 +64,10 @@ CREATE INDEX IF NOT EXISTS idx_mse_my_set ON my_set_exercises(my_set_id);
 ALTER TABLE exercises ADD COLUMN IF NOT EXISTS body_part      TEXT;
 ALTER TABLE exercises ADD COLUMN IF NOT EXISTS needs_bench    BOOLEAN DEFAULT FALSE;
 ALTER TABLE exercises ADD COLUMN IF NOT EXISTS primary_muscle TEXT;
+ALTER TABLE exercises ADD COLUMN IF NOT EXISTS one_rep_max    REAL;
+ALTER TABLE exercises ADD COLUMN IF NOT EXISTS reps           INTEGER;
+ALTER TABLE exercises ADD COLUMN IF NOT EXISTS weight_low_load REAL;
+ALTER TABLE exercises ADD COLUMN IF NOT EXISTS reps_low       INTEGER;
 
 -- Seed known exercise metadata (only when not yet set)
 UPDATE exercises SET body_part='上肢', needs_bench=false, primary_muscle='広背筋'     WHERE name='シーテッドロー'           AND body_part IS NULL;
