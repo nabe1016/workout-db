@@ -451,21 +451,35 @@ def create_my_set_exercise(my_set_id, exercise_id, one_rep_max,
                             weight_setting, weight_low_load, reps, muscle_groups) -> int:
     with _conn() as conn:
         cur = conn.cursor()
-        sort_order = _mse_next_sort(cur, my_set_id)
-        cur.execute("""
-            INSERT INTO my_set_exercises
-                (my_set_id, exercise_id, sort_order,
-                 one_rep_max, weight_setting, weight_low_load, reps, muscle_groups)
-            VALUES (%s,%s,%s, %s,%s,%s,%s,%s)
-            ON CONFLICT (my_set_id, exercise_id) DO UPDATE
-                SET sort_order=%s, one_rep_max=%s, weight_setting=%s,
+        cur.execute(
+            "SELECT id FROM my_set_exercises WHERE my_set_id = %s AND exercise_id = %s",
+            (my_set_id, exercise_id)
+        )
+        existing = cur.fetchone()
+        if existing:
+            cur.execute("""
+                UPDATE my_set_exercises
+                SET one_rep_max=%s, weight_setting=%s,
                     weight_low_load=%s, reps=%s, muscle_groups=%s
-            RETURNING id
-        """, (
-            my_set_id, exercise_id, sort_order,
-            one_rep_max, weight_setting, weight_low_load or None, reps or None, muscle_groups or None,
-            sort_order, one_rep_max, weight_setting, weight_low_load or None, reps or None, muscle_groups or None,
-        ))
+                WHERE id=%s
+                RETURNING id
+            """, (
+                one_rep_max, weight_setting,
+                weight_low_load or None, reps or None, muscle_groups or None,
+                existing["id"]
+            ))
+        else:
+            sort_order = _mse_next_sort(cur, my_set_id)
+            cur.execute("""
+                INSERT INTO my_set_exercises
+                    (my_set_id, exercise_id, sort_order,
+                     one_rep_max, weight_setting, weight_low_load, reps, muscle_groups)
+                VALUES (%s,%s,%s, %s,%s,%s,%s,%s)
+                RETURNING id
+            """, (
+                my_set_id, exercise_id, sort_order,
+                one_rep_max, weight_setting, weight_low_load or None, reps or None, muscle_groups or None
+            ))
         return cur.fetchone()["id"]
 
 
