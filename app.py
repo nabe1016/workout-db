@@ -108,13 +108,19 @@ def dashboard():
     today_training_plan = db.get_today_plan()
     latest_weight = db.get_latest_weight()
     today_session = db.get_today_session()
+    exp_trend = db.get_exp_trend(8)
+    weight_trend = db.get_weight_trend(14)
+    personal_records = db.get_personal_records(6)
     return render_template("dashboard.html",
                            stats=stats,
                            today_plan=today_plan,
                            today_training_plan=today_training_plan,
                            latest_weight=latest_weight,
                            today_session=today_session,
-                           today=_today())
+                           today=_today(),
+                           exp_trend=exp_trend,
+                           weight_trend=weight_trend,
+                           personal_records=personal_records)
 
 
 @app.route("/today")

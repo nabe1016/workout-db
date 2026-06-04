@@ -1316,6 +1316,49 @@ def get_latest_weight():
 
 # ── Dashboard stats ───────────────────────────────────────────────────────────
 
+def get_exp_trend(limit: int = 8) -> list:
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT session_date, day_of_week, COALESCE(total_exp, 0) AS total_exp
+            FROM workout_sessions
+            ORDER BY session_date DESC
+            LIMIT %s
+        """, (limit,))
+        rows = cur.fetchall()
+        return list(reversed(rows))
+
+
+def get_weight_trend(limit: int = 14) -> list:
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT logged_date, weight_kg
+            FROM body_weight_log
+            ORDER BY logged_date DESC
+            LIMIT %s
+        """, (limit,))
+        rows = cur.fetchall()
+        return list(reversed(rows))
+
+
+def get_personal_records(limit: int = 6) -> list:
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT ex.name AS exercise_name, ex.body_part, ex.primary_muscle,
+                   MAX(se.one_rep_max) AS best_1rm,
+                   MAX(se.weight_setting) AS best_weight
+            FROM session_exercises se
+            JOIN exercises ex ON ex.id = se.exercise_id
+            WHERE se.one_rep_max IS NOT NULL AND se.one_rep_max > 0
+            GROUP BY ex.id, ex.name, ex.body_part, ex.primary_muscle
+            ORDER BY best_1rm DESC
+            LIMIT %s
+        """, (limit,))
+        return cur.fetchall()
+
+
 def get_dashboard_stats() -> dict:
     import datetime
     with _conn() as conn:
