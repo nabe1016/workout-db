@@ -3,6 +3,8 @@
 {% block title %}{{ session.session_date.strftime('%m/%d') }}（{{ session.day_of_week }}）{% endblock %}
 {% block nav_title %}詳細{% endblock %}
 {% block nav_actions %}
+<button type="button" id="recalc-btn"
+        class="btn btn-outline-secondary btn-sm">再計算</button>
 <a href="{{ url_for('exercise_new', session_id=session.id) }}"
    class="btn btn-outline-warning btn-sm">＋🏋️</a>
 {% endblock %}
@@ -246,6 +248,8 @@
   <a href="{{ url_for('session_copy_from', session_id=session.id) }}"
      class="btn btn-outline-info btn-sm flex-fill">直近からコピー</a>
 </div>
+{# スティッキーバー分のスペーサー（1.1倍） #}
+<div style="height:4rem;"></div>
 
 {% else %}
 {# Empty state #}
@@ -486,6 +490,42 @@
   }
 
   checkMuscleConflicts();
+
+  // ── EXP 再計算 ────────────────────────────────────────────────────────────
+  var recalcBtn = document.getElementById('recalc-btn');
+  if (recalcBtn) {
+    recalcBtn.addEventListener('click', function () {
+      recalcBtn.disabled = true;
+      recalcBtn.textContent = '…';
+      fetch('/api/sessions/{{ session.id }}/recalculate-exp', { method: 'POST' })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          Object.keys(data.exercise_exp).forEach(function (seId) {
+            var expEl = document.querySelector('.exp-badge-' + seId);
+            if (expEl) expEl.textContent = data.exercise_exp[seId].toLocaleString() + ' EXP';
+          });
+          var totalEl = document.getElementById('total-exp');
+          if (totalEl && data.session_total_exp !== undefined) {
+            totalEl.textContent = data.session_total_exp.toLocaleString();
+          }
+          if (data.category_exp) {
+            Object.keys(data.category_exp).forEach(function (cat) {
+              var el = document.getElementById('cat-exp-' + cat);
+              if (el) el.textContent = data.category_exp[cat].toLocaleString();
+            });
+          }
+          recalcBtn.textContent = '✓';
+          setTimeout(function () {
+            recalcBtn.textContent = '再計算';
+            recalcBtn.disabled = false;
+          }, 1500);
+        })
+        .catch(function () {
+          recalcBtn.textContent = '再計算';
+          recalcBtn.disabled = false;
+        });
+    });
+  }
 
   // ── Load-mode toggle & quick edit ────────────────────────────────────────
   function applyQuickEdit(seId, data) {

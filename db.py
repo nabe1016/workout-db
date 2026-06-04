@@ -1489,6 +1489,69 @@ def build_advice(session, exercises: list) -> tuple:
     return advice, intensity, overload_tips
 
 
+def recalculate_all_exp(session_id: int) -> dict:
+    """全種目のEXPを現在の計算式で再計算してDBを更新する。"""
+    bw_row = get_latest_weight()
+    body_weight = float(bw_row["weight_kg"]) if bw_row else 65.0
+
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT se.*, ex.bodyweight_ratio
+            FROM session_exercises se
+            JOIN exercises ex ON ex.id = se.exercise_id
+            WHERE se.session_id = %s
+        """, (session_id,))
+        exercises = cur.fetchall()
+
+        exercise_exp = {}
+        for se in exercises:
+            mode = se.get("load_mode") or "high"
+            bw_ratio = se.get("bodyweight_ratio")
+            reps = se.get("reps") or 10
+
+            completions = {i: bool(se.get(f"set{i}_completed")) for i in range(1, 11)}
+            completed_count = sum(1 for v in completions.values() if v)
+
+            if bw_ratio:
+                weight = round(body_weight * float(bw_ratio), 1)
+            elif mode == "low":
+                weight = se["weight_low_load"] or se["weight_setting"]
+            else:
+                weight = se["weight_setting"] or se["weight_low_load"]
+
+            exp = round((weight or 1) * reps * completed_count)
+            cur.execute(
+                "UPDATE session_exercises SET exp_earned = %s WHERE id = %s",
+                (exp, se["id"])
+            )
+            exercise_exp[str(se["id"])] = exp
+
+    recalculate_session_exp(session_id)
+
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT total_exp FROM workout_sessions WHERE id = %s", (session_id,))
+        total = cur.fetchone()["total_exp"]
+        cur.execute("""
+            SELECT ex.body_part, COALESCE(SUM(se.exp_earned), 0) AS cat_exp
+            FROM session_exercises se
+            JOIN exercises ex ON ex.id = se.exercise_id
+            WHERE se.session_id = %s
+            GROUP BY ex.body_part
+        """, (session_id,))
+        category_exp = {"上肢": 0, "下肢": 0, "体幹": 0}
+        for row in cur.fetchall():
+            if row["body_part"] in category_exp:
+                category_exp[row["body_part"]] = int(row["cat_exp"])
+
+    return {
+        "exercise_exp":      exercise_exp,
+        "session_total_exp": total,
+        "category_exp":      category_exp,
+    }
+
+
 def build_volume_metrics(session, exercises: list, body_weight: float = 65.0) -> dict:
     """Calculate muscle volume metrics for a session.
 

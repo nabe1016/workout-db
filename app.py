@@ -504,6 +504,14 @@ def session_exercises_bulk_delete(session_id):
     return redirect(url_for("session_detail", session_id=session_id))
 
 
+# ── Session EXP recalculate (AJAX) ────────────────────────────────────────────
+
+@app.route("/api/sessions/<int:session_id>/recalculate-exp", methods=["POST"])
+def session_recalculate_exp(session_id):
+    result = db.recalculate_all_exp(session_id)
+    return jsonify(result)
+
+
 # ── Inline set toggle (AJAX) ──────────────────────────────────────────────────
 
 @app.route("/api/se/<int:se_id>/toggle/<int:set_num>", methods=["POST"])
