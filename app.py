@@ -464,11 +464,16 @@ def session_advice(session_id):
         1 for ex in exercises
         if ex["set1_completed"] and ex["set2_completed"] and ex["set3_completed"]
     )
+    bw_row = db.get_latest_weight()
+    body_weight = float(bw_row["weight_kg"]) if bw_row else 65.0
+    volume_metrics = db.build_volume_metrics(session, exercises, body_weight)
     return render_template("sessions/advice.html",
                            session=session, exercises=exercises,
                            advice=advice, intensity=intensity,
                            overload_tips=overload_tips,
-                           completed_count=completed_count)
+                           completed_count=completed_count,
+                           volume_metrics=volume_metrics,
+                           body_weight=body_weight)
 
 
 # ── Reorder (AJAX) ───────────────────────────────────────────────────────────

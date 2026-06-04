@@ -45,6 +45,68 @@
   </div>
 </div>
 
+{# ── 筋ボリューム分析 ── #}
+{% set vm = volume_metrics %}
+<div class="card mb-3">
+  <div class="card-body py-3 px-3">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <div class="section-label mb-0">筋ボリューム分析</div>
+      <span class="badge"
+            style="background:rgba(255,214,10,0.15);border:1px solid rgba(255,214,10,0.4);
+                   color:var(--yellow);font-size:0.7rem;">{{ vm.purpose }}</span>
+    </div>
+
+    {# EXP 内訳 #}
+    <div class="mb-3">
+      <div style="font-size:0.72rem;color:var(--txt-2);margin-bottom:0.4rem;">部位別EXP</div>
+      <div class="d-flex gap-2">
+        {% set parts = [('上肢', 'var(--teal)'), ('下肢', 'var(--green)'), ('体幹', '#b06dff')] %}
+        {% for part, color in parts %}
+        <div class="flex-fill text-center" style="background:rgba(255,255,255,0.04);border-radius:0.5rem;padding:0.5rem 0.25rem;">
+          <div style="font-size:1rem;font-weight:700;color:{{ color }};">{{ "{:,}".format(vm.cat_exp[part]) }}</div>
+          <div style="font-size:0.65rem;color:var(--txt-2);">{{ part }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    {% if vm.has_bodyweight %}
+    {# 自重ボリューム指標 #}
+    <div class="mb-2">
+      <div class="d-flex justify-content-between mb-1" style="font-size:0.72rem;color:var(--txt-2);">
+        <span>ジム換算ボリューム比（{{ body_weight | int }}kg基準）</span>
+        <span style="color:var(--teal);">{{ vm.gym_eq_pct }}%</span>
+      </div>
+      <div class="progress" style="height:6px;background:rgba(255,255,255,0.08);">
+        <div class="progress-bar" style="width:{{ vm.gym_eq_pct }}%;background:var(--teal);"></div>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="mb-2">
+      <div class="d-flex justify-content-between mb-1" style="font-size:0.72rem;color:var(--txt-2);">
+        <span>神経系負荷（高重量セット比率）</span>
+        <span style="color:var(--yellow);">{{ vm.neural_pct }}%</span>
+      </div>
+      <div class="progress" style="height:6px;background:rgba(255,255,255,0.08);">
+        <div class="progress-bar" style="width:{{ vm.neural_pct }}%;background:var(--yellow);"></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="d-flex justify-content-between mb-1" style="font-size:0.72rem;color:var(--txt-2);">
+        <span>疲労推定</span>
+        <span style="color:{% if vm.fatigue_pct >= 70 %}#ff6b6b{% elif vm.fatigue_pct >= 40 %}var(--yellow){% else %}var(--green){% endif %};">
+          {{ vm.fatigue_pct }}%
+        </span>
+      </div>
+      <div class="progress" style="height:6px;background:rgba(255,255,255,0.08);">
+        <div class="progress-bar" style="width:{{ vm.fatigue_pct }}%;background:{% if vm.fatigue_pct >= 70 %}#ff6b6b{% elif vm.fatigue_pct >= 40 %}var(--yellow){% else %}var(--green){% endif %};"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% if session.post_notes %}
 <div class="card mb-3">
   <div class="card-body py-2 px-3">

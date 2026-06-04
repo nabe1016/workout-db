@@ -60,7 +60,8 @@ def get_session_with_exercises(session_id: int):
         session = cur.fetchone()
         cur.execute("""
             SELECT se.*, ex.name AS exercise_name,
-                   ex.body_part, ex.needs_bench, ex.primary_muscle
+                   ex.body_part, ex.needs_bench, ex.primary_muscle,
+                   ex.bodyweight_ratio, ex.is_time_based
             FROM session_exercises se
             JOIN exercises ex ON ex.id = se.exercise_id
             WHERE se.session_id = %s
@@ -248,7 +249,12 @@ def quick_edit_se(se_id: int, one_rep_max=None, reps=None,
     """Inline update of 1RM / reps / low_load_pct / load_mode. Recalculates weights and EXP."""
     with _conn() as conn:
         cur = conn.cursor()
-        cur.execute("SELECT * FROM session_exercises WHERE id = %s", (se_id,))
+        cur.execute("""
+            SELECT se.*, ex.bodyweight_ratio
+            FROM session_exercises se
+            JOIN exercises ex ON ex.id = se.exercise_id
+            WHERE se.id = %s
+        """, (se_id,))
         se = cur.fetchone()
         if se is None:
             return None
@@ -259,7 +265,14 @@ def quick_edit_se(se_id: int, one_rep_max=None, reps=None,
                    else float(se.get("low_load_pct") or 30)
         new_mode = load_mode if load_mode is not None else (se.get("load_mode") or "high")
 
-        if new_orm:
+        bw_ratio = se.get("bodyweight_ratio")
+        if bw_ratio:
+            bw_row = get_latest_weight()
+            body_weight = float(bw_row["weight_kg"]) if bw_row else 65.0
+            eff_weight = round(body_weight * bw_ratio, 1)
+            new_ws = eff_weight
+            new_wl = eff_weight
+        elif new_orm:
             new_ws  = round(float(new_orm) * 0.8, 1)
             new_wl  = round(float(new_orm) * new_pct / 100, 1)
         else:
@@ -653,12 +666,12 @@ _HOME_PRESET = [
 ]
 
 
-def create_my_set(name: str, description: str, location: str = 'gym') -> int:
+def create_my_set(name: str, description: str, location: str = 'gym', purpose: str = None) -> int:
     with _conn() as conn:
         cur = conn.cursor()
         cur.execute(
-            "INSERT INTO my_sets (name, description, location) VALUES (%s, %s, %s) RETURNING id",
-            (name, description or None, location)
+            "INSERT INTO my_sets (name, description, location, purpose) VALUES (%s, %s, %s, %s) RETURNING id",
+            (name, description or None, location, purpose or None)
         )
         return cur.fetchone()["id"]
 
@@ -666,6 +679,10 @@ def create_my_set(name: str, description: str, location: str = 'gym') -> int:
 def seed_home_preset_exercises(my_set_id: int) -> None:
     with _conn() as conn:
         cur = conn.cursor()
+        cur.execute(
+            "UPDATE my_sets SET purpose='自宅メンテナンス' WHERE id=%s",
+            (my_set_id,)
+        )
         for i, (name, reps, target_sets, muscle_groups) in enumerate(_HOME_PRESET, 1):
             cur.execute("SELECT id FROM exercises WHERE name = %s", (name,))
             ex = cur.fetchone()
@@ -939,9 +956,11 @@ def toggle_set_completion(se_id: int, set_num: int) -> dict:
     with _conn() as conn:
         cur = conn.cursor()
         cur.execute("""
-            SELECT se.*, ws.rep_count AS session_rep_count
+            SELECT se.*, ws.rep_count AS session_rep_count,
+                   ex.bodyweight_ratio
             FROM session_exercises se
             JOIN workout_sessions ws ON ws.id = se.session_id
+            JOIN exercises ex ON ex.id = se.exercise_id
             WHERE se.id = %s
         """, (se_id,))
         se = cur.fetchone()
@@ -954,7 +973,12 @@ def toggle_set_completion(se_id: int, set_num: int) -> dict:
         completed_count = sum(1 for v in completions.values() if v)
 
         mode = se.get("load_mode") or "high"
-        if mode == "low":
+        bw_ratio = se.get("bodyweight_ratio")
+        if bw_ratio:
+            bw_row = get_latest_weight()
+            body_weight = float(bw_row["weight_kg"]) if bw_row else 65.0
+            weight = round(body_weight * bw_ratio, 1)
+        elif mode == "low":
             weight = se["weight_low_load"] if se["weight_low_load"] else se["weight_setting"]
         else:
             weight = se["weight_setting"] if se["weight_setting"] else se["weight_low_load"]
@@ -1463,3 +1487,86 @@ def build_advice(session, exercises: list) -> tuple:
                 })
 
     return advice, intensity, overload_tips
+
+
+def build_volume_metrics(session, exercises: list, body_weight: float = 65.0) -> dict:
+    """Calculate muscle volume metrics for a session.
+
+    Returns dict with:
+      cat_exp: {上肢, 下肢, 体幹}
+      has_bodyweight: bool
+      purpose: str | None  (determined from session's my_set or exercise mix)
+      fatigue_pct: int  (estimated CNS fatigue 0-100)
+      neural_pct: int   (neural vs metabolic ratio 0-100)
+      gym_eq_pct: int   (bodyweight volume as % of gym-equivalent)
+    """
+    cat_exp = {"上肢": 0, "下肢": 0, "体幹": 0}
+    total_gym_volume = 0.0
+    total_bw_volume  = 0.0
+    has_bodyweight   = False
+    heavy_sets       = 0
+    total_sets       = 0
+
+    for ex in exercises:
+        bp = ex.get("body_part") or ""
+        bw_ratio = ex.get("bodyweight_ratio")
+        mode = ex.get("load_mode") or "high"
+        reps = ex.get("reps") or 10
+
+        if mode == "low":
+            weight = ex.get("weight_low_load") or ex.get("weight_setting")
+        else:
+            weight = ex.get("weight_setting") or ex.get("weight_low_load")
+
+        done = sum(1 for i in range(1, 11) if ex.get(f"set{i}_completed"))
+        if done == 0:
+            continue
+
+        total_sets += done
+        exp = ex.get("exp_earned") or 0
+
+        if bw_ratio:
+            has_bodyweight = True
+            eff_weight = body_weight * bw_ratio
+            bw_vol = eff_weight * reps * done
+            total_bw_volume += bw_vol
+            gym_eq = bw_vol
+        else:
+            w = float(weight or 0)
+            gym_eq = w * reps * done
+            total_gym_volume += gym_eq
+            if (weight or 0) >= 40:
+                heavy_sets += done
+
+        if bp in cat_exp:
+            cat_exp[bp] += exp
+
+    total_volume = total_gym_volume + total_bw_volume
+
+    fatigue_pct = min(100, int(heavy_sets / max(total_sets, 1) * 100))
+
+    if total_volume > 0:
+        neural_pct = min(100, int(total_gym_volume / total_volume * 100))
+        gym_eq_pct = min(100, int(total_bw_volume / total_volume * 100)) if has_bodyweight else 0
+    else:
+        neural_pct = 0
+        gym_eq_pct = 0
+
+    total_exp = session.get("total_exp") or 0
+    if total_exp >= 500 and has_bodyweight and not total_gym_volume:
+        purpose = "自宅メンテナンス"
+    elif total_exp >= 8000:
+        purpose = "筋肥大"
+    elif total_exp >= 3000:
+        purpose = "筋力向上"
+    else:
+        purpose = "維持・回復"
+
+    return {
+        "cat_exp":       cat_exp,
+        "has_bodyweight": has_bodyweight,
+        "purpose":        purpose,
+        "fatigue_pct":    fatigue_pct,
+        "neural_pct":     neural_pct,
+        "gym_eq_pct":     gym_eq_pct,
+    }

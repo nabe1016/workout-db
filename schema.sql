@@ -212,3 +212,17 @@ ON CONFLICT (name) DO UPDATE SET body_part='体幹', needs_bench=false, primary_
 
 -- ブルガリアンスクワットはジム・自宅どちらでも使用
 UPDATE exercises SET location='both' WHERE name='ブルガリアンスクワット';
+
+-- 筋ボリューム計算用カラム
+ALTER TABLE exercises  ADD COLUMN IF NOT EXISTS bodyweight_ratio REAL;
+ALTER TABLE exercises  ADD COLUMN IF NOT EXISTS is_time_based    BOOLEAN DEFAULT FALSE;
+ALTER TABLE my_sets    ADD COLUMN IF NOT EXISTS purpose          TEXT;
+
+-- 自重種目の実効負荷率をセット
+UPDATE exercises SET bodyweight_ratio=0.65 WHERE name='プッシュアップバー';
+UPDATE exercises SET bodyweight_ratio=0.40 WHERE name='アブローラー';
+UPDATE exercises SET bodyweight_ratio=0.60 WHERE name='ブルガリアンスクワット';
+UPDATE exercises SET bodyweight_ratio=0.65 WHERE name='片脚カーフレイズ';
+UPDATE exercises SET bodyweight_ratio=0.20 WHERE name='トゥレイズ';
+UPDATE exercises SET bodyweight_ratio=0.30 WHERE name='ベンチレッグレイズ';
+UPDATE exercises SET bodyweight_ratio=0.20, is_time_based=TRUE WHERE name='プランク';
