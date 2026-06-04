@@ -435,19 +435,138 @@ def update_exercise_one_rep_max(exercise_id: int, one_rep_max: float) -> None:
 
 
 def delete_exercise(exercise_id: int):
-    """Returns error message string if exercise is in use, None on success."""
+    """
+    Returns error message if exercise has completed sets.
+    If only registered (never performed), deletes all related records then the exercise.
+    """
     with _conn() as conn:
         cur = conn.cursor()
-        cur.execute("SELECT COUNT(*) AS n FROM session_exercises WHERE exercise_id = %s", (exercise_id,))
-        count = cur.fetchone()["n"]
-        if count > 0:
-            return f"このメニューはトレーニングログ {count} 件で使われているため削除できません"
-        cur.execute("SELECT COUNT(*) AS n FROM my_set_exercises WHERE exercise_id = %s", (exercise_id,))
-        count = cur.fetchone()["n"]
-        if count > 0:
-            return f"このメニューはマイセット {count} 件で使われているため削除できません"
+        # 1セットでも完了している = 削除不可
+        cur.execute("""
+            SELECT COUNT(*) AS n FROM session_exercises
+            WHERE exercise_id = %s
+            AND (
+                COALESCE(set1_completed, false) OR
+                COALESCE(set2_completed, false) OR
+                COALESCE(set3_completed, false) OR
+                COALESCE(completed, false) OR
+                COALESCE(exp_earned, 0) > 0
+            )
+        """, (exercise_id,))
+        completed_count = cur.fetchone()["n"]
+        if completed_count > 0:
+            return f"このメニューは {completed_count} 回トレーニング実施済みのため削除できません"
+        # 登録はあるが未実施の場合は関連レコードごと削除
+        cur.execute("DELETE FROM session_exercises WHERE exercise_id = %s", (exercise_id,))
+        cur.execute("DELETE FROM my_set_exercises WHERE exercise_id = %s", (exercise_id,))
         cur.execute("DELETE FROM exercises WHERE id = %s", (exercise_id,))
         return None
+
+
+def find_duplicate_exercise_groups() -> list:
+    """NFKC正規化で同一名とみなせる種目グループを返す（各グループはdict のlist）。"""
+    import unicodedata
+    from collections import defaultdict
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT e.id, e.name, e.body_part, e.needs_bench, e.primary_muscle, e.one_rep_max,
+                   COUNT(se.id) AS session_count,
+                   SUM(CASE WHEN COALESCE(se.exp_earned, 0) > 0 THEN 1 ELSE 0 END) AS completed_count
+            FROM exercises e
+            LEFT JOIN session_exercises se ON se.exercise_id = e.id
+            GROUP BY e.id
+            ORDER BY e.name
+        """)
+        exercises = cur.fetchall()
+
+    groups = defaultdict(list)
+    for ex in exercises:
+        norm = unicodedata.normalize('NFKC', ex['name']).strip()
+        groups[norm].append(dict(ex))
+    return [g for g in groups.values() if len(g) > 1]
+
+
+def auto_merge_duplicate_exercises() -> list:
+    """重複種目を自動統合し、(kept_name, deleted_name) のリストを返す。"""
+    import unicodedata
+    from collections import defaultdict
+
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT e.id, e.name, e.body_part, e.needs_bench, e.primary_muscle, e.one_rep_max,
+                   COUNT(se.id) AS session_count,
+                   COALESCE(SUM(CASE WHEN COALESCE(se.exp_earned,0) > 0 THEN 1 ELSE 0 END), 0) AS completed_count
+            FROM exercises e
+            LEFT JOIN session_exercises se ON se.exercise_id = e.id
+            GROUP BY e.id
+        """)
+        exercises = cur.fetchall()
+
+        groups = defaultdict(list)
+        for ex in exercises:
+            norm = unicodedata.normalize('NFKC', ex['name']).strip()
+            groups[norm].append(dict(ex))
+
+        merged = []
+        for norm, group in groups.items():
+            if len(group) <= 1:
+                continue
+            # 実施回数・セッション数・1RMが多い方を残す
+            sorted_group = sorted(
+                group,
+                key=lambda x: (x['completed_count'] or 0, x['session_count'] or 0, x['one_rep_max'] or 0),
+                reverse=True,
+            )
+            keep = sorted_group[0]
+            keep_id = keep['id']
+
+            for delete in sorted_group[1:]:
+                delete_id = delete['id']
+
+                # session_exercises: 両方に同一セッションがある場合は delete 側を削除
+                cur.execute("""
+                    DELETE FROM session_exercises
+                    WHERE exercise_id = %s
+                    AND session_id IN (
+                        SELECT session_id FROM session_exercises WHERE exercise_id = %s
+                    )
+                """, (delete_id, keep_id))
+                cur.execute(
+                    "UPDATE session_exercises SET exercise_id = %s WHERE exercise_id = %s",
+                    (keep_id, delete_id)
+                )
+
+                # my_set_exercises: 同様に重複を解消してから移行
+                cur.execute("""
+                    DELETE FROM my_set_exercises
+                    WHERE exercise_id = %s
+                    AND my_set_id IN (
+                        SELECT my_set_id FROM my_set_exercises WHERE exercise_id = %s
+                    )
+                """, (delete_id, keep_id))
+                cur.execute(
+                    "UPDATE my_set_exercises SET exercise_id = %s WHERE exercise_id = %s",
+                    (keep_id, delete_id)
+                )
+
+                # keep 側に body_part 等が無く delete 側にある場合はコピー
+                if not keep.get('body_part') and delete.get('body_part'):
+                    cur.execute("""
+                        UPDATE exercises
+                        SET body_part=%s, needs_bench=%s, primary_muscle=%s
+                        WHERE id=%s
+                    """, (delete['body_part'], delete['needs_bench'], delete['primary_muscle'], keep_id))
+                    keep['body_part'] = delete['body_part']
+
+                # 名前を正規化済みの名前に統一
+                cur.execute("UPDATE exercises SET name=%s WHERE id=%s", (norm, keep_id))
+
+                cur.execute("DELETE FROM exercises WHERE id=%s", (delete_id,))
+                merged.append((keep['name'], delete['name']))
+
+        return merged
 
 
 def bulk_update_exercise_meta(updates: list) -> None:

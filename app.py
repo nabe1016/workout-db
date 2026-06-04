@@ -706,9 +706,29 @@ def session_apply_my_set_execute(session_id, my_set_id):
 
 @app.route("/exercises")
 def exercises_index():
+    import unicodedata
+    from collections import defaultdict
     exercises = db.list_exercises_with_latest_data()
     null_count = sum(1 for ex in exercises if not ex['has_log_data'])
-    return render_template("exercises/index.html", exercises=exercises, null_count=null_count)
+    # 重複検出（NFKC正規化で同一とみなせる種目）
+    name_groups = defaultdict(int)
+    for ex in exercises:
+        norm = unicodedata.normalize('NFKC', ex['name']).strip()
+        name_groups[norm] += 1
+    dup_count = sum(1 for c in name_groups.values() if c > 1)
+    return render_template("exercises/index.html", exercises=exercises,
+                           null_count=null_count, dup_count=dup_count)
+
+
+@app.route("/exercises/auto-merge-duplicates", methods=["POST"])
+def exercises_auto_merge_duplicates():
+    merged = db.auto_merge_duplicate_exercises()
+    if merged:
+        names = "、".join(f"「{d}」→「{k}」" for k, d in merged)
+        flash(f"{len(merged)} 件の重複を統合しました: {names}", "success")
+    else:
+        flash("重複する種目はありませんでした", "info")
+    return redirect(url_for("exercises_index"))
 
 
 # ── Exercise progress ─────────────────────────────────────────────────────────
