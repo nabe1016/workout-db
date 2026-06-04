@@ -7,6 +7,11 @@
 <h5 class="mb-1">{% if mse %}種目を編集{% else %}種目を追加{% endif %}</h5>
 <p class="text-secondary small mb-3">{{ my_set.name }}</p>
 
+{# ══════════════════════════════════════════════════════
+   編集モード（mse が設定されているとき）
+════════════════════════════════════════════════════════ #}
+{% if mse %}
+{% set sel_muscles = (mse.muscle_groups or '').split(',') | map('trim') | list %}
 <form method="post">
   <div class="mb-3">
     <label class="form-label">種目 <span class="text-danger">*</span></label>
@@ -14,54 +19,327 @@
             name="exercise_id" required>
       <option value="">選択してください</option>
       {% for ex in all_exercises %}
-      <option value="{{ ex.id }}" {% if mse and mse.exercise_id == ex.id %}selected{% endif %}>
+      <option value="{{ ex.id }}" {% if mse.exercise_id == ex.id %}selected{% endif %}>
         {{ ex.name }}
       </option>
       {% endfor %}
     </select>
   </div>
-
   <div class="mb-3">
     <label class="form-label">1RM (kg)</label>
     <input type="number" class="form-control bg-dark text-light border-secondary"
            name="one_rep_max" inputmode="decimal" step="0.1" min="0"
-           value="{{ mse.one_rep_max if mse and mse.one_rep_max else '' }}"
-           placeholder="例: 60.0">
+           value="{{ mse.one_rep_max or '' }}" placeholder="例: 60.0">
   </div>
-
   <div class="row g-2 mb-3">
     <div class="col-6">
       <label class="form-label">高負荷 (kg)</label>
       <input type="number" class="form-control bg-dark text-light border-secondary"
              name="weight_setting" inputmode="decimal" step="0.1" min="0"
-             value="{{ mse.weight_setting if mse and mse.weight_setting else '' }}"
-             placeholder="例: 48.0">
+             value="{{ mse.weight_setting or '' }}" placeholder="例: 48.0">
     </div>
+    <div class="col-6">
+      <label class="form-label">高負荷 rep</label>
+      <input type="number" class="form-control bg-dark text-light border-secondary"
+             name="reps" inputmode="numeric" min="1" max="200"
+             value="{{ mse.reps or '' }}" placeholder="8">
+    </div>
+  </div>
+  <div class="row g-2 mb-3">
     <div class="col-6">
       <label class="form-label">低負荷 (kg)</label>
       <input type="number" class="form-control bg-dark text-light border-secondary"
              name="weight_low_load" inputmode="decimal" step="0.1" min="0"
-             value="{{ mse.weight_low_load if mse and mse.weight_low_load else '' }}"
-             placeholder="なければ空欄">
+             value="{{ mse.weight_low_load or '' }}" placeholder="なければ空欄">
+    </div>
+    <div class="col-6">
+      <label class="form-label">低負荷 rep</label>
+      <input type="number" class="form-control bg-dark text-light border-secondary"
+             name="reps_low" inputmode="numeric" min="1" max="200"
+             value="{{ mse.reps_low or '' }}" placeholder="20">
     </div>
   </div>
-
-  <div class="mb-3">
-    <label class="form-label">rep 数（任意）</label>
-    <input type="number" class="form-control bg-dark text-light border-secondary"
-           name="reps" inputmode="numeric" min="1" max="200"
-           value="{{ mse.reps if mse and mse.reps else '' }}"
-           placeholder="空欄 = セッションのデフォルト">
-  </div>
-
   <div class="mb-4">
-    <label class="form-label">筋肉グループ <span class="text-secondary small">（任意）</span></label>
-    <input type="text" class="form-control bg-dark text-light border-secondary"
-           name="muscle_groups"
-           value="{{ mse.muscle_groups if mse and mse.muscle_groups else '' }}"
-           placeholder="例: 広背筋,大腿四頭筋">
+    <label class="form-label">主導筋 <span class="text-secondary small">（複数選択可）</span></label>
+    <div class="d-flex flex-wrap gap-2">
+      {% for m in muscles %}
+      <div class="form-check mb-0">
+        <input class="form-check-input" type="checkbox"
+               name="muscle_groups" value="{{ m.name }}"
+               id="em_{{ m.id }}"
+               {% if m.name in sel_muscles %}checked{% endif %}>
+        <label class="form-check-label small" for="em_{{ m.id }}">{{ m.name }}</label>
+      </div>
+      {% endfor %}
+    </div>
   </div>
-
   <button type="submit" class="btn btn-warning btn-lg w-100">保存</button>
 </form>
+
+{# ══════════════════════════════════════════════════════
+   新規追加モード（2択フロー）
+════════════════════════════════════════════════════════ #}
+{% else %}
+
+{# Step 0: 質問 #}
+<div id="step-question">
+  <div class="card mb-4">
+    <div class="card-body py-4 px-3 text-center">
+      <p class="mb-4" style="font-size:1rem;font-weight:600;">既存のメニューから追加しますか？</p>
+      <div class="d-flex gap-3">
+        <button type="button" class="btn btn-warning btn-lg flex-fill fw-bold"
+                onclick="chooseBranch('yes')">はい</button>
+        <button type="button" class="btn btn-outline-secondary btn-lg flex-fill"
+                onclick="chooseBranch('no')">いいえ</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ─── "はい" ブランチ ─────────────────────────────────── #}
+<div id="branch-yes" style="display:none;">
+  <div class="mb-3">
+    <label class="form-label fw-bold">メニューを選択 <span class="text-danger">*</span></label>
+    <select class="form-select form-select-lg bg-dark text-light border-secondary"
+            id="yes-select" onchange="loadExerciseData(this.value)">
+      <option value="">選択してください</option>
+      {% for ex in all_exercises %}
+      <option value="{{ ex.id }}">{{ ex.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  {# データ表示エリア（選択後に表示） #}
+  <div id="yes-data-area" style="display:none;">
+
+    {# マスタデータカード #}
+    <div class="card mb-3">
+      <div class="card-body py-3 px-3">
+        <div class="section-label mb-2">メニュー情報</div>
+        <div class="row g-2 text-center">
+          <div class="col-4">
+            <div class="small text-secondary">主導筋</div>
+            <div id="d-muscle" class="fw-bold text-info" style="font-size:0.85rem;">—</div>
+          </div>
+          <div class="col-4">
+            <div class="small text-secondary">1RM</div>
+            <div id="d-orm" class="fw-bold">—</div>
+          </div>
+          <div class="col-4">
+            <div class="small text-secondary">高負荷 kg</div>
+            <div id="d-high-kg" class="fw-bold">—</div>
+          </div>
+          <div class="col-4">
+            <div class="small text-secondary">高負荷 rep</div>
+            <div id="d-high-rep" class="fw-bold">—</div>
+          </div>
+          <div class="col-4">
+            <div class="small text-secondary">低負荷 kg</div>
+            <div id="d-low-kg" class="fw-bold">—</div>
+          </div>
+          <div class="col-4">
+            <div class="small text-secondary">低負荷 rep</div>
+            <div id="d-low-rep" class="fw-bold">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# 直近セッション履歴 #}
+    <div id="yes-history" style="display:none;" class="mb-3">
+      <div class="section-label mb-2">直近のトレーニング履歴（最大3回）</div>
+      <div style="overflow-x:auto;">
+        <table class="table table-dark table-sm mb-0" style="font-size:0.82rem;">
+          <thead>
+            <tr>
+              <th>日付</th>
+              <th>高/低</th>
+              <th>ウェイト</th>
+              <th>rep</th>
+              <th>完了</th>
+            </tr>
+          </thead>
+          <tbody id="yes-history-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    {# 保存フォーム #}
+    <form method="post" id="yes-form">
+      <input type="hidden" name="exercise_id" id="yes-exercise-id">
+      <div class="section-label mb-2">この値でマイセットに保存（変更可）</div>
+      <div class="mb-3">
+        <label class="form-label">1RM (kg)</label>
+        <input type="number" class="form-control bg-dark text-light border-secondary"
+               name="one_rep_max" id="yes-orm" inputmode="decimal" step="0.1" min="0"
+               placeholder="例: 60.0" oninput="calcYesWeights()">
+      </div>
+      <div class="row g-2 mb-3">
+        <div class="col-6">
+          <label class="form-label">高負荷 (kg)</label>
+          <input type="number" class="form-control bg-dark text-light border-secondary"
+                 name="weight_setting" id="yes-high-kg" inputmode="decimal" step="0.1" min="0">
+        </div>
+        <div class="col-6">
+          <label class="form-label">高負荷 rep</label>
+          <input type="number" class="form-control bg-dark text-light border-secondary"
+                 name="reps" id="yes-high-rep" inputmode="numeric" min="1" max="200">
+        </div>
+      </div>
+      <div class="row g-2 mb-4">
+        <div class="col-6">
+          <label class="form-label">低負荷 (kg)</label>
+          <input type="number" class="form-control bg-dark text-light border-secondary"
+                 name="weight_low_load" id="yes-low-kg" inputmode="decimal" step="0.1" min="0">
+        </div>
+        <div class="col-6">
+          <label class="form-label">低負荷 rep</label>
+          <input type="number" class="form-control bg-dark text-light border-secondary"
+                 name="reps_low" id="yes-low-rep" inputmode="numeric" min="1" max="200">
+        </div>
+      </div>
+      <input type="hidden" name="muscle_groups" id="yes-muscle-hidden">
+      <button type="submit" class="btn btn-warning btn-lg w-100">保存</button>
+    </form>
+  </div>
+</div>
+
+{# ─── "いいえ" ブランチ（手動入力） ───────────────────── #}
+<div id="branch-no" style="display:none;">
+  <form method="post" id="no-form">
+    <div class="mb-3">
+      <label class="form-label fw-bold">種目 <span class="text-danger">*</span></label>
+      <select class="form-select form-select-lg bg-dark text-light border-secondary"
+              name="exercise_id" required>
+        <option value="">選択してください</option>
+        {% for ex in all_exercises %}
+        <option value="{{ ex.id }}">{{ ex.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">1RM (kg)</label>
+      <input type="number" class="form-control bg-dark text-light border-secondary"
+             name="one_rep_max" id="no-orm" inputmode="decimal" step="0.1" min="0"
+             placeholder="例: 60.0" oninput="calcNoWeights()">
+    </div>
+    <div class="row g-2 mb-3">
+      <div class="col-6">
+        <label class="form-label">高負荷 (kg)
+          <span class="text-secondary" style="font-size:0.72rem;">1RM×80%</span>
+        </label>
+        <input type="number" class="form-control bg-dark text-light border-secondary"
+               name="weight_setting" id="no-high-kg" inputmode="decimal" step="0.1" min="0"
+               placeholder="自動計算">
+      </div>
+      <div class="col-6">
+        <label class="form-label">高負荷 rep</label>
+        <input type="number" class="form-control bg-dark text-light border-secondary"
+               name="reps" inputmode="numeric" min="1" max="200" value="8">
+      </div>
+    </div>
+    <div class="row g-2 mb-3">
+      <div class="col-6">
+        <label class="form-label">低負荷 (kg)
+          <span class="text-secondary" style="font-size:0.72rem;">1RM×50%</span>
+        </label>
+        <input type="number" class="form-control bg-dark text-light border-secondary"
+               name="weight_low_load" id="no-low-kg" inputmode="decimal" step="0.1" min="0"
+               placeholder="自動計算">
+      </div>
+      <div class="col-6">
+        <label class="form-label">低負荷 rep</label>
+        <input type="number" class="form-control bg-dark text-light border-secondary"
+               name="reps_low" inputmode="numeric" min="1" max="200" value="20">
+      </div>
+    </div>
+    <div class="mb-4">
+      <label class="form-label">主導筋 <span class="text-secondary small">（複数選択可）</span></label>
+      <div class="d-flex flex-wrap gap-2">
+        {% for m in muscles %}
+        <div class="form-check mb-0">
+          <input class="form-check-input" type="checkbox"
+                 name="muscle_groups" value="{{ m.name }}"
+                 id="nm_{{ m.id }}">
+          <label class="form-check-label small" for="nm_{{ m.id }}">{{ m.name }}</label>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    <button type="submit" class="btn btn-warning btn-lg w-100">保存</button>
+  </form>
+</div>
+
+{% endif %}
+
+<script>
+(function () {
+  window.chooseBranch = function (branch) {
+    document.getElementById('step-question').style.display = 'none';
+    document.getElementById('branch-yes').style.display = branch === 'yes' ? '' : 'none';
+    document.getElementById('branch-no').style.display  = branch === 'no'  ? '' : 'none';
+  };
+
+  window.loadExerciseData = function (exerciseId) {
+    if (!exerciseId) return;
+    fetch('/exercises/' + exerciseId + '/quick-data')
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        var ex = data.exercise;
+
+        document.getElementById('d-muscle').textContent   = ex.primary_muscle  || '—';
+        document.getElementById('d-orm').textContent      = ex.one_rep_max      ? ex.one_rep_max + 'kg'      : '—';
+        document.getElementById('d-high-kg').textContent  = ex.high_load_weight ? ex.high_load_weight + 'kg' : '—';
+        document.getElementById('d-high-rep').textContent = ex.high_load_reps   ? ex.high_load_reps + 'rep'  : '—';
+        document.getElementById('d-low-kg').textContent   = ex.low_load_weight  ? ex.low_load_weight + 'kg'  : '—';
+        document.getElementById('d-low-rep').textContent  = ex.low_load_reps    ? ex.low_load_reps + 'rep'   : '—';
+
+        document.getElementById('yes-exercise-id').value = exerciseId;
+        document.getElementById('yes-orm').value         = ex.one_rep_max      || '';
+        document.getElementById('yes-high-kg').value     = ex.high_load_weight || '';
+        document.getElementById('yes-high-rep').value    = ex.high_load_reps   || 8;
+        document.getElementById('yes-low-kg').value      = ex.low_load_weight  || '';
+        document.getElementById('yes-low-rep').value     = ex.low_load_reps    || 20;
+        document.getElementById('yes-muscle-hidden').value = ex.primary_muscle || '';
+
+        var sessions = data.recent_sessions;
+        var tbody = document.getElementById('yes-history-body');
+        tbody.innerHTML = '';
+        sessions.forEach(function (s) {
+          var w = s.weight != null ? s.weight + 'kg' : '—';
+          var r = s.reps   != null ? s.reps + 'rep'  : '—';
+          var isHigh = s.load_mode === 'high';
+          var tr = document.createElement('tr');
+          tr.innerHTML =
+            '<td>' + s.session_date + '</td>' +
+            '<td><span class="badge ' + (isHigh ? 'bg-warning text-dark' : 'bg-info text-dark') + '">' +
+              (isHigh ? '高' : '低') + '</span></td>' +
+            '<td>' + w + '</td>' +
+            '<td>' + r + '</td>' +
+            '<td>' + (s.sets_done || 0) + 'set</td>';
+          tbody.appendChild(tr);
+        });
+
+        document.getElementById('yes-data-area').style.display = '';
+        document.getElementById('yes-history').style.display = sessions.length > 0 ? '' : 'none';
+      });
+  };
+
+  window.calcYesWeights = function () {
+    var orm = parseFloat(document.getElementById('yes-orm').value) || 0;
+    if (orm > 0) {
+      document.getElementById('yes-high-kg').value = Math.round(orm * 0.8 * 10) / 10;
+      document.getElementById('yes-low-kg').value  = Math.round(orm * 0.5 * 10) / 10;
+    }
+  };
+
+  window.calcNoWeights = function () {
+    var orm = parseFloat(document.getElementById('no-orm').value) || 0;
+    if (orm > 0) {
+      document.getElementById('no-high-kg').value = Math.round(orm * 0.8 * 10) / 10;
+      document.getElementById('no-low-kg').value  = Math.round(orm * 0.5 * 10) / 10;
+    }
+  };
+})();
+</script>
 {% endblock %}

@@ -654,8 +654,80 @@ def _mse_next_sort(cur, my_set_id: int) -> int:
     return cur.fetchone()[0]
 
 
+def get_exercise_quick_data(exercise_id: int):
+    """種目マスタデータ（ログフォールバック付き）＋直近3回の実施ログを返す。"""
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT
+                e.id, e.name, e.body_part, e.primary_muscle, e.needs_bench,
+                COALESCE(e.one_rep_max, orm_log.one_rep_max) AS one_rep_max,
+                COALESCE(e.reps,        reps_log.reps)       AS reps,
+                COALESCE(e.weight_low_load, wll_log.weight_low_load) AS weight_low_load,
+                e.reps_low
+            FROM exercises e
+            LEFT JOIN LATERAL (
+                SELECT se.one_rep_max FROM session_exercises se
+                JOIN workout_sessions ws ON ws.id = se.session_id
+                WHERE se.exercise_id = e.id AND se.one_rep_max IS NOT NULL
+                ORDER BY ws.session_date DESC LIMIT 1
+            ) orm_log ON true
+            LEFT JOIN LATERAL (
+                SELECT se.reps FROM session_exercises se
+                JOIN workout_sessions ws ON ws.id = se.session_id
+                WHERE se.exercise_id = e.id AND se.reps IS NOT NULL
+                ORDER BY ws.session_date DESC LIMIT 1
+            ) reps_log ON true
+            LEFT JOIN LATERAL (
+                SELECT se.weight_low_load FROM session_exercises se
+                JOIN workout_sessions ws ON ws.id = se.session_id
+                WHERE se.exercise_id = e.id AND se.weight_low_load IS NOT NULL
+                ORDER BY ws.session_date DESC LIMIT 1
+            ) wll_log ON true
+            WHERE e.id = %s
+        """, (exercise_id,))
+        ex = cur.fetchone()
+        if not ex:
+            return None
+        ex = dict(ex)
+        orm = ex['one_rep_max']
+        ex['high_load_weight'] = round(orm * 0.8, 1) if orm else None
+        ex['high_load_reps']   = ex['reps'] or 8
+        wll = ex['weight_low_load']
+        ex['low_load_weight']  = wll if wll else (round(orm * 0.5, 1) if orm else None)
+        ex['low_load_reps']    = ex['reps_low'] or 20
+
+        cur.execute("""
+            SELECT ws.session_date, se.load_mode,
+                   se.weight_setting, se.weight_low_load, se.reps, se.one_rep_max,
+                   (COALESCE(se.set1_completed::int,0) +
+                    COALESCE(se.set2_completed::int,0) +
+                    COALESCE(se.set3_completed::int,0)) AS sets_done
+            FROM session_exercises se
+            JOIN workout_sessions ws ON ws.id = se.session_id
+            WHERE se.exercise_id = %s
+              AND (COALESCE(se.exp_earned,0) > 0
+                   OR COALESCE(se.set1_completed,false)
+                   OR COALESCE(se.set2_completed,false)
+                   OR COALESCE(se.set3_completed,false))
+            ORDER BY ws.session_date DESC
+            LIMIT 3
+        """, (exercise_id,))
+        sessions = []
+        for s in cur.fetchall():
+            s = dict(s)
+            s['session_date'] = str(s['session_date'])
+            s['load_mode'] = s['load_mode'] or 'high'
+            s['weight'] = (s['weight_setting'] if s['load_mode'] == 'high'
+                           else s['weight_low_load'])
+            sessions.append(s)
+
+    return {'exercise': ex, 'recent_sessions': sessions}
+
+
 def create_my_set_exercise(my_set_id, exercise_id, one_rep_max,
-                            weight_setting, weight_low_load, reps, muscle_groups) -> int:
+                            weight_setting, weight_low_load, reps, reps_low,
+                            muscle_groups) -> int:
     with _conn() as conn:
         cur = conn.cursor()
         cur.execute(
@@ -667,40 +739,43 @@ def create_my_set_exercise(my_set_id, exercise_id, one_rep_max,
             cur.execute("""
                 UPDATE my_set_exercises
                 SET one_rep_max=%s, weight_setting=%s,
-                    weight_low_load=%s, reps=%s, muscle_groups=%s
+                    weight_low_load=%s, reps=%s, reps_low=%s, muscle_groups=%s
                 WHERE id=%s
                 RETURNING id
             """, (
                 one_rep_max, weight_setting,
-                weight_low_load or None, reps or None, muscle_groups or None,
-                existing["id"]
+                weight_low_load or None, reps or None, reps_low or None,
+                muscle_groups or None, existing["id"]
             ))
         else:
             sort_order = _mse_next_sort(cur, my_set_id)
             cur.execute("""
                 INSERT INTO my_set_exercises
                     (my_set_id, exercise_id, sort_order,
-                     one_rep_max, weight_setting, weight_low_load, reps, muscle_groups)
-                VALUES (%s,%s,%s, %s,%s,%s,%s,%s)
+                     one_rep_max, weight_setting, weight_low_load, reps, reps_low, muscle_groups)
+                VALUES (%s,%s,%s, %s,%s,%s,%s,%s,%s)
                 RETURNING id
             """, (
                 my_set_id, exercise_id, sort_order,
-                one_rep_max, weight_setting, weight_low_load or None, reps or None, muscle_groups or None
+                one_rep_max, weight_setting, weight_low_load or None,
+                reps or None, reps_low or None, muscle_groups or None
             ))
         return cur.fetchone()["id"]
 
 
 def update_my_set_exercise(mse_id, exercise_id, one_rep_max,
-                            weight_setting, weight_low_load, reps, muscle_groups) -> None:
+                            weight_setting, weight_low_load, reps, reps_low,
+                            muscle_groups) -> None:
     with _conn() as conn:
         cur = conn.cursor()
         cur.execute("""
             UPDATE my_set_exercises
             SET exercise_id=%s, one_rep_max=%s, weight_setting=%s,
-                weight_low_load=%s, reps=%s, muscle_groups=%s
+                weight_low_load=%s, reps=%s, reps_low=%s, muscle_groups=%s
             WHERE id=%s
         """, (exercise_id, one_rep_max, weight_setting,
-              weight_low_load or None, reps or None, muscle_groups or None, mse_id))
+              weight_low_load or None, reps or None, reps_low or None,
+              muscle_groups or None, mse_id))
 
 
 def delete_my_set_exercise(mse_id: int) -> None:

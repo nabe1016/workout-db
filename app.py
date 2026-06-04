@@ -592,18 +592,30 @@ def my_set_delete(my_set_id):
     return redirect(url_for("my_sets_list"))
 
 
+@app.route("/exercises/<int:exercise_id>/quick-data")
+def exercise_quick_data(exercise_id):
+    data = db.get_exercise_quick_data(exercise_id)
+    if data is None:
+        return jsonify({"error": "not found"}), 404
+    return jsonify(data)
+
+
 @app.route("/my-sets/<int:my_set_id>/exercises/new", methods=["GET", "POST"])
 def my_set_exercise_new(my_set_id):
     my_set = db.get_my_set(my_set_id)
     if my_set is None:
         return redirect(url_for("my_sets_list"))
     all_exercises = db.list_exercises()
+    muscles = db.list_muscles()
     if request.method == "POST":
         exercise_id = _parse_int(request.form.get("exercise_id"))
         if not exercise_id:
             flash("種目を選択してください。", "danger")
             return render_template("my_sets/exercise_form.html",
-                                   my_set=my_set, mse=None, all_exercises=all_exercises)
+                                   my_set=my_set, mse=None,
+                                   all_exercises=all_exercises, muscles=muscles)
+        selected_muscles = request.form.getlist("muscle_groups")
+        muscle_groups = ",".join(selected_muscles) if selected_muscles else None
         db.create_my_set_exercise(
             my_set_id=my_set_id,
             exercise_id=exercise_id,
@@ -611,12 +623,14 @@ def my_set_exercise_new(my_set_id):
             weight_setting=_parse_float(request.form.get("weight_setting")),
             weight_low_load=_parse_float(request.form.get("weight_low_load")),
             reps=_parse_int(request.form.get("reps")),
-            muscle_groups=request.form.get("muscle_groups") or None,
+            reps_low=_parse_int(request.form.get("reps_low")),
+            muscle_groups=muscle_groups,
         )
         flash("種目を追加しました。", "success")
         return redirect(url_for("my_set_detail", my_set_id=my_set_id))
     return render_template("my_sets/exercise_form.html",
-                           my_set=my_set, mse=None, all_exercises=all_exercises)
+                           my_set=my_set, mse=None,
+                           all_exercises=all_exercises, muscles=muscles)
 
 
 @app.route("/my-sets/<int:my_set_id>/exercises/<int:mse_id>/edit", methods=["GET", "POST"])
@@ -625,11 +639,14 @@ def my_set_exercise_edit(my_set_id, mse_id):
     if my_set is None:
         return redirect(url_for("my_sets_list"))
     all_exercises = db.list_exercises()
+    muscles = db.list_muscles()
     if request.method == "POST":
         exercise_id = _parse_int(request.form.get("exercise_id"))
         if not exercise_id:
             flash("種目を選択してください。", "danger")
         else:
+            selected_muscles = request.form.getlist("muscle_groups")
+            muscle_groups = ",".join(selected_muscles) if selected_muscles else None
             db.update_my_set_exercise(
                 mse_id=mse_id,
                 exercise_id=exercise_id,
@@ -637,7 +654,8 @@ def my_set_exercise_edit(my_set_id, mse_id):
                 weight_setting=_parse_float(request.form.get("weight_setting")),
                 weight_low_load=_parse_float(request.form.get("weight_low_load")),
                 reps=_parse_int(request.form.get("reps")),
-                muscle_groups=request.form.get("muscle_groups") or None,
+                reps_low=_parse_int(request.form.get("reps_low")),
+                muscle_groups=muscle_groups,
             )
             flash("更新しました。", "success")
             return redirect(url_for("my_set_detail", my_set_id=my_set_id))
@@ -646,7 +664,8 @@ def my_set_exercise_edit(my_set_id, mse_id):
         cur.execute("SELECT * FROM my_set_exercises WHERE id = %s", (mse_id,))
         mse = cur.fetchone()
     return render_template("my_sets/exercise_form.html",
-                           my_set=my_set, mse=mse, all_exercises=all_exercises)
+                           my_set=my_set, mse=mse,
+                           all_exercises=all_exercises, muscles=muscles)
 
 
 @app.route("/my-sets/<int:my_set_id>/exercises/<int:mse_id>/delete", methods=["POST"])
