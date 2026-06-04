@@ -434,16 +434,16 @@ def update_exercise_one_rep_max(exercise_id: int, one_rep_max: float) -> None:
                     (one_rep_max, exercise_id))
 
 
-def delete_exercise(exercise_id: int) -> str | None:
-    """Returns error message if exercise is in use, None on success."""
+def delete_exercise(exercise_id: int):
+    """Returns error message string if exercise is in use, None on success."""
     with _conn() as conn:
         cur = conn.cursor()
-        cur.execute("SELECT COUNT(*) FROM session_exercises WHERE exercise_id = %s", (exercise_id,))
-        count = cur.fetchone()[0]
+        cur.execute("SELECT COUNT(*) AS n FROM session_exercises WHERE exercise_id = %s", (exercise_id,))
+        count = cur.fetchone()["n"]
         if count > 0:
             return f"このメニューはトレーニングログ {count} 件で使われているため削除できません"
-        cur.execute("SELECT COUNT(*) FROM my_set_exercises WHERE exercise_id = %s", (exercise_id,))
-        count = cur.fetchone()[0]
+        cur.execute("SELECT COUNT(*) AS n FROM my_set_exercises WHERE exercise_id = %s", (exercise_id,))
+        count = cur.fetchone()["n"]
         if count > 0:
             return f"このメニューはマイセット {count} 件で使われているため削除できません"
         cur.execute("DELETE FROM exercises WHERE id = %s", (exercise_id,))
