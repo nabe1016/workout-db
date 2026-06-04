@@ -129,10 +129,10 @@ def get_session_exercise(se_id: int):
 
 def _next_sort_order(cur, session_id: int) -> int:
     cur.execute(
-        "SELECT COALESCE(MAX(sort_order), 0) + 1 FROM session_exercises WHERE session_id = %s",
+        "SELECT COALESCE(MAX(sort_order), 0) + 1 AS next_sort FROM session_exercises WHERE session_id = %s",
         (session_id,)
     )
-    return cur.fetchone()[0]
+    return cur.fetchone()["next_sort"]
 
 
 def create_session_exercise(session_id, exercise_id, one_rep_max,
@@ -648,10 +648,10 @@ def delete_my_set(my_set_id: int) -> None:
 
 def _mse_next_sort(cur, my_set_id: int) -> int:
     cur.execute(
-        "SELECT COALESCE(MAX(sort_order), 0) + 1 FROM my_set_exercises WHERE my_set_id = %s",
+        "SELECT COALESCE(MAX(sort_order), 0) + 1 AS next_sort FROM my_set_exercises WHERE my_set_id = %s",
         (my_set_id,)
     )
-    return cur.fetchone()[0]
+    return cur.fetchone()["next_sort"]
 
 
 def get_exercise_quick_data(exercise_id: int):
@@ -1098,10 +1098,10 @@ def start_today_plan(plan_id: int) -> int:
         # Apply my_set if set and session has no exercises yet
         if plan["my_set_id"]:
             cur.execute(
-                "SELECT COUNT(*) FROM session_exercises WHERE session_id = %s",
+                "SELECT COUNT(*) AS cnt FROM session_exercises WHERE session_id = %s",
                 (session_id,)
             )
-            if cur.fetchone()[0] == 0:
+            if cur.fetchone()["cnt"] == 0:
                 cur.execute("""
                     SELECT mse.*, ex.name
                     FROM my_set_exercises mse
