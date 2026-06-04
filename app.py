@@ -550,10 +550,14 @@ def my_sets_list():
 def my_set_new():
     if request.method == "POST":
         name = request.form.get("name", "").strip()
+        location = request.form.get("location", "gym")
+        use_preset = request.form.get("use_preset") == "1"
         if not name:
             flash("名前を入力してください。", "danger")
             return render_template("my_sets/form.html", my_set=None)
-        my_set_id = db.create_my_set(name, request.form.get("description", ""))
+        my_set_id = db.create_my_set(name, request.form.get("description", ""), location)
+        if location == "home" and use_preset:
+            db.seed_home_preset_exercises(my_set_id)
         flash(f"「{name}」を作成しました。", "success")
         return redirect(url_for("my_set_detail", my_set_id=my_set_id))
     return render_template("my_sets/form.html", my_set=None)
@@ -605,7 +609,8 @@ def my_set_exercise_new(my_set_id):
     my_set = db.get_my_set(my_set_id)
     if my_set is None:
         return redirect(url_for("my_sets_list"))
-    all_exercises = db.list_exercises()
+    _loc = my_set.get("location") or "gym"
+    all_exercises = db.list_exercises_by_location(_loc)
     muscles = db.list_muscles()
     if request.method == "POST":
         exercise_id = _parse_int(request.form.get("exercise_id"))
@@ -646,7 +651,8 @@ def my_set_exercise_edit(my_set_id, mse_id):
     my_set = db.get_my_set(my_set_id)
     if my_set is None:
         return redirect(url_for("my_sets_list"))
-    all_exercises = db.list_exercises()
+    _loc = my_set.get("location") or "gym"
+    all_exercises = db.list_exercises_by_location(_loc)
     muscles = db.list_muscles()
     if request.method == "POST":
         exercise_id = _parse_int(request.form.get("exercise_id"))

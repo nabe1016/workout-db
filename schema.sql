@@ -189,3 +189,26 @@ CREATE TABLE IF NOT EXISTS body_weight_log (
     notes       TEXT,
     created_at  TIMESTAMP DEFAULT NOW()
 );
+
+ALTER TABLE exercises         ADD COLUMN IF NOT EXISTS location     TEXT DEFAULT 'gym';
+ALTER TABLE my_set_exercises  ADD COLUMN IF NOT EXISTS target_sets  INTEGER;
+
+-- 自宅トレーニング種目を登録・更新
+INSERT INTO exercises (name, body_part, needs_bench, primary_muscle, location)
+VALUES ('アブローラー', '体幹', false, '腹直筋', 'home')
+ON CONFLICT (name) DO UPDATE SET body_part='体幹', needs_bench=false, primary_muscle='腹直筋', location='home';
+
+INSERT INTO exercises (name, body_part, needs_bench, primary_muscle, location)
+VALUES ('プッシュアップバー', '上肢', false, '大胸筋', 'home')
+ON CONFLICT (name) DO UPDATE SET body_part='上肢', needs_bench=false, primary_muscle='大胸筋', location='home';
+
+INSERT INTO exercises (name, body_part, needs_bench, primary_muscle, location)
+VALUES ('片脚カーフレイズ', '下肢', false, 'カーフ', 'home')
+ON CONFLICT (name) DO UPDATE SET body_part='下肢', needs_bench=false, primary_muscle='カーフ', location='home';
+
+INSERT INTO exercises (name, body_part, needs_bench, primary_muscle, location)
+VALUES ('ベンチレッグレイズ', '体幹', false, '腹直筋', 'home')
+ON CONFLICT (name) DO UPDATE SET body_part='体幹', needs_bench=false, primary_muscle='腹直筋', location='home';
+
+-- ブルガリアンスクワットはジム・自宅どちらでも使用
+UPDATE exercises SET location='both' WHERE name='ブルガリアンスクワット';

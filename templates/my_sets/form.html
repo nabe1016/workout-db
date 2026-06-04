@@ -6,29 +6,158 @@
 {% block content %}
 <h5 class="mb-3">{% if my_set %}マイセットを編集{% else %}マイセットを作成{% endif %}</h5>
 
+{% if my_set %}
+{# ── 編集モード（locationは変更不可） ── #}
 <form method="post">
   <div class="mb-3">
     <label class="form-label">名前 <span class="text-danger">*</span></label>
     <input type="text" class="form-control form-control-lg bg-dark text-light border-secondary"
-           name="name"
-           value="{{ my_set.name if my_set else '' }}"
-           placeholder="例: 土曜日 高負荷" required>
+           name="name" value="{{ my_set.name }}" required>
   </div>
   <div class="mb-4">
     <label class="form-label">メモ <span class="text-secondary small">（任意）</span></label>
     <input type="text" class="form-control bg-dark text-light border-secondary"
            name="description"
-           value="{{ my_set.description if my_set and my_set.description else '' }}"
-           placeholder="例: ベンチ・デッド・スクワット高負荷">
+           value="{{ my_set.description if my_set.description else '' }}">
   </div>
-  <button type="submit" class="btn btn-warning btn-lg w-100">保存</button>
+  <div class="sticky-action-bar">
+    <button type="submit" class="btn btn-warning btn-lg w-100">保存</button>
+  </div>
 </form>
-
-{% if my_set %}
 <form method="post" action="{{ url_for('my_set_delete', my_set_id=my_set.id) }}"
       onsubmit="return confirm('「{{ my_set.name }}」を削除しますか？')"
       class="mt-3">
   <button type="submit" class="btn btn-outline-danger w-100">このマイセットを削除</button>
 </form>
+
+{% else %}
+{# ── 新規作成：ステップ1 場所選択 ── #}
+<div id="step-location">
+  <div class="card mb-4">
+    <div class="card-body py-4 px-3 text-center">
+      <p class="mb-4" style="font-size:1rem;font-weight:600;">どちらのトレーニングですか？</p>
+      <div class="d-flex gap-3">
+        <button type="button" class="btn btn-warning btn-lg flex-fill fw-bold"
+                onclick="chooseLocation('gym')">🏋️ ジム</button>
+        <button type="button" class="btn btn-outline-info btn-lg flex-fill fw-bold"
+                onclick="chooseLocation('home')">🏠 自宅</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ── ジム ブランチ ── #}
+<div id="branch-gym" style="display:none;">
+  <form method="post">
+    <input type="hidden" name="location" value="gym">
+    <div class="mb-3">
+      <label class="form-label">名前 <span class="text-danger">*</span></label>
+      <input type="text" class="form-control form-control-lg bg-dark text-light border-secondary"
+             name="name" placeholder="例: 土曜日 高負荷" required>
+    </div>
+    <div class="mb-4">
+      <label class="form-label">メモ <span class="text-secondary small">（任意）</span></label>
+      <input type="text" class="form-control bg-dark text-light border-secondary"
+             name="description" placeholder="例: ベンチ・デッド・スクワット高負荷">
+    </div>
+    <div class="sticky-action-bar">
+      <button type="submit" class="btn btn-warning btn-lg w-100">作成</button>
+    </div>
+  </form>
+</div>
+
+{# ── 自宅 ブランチ ── #}
+<div id="branch-home" style="display:none;">
+
+  {# プリセット案内カード #}
+  <div id="preset-card" class="card mb-3" style="border:1.5px solid rgba(100,210,255,0.4);">
+    <div class="card-body py-3 px-3">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span style="font-size:1.1rem;">🏠</span>
+        <span class="fw-bold" style="color:var(--teal);">木曜　維持回復トレーニング</span>
+        <span class="badge bg-info text-dark ms-auto" style="font-size:0.65rem;">プリセット</span>
+      </div>
+      <div style="font-size:0.8rem;color:var(--txt-2);margin-bottom:0.75rem;">
+        約20〜30分 ／ 自重メイン
+      </div>
+      <table style="width:100%;font-size:0.78rem;border-collapse:collapse;">
+        <thead>
+          <tr style="color:var(--txt-2);font-size:0.7rem;">
+            <th style="padding:0.2rem 0.4rem 0.3rem 0;text-align:left;">種目</th>
+            <th style="padding:0.2rem 0.4rem;text-align:center;">セット</th>
+            <th style="padding:0.2rem 0 0.3rem 0.4rem;text-align:center;">回数</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-top:1px solid rgba(255,255,255,0.07);">
+            <td style="padding:0.3rem 0.4rem 0.3rem 0;">アブローラー</td>
+            <td style="text-align:center;padding:0.3rem 0.4rem;">3</td>
+            <td style="text-align:center;padding:0.3rem 0 0.3rem 0.4rem;">8回〜</td>
+          </tr>
+          <tr style="border-top:1px solid rgba(255,255,255,0.07);">
+            <td style="padding:0.3rem 0.4rem 0.3rem 0;">プッシュアップバー</td>
+            <td style="text-align:center;padding:0.3rem 0.4rem;">3</td>
+            <td style="text-align:center;padding:0.3rem 0 0.3rem 0.4rem;">10回〜</td>
+          </tr>
+          <tr style="border-top:1px solid rgba(255,255,255,0.07);">
+            <td style="padding:0.3rem 0.4rem 0.3rem 0;">ブルガリアンスクワット（左右）</td>
+            <td style="text-align:center;padding:0.3rem 0.4rem;">2</td>
+            <td style="text-align:center;padding:0.3rem 0 0.3rem 0.4rem;">8回</td>
+          </tr>
+          <tr style="border-top:1px solid rgba(255,255,255,0.07);">
+            <td style="padding:0.3rem 0.4rem 0.3rem 0;">片脚カーフレイズ（左右）</td>
+            <td style="text-align:center;padding:0.3rem 0.4rem;">2</td>
+            <td style="text-align:center;padding:0.3rem 0 0.3rem 0.4rem;">20回</td>
+          </tr>
+          <tr style="border-top:1px solid rgba(255,255,255,0.07);">
+            <td style="padding:0.3rem 0.4rem 0.3rem 0;">ベンチレッグレイズ</td>
+            <td style="text-align:center;padding:0.3rem 0.4rem;">2</td>
+            <td style="text-align:center;padding:0.3rem 0 0.3rem 0.4rem;">10回</td>
+          </tr>
+        </tbody>
+      </table>
+      <button type="button"
+              class="btn btn-info w-100 fw-bold mt-3"
+              onclick="usePreset()">このプリセットで作成</button>
+    </div>
+  </div>
+
+  <p class="text-center text-secondary small mb-3">または</p>
+
+  <form method="post" id="home-form">
+    <input type="hidden" name="location" value="home">
+    <input type="hidden" name="use_preset" id="use-preset-val" value="0">
+    <div class="mb-3">
+      <label class="form-label">名前 <span class="text-danger">*</span></label>
+      <input type="text" class="form-control form-control-lg bg-dark text-light border-secondary"
+             name="name" id="home-name" placeholder="例: 木曜　維持回復トレーニング" required>
+    </div>
+    <div class="mb-4">
+      <label class="form-label">メモ <span class="text-secondary small">（任意）</span></label>
+      <input type="text" class="form-control bg-dark text-light border-secondary"
+             name="description" placeholder="例: 自重メイン 20〜30分">
+    </div>
+    <div class="sticky-action-bar">
+      <button type="submit" class="btn btn-outline-info btn-lg w-100">空の自宅セットを作成</button>
+    </div>
+  </form>
+</div>
+
+<script>
+(function () {
+  window.chooseLocation = function (loc) {
+    document.getElementById('step-location').style.display = 'none';
+    document.getElementById('branch-gym').style.display  = loc === 'gym'  ? '' : 'none';
+    document.getElementById('branch-home').style.display = loc === 'home' ? '' : 'none';
+  };
+
+  window.usePreset = function () {
+    document.getElementById('use-preset-val').value = '1';
+    document.getElementById('home-name').value = '木曜　維持回復トレーニング';
+    document.getElementById('home-form').submit();
+  };
+})();
+</script>
+
 {% endif %}
 {% endblock %}

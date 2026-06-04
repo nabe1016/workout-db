@@ -15,7 +15,11 @@
     {% for ms in my_sets %}
     <a href="{{ url_for('my_set_detail', my_set_id=ms.id) }}" class="text-decoration-none list-row">
       <div class="flex-grow-1">
-        <div class="fw-bold" style="color:var(--yellow);">{{ ms.name }}</div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <span class="fw-bold" style="color:{{ 'var(--teal)' if ms.location == 'home' else 'var(--yellow)' }};">
+            {{ '🏠 ' if ms.location == 'home' else '' }}{{ ms.name }}
+          </span>
+        </div>
         {% if ms.description %}
         <div style="font-size:0.78rem;color:var(--txt-2);">{{ ms.description }}</div>
         {% endif %}

@@ -19,7 +19,14 @@
     <div class="d-flex justify-content-between align-items-start">
       <div>
         <div class="section-label">マイセット</div>
-        <div class="fw-bold fs-5" style="color:var(--yellow);">{{ my_set.name }}</div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <div class="fw-bold fs-5" style="color:{{ 'var(--teal)' if my_set.location == 'home' else 'var(--yellow)' }};">
+            {{ '🏠 ' if my_set.location == 'home' else '' }}{{ my_set.name }}
+          </div>
+          {% if my_set.location == 'home' %}
+          <span class="badge" style="background:rgba(100,210,255,0.2);border:1px solid rgba(100,210,255,0.4);color:var(--teal);font-size:0.65rem;">自宅</span>
+          {% endif %}
+        </div>
         {% if my_set.description %}
         <div style="font-size:0.82rem;color:var(--txt-2);margin-top:0.1rem;">{{ my_set.description }}</div>
         {% endif %}
@@ -72,10 +79,11 @@
           <div class="text-secondary small">{{ ex.muscle_groups or ex.primary_muscle }}</div>
           {% endif %}
           <div class="d-flex flex-wrap gap-2 mt-1 small text-secondary">
+            {% if ex.target_sets %}<span>🎯 <strong class="text-light">{{ ex.target_sets }}セット</strong></span>{% endif %}
+            {% if ex.reps %}<span>× <strong class="text-light">{{ ex.reps }}回</strong></span>{% endif %}
             {% if ex.one_rep_max %}<span>1RM: <strong class="text-light">{{ ex.one_rep_max }}kg</strong></span>{% endif %}
             {% if ex.weight_setting %}<span>高負荷: <strong class="text-light">{{ ex.weight_setting }}kg</strong></span>{% endif %}
             {% if ex.weight_low_load %}<span>低負荷: <strong class="text-light">{{ ex.weight_low_load }}kg</strong></span>{% endif %}
-            {% if ex.reps %}<span>{{ ex.reps }}rep</span>{% endif %}
           </div>
         </div>
 

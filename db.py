@@ -342,6 +342,27 @@ def list_exercises() -> list:
         return cur.fetchall()
 
 
+def list_exercises_by_location(location: str) -> list:
+    """Returns exercises filtered by my_set location ('gym' or 'home')."""
+    with _conn() as conn:
+        cur = conn.cursor()
+        if location == 'home':
+            cur.execute("""
+                SELECT id, name, body_part, needs_bench, primary_muscle
+                FROM exercises
+                WHERE COALESCE(location, 'gym') IN ('home', 'both')
+                ORDER BY name
+            """)
+        else:
+            cur.execute("""
+                SELECT id, name, body_part, needs_bench, primary_muscle
+                FROM exercises
+                WHERE COALESCE(location, 'gym') IN ('gym', 'both')
+                ORDER BY name
+            """)
+        return cur.fetchall()
+
+
 def list_exercises_with_latest_data() -> list:
     """All exercises with master data + fallback from latest session logs. Derived cols computed in Python."""
     with _conn() as conn:
@@ -588,7 +609,8 @@ def list_my_sets() -> list:
     with _conn() as conn:
         cur = conn.cursor()
         cur.execute("""
-            SELECT ms.id, ms.name, ms.description, COUNT(mse.id) AS exercise_count
+            SELECT ms.id, ms.name, ms.description, ms.location,
+                   COUNT(mse.id) AS exercise_count
             FROM my_sets ms
             LEFT JOIN my_set_exercises mse ON mse.my_set_id = ms.id
             GROUP BY ms.id
@@ -621,14 +643,40 @@ def get_my_set_with_exercises(my_set_id: int):
         return my_set, exercises
 
 
-def create_my_set(name: str, description: str) -> int:
+_HOME_PRESET = [
+    # (name, reps, target_sets, muscle_groups)
+    ("アブローラー",            8,  3, "腹直筋,腸腰筋"),
+    ("プッシュアップバー",     10,  3, "大胸筋,上腕三頭筋,三角筋前部"),
+    ("ブルガリアンスクワット",  8,  2, "大臀筋,大腿四頭筋,中臀筋"),
+    ("片脚カーフレイズ",       20,  2, "カーフ,腓腹筋,ヒラメ筋"),
+    ("ベンチレッグレイズ",     10,  2, "腹直筋,腸腰筋"),
+]
+
+
+def create_my_set(name: str, description: str, location: str = 'gym') -> int:
     with _conn() as conn:
         cur = conn.cursor()
         cur.execute(
-            "INSERT INTO my_sets (name, description) VALUES (%s, %s) RETURNING id",
-            (name, description or None)
+            "INSERT INTO my_sets (name, description, location) VALUES (%s, %s, %s) RETURNING id",
+            (name, description or None, location)
         )
         return cur.fetchone()["id"]
+
+
+def seed_home_preset_exercises(my_set_id: int) -> None:
+    with _conn() as conn:
+        cur = conn.cursor()
+        for i, (name, reps, target_sets, muscle_groups) in enumerate(_HOME_PRESET, 1):
+            cur.execute("SELECT id FROM exercises WHERE name = %s", (name,))
+            ex = cur.fetchone()
+            if ex is None:
+                continue
+            cur.execute("""
+                INSERT INTO my_set_exercises
+                    (my_set_id, exercise_id, sort_order, reps, target_sets, muscle_groups)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                ON CONFLICT (my_set_id, exercise_id) DO NOTHING
+            """, (my_set_id, ex["id"], i, reps, target_sets, muscle_groups))
 
 
 def update_my_set(my_set_id: int, name: str, description: str) -> None:
