@@ -614,18 +614,26 @@ def my_set_exercise_new(my_set_id):
             return render_template("my_sets/exercise_form.html",
                                    my_set=my_set, mse=None,
                                    all_exercises=all_exercises, muscles=muscles)
-        selected_muscles = request.form.getlist("muscle_groups")
+        selected_muscles = [m for m in request.form.getlist("muscle_groups") if m]
         muscle_groups = ",".join(selected_muscles) if selected_muscles else None
-        db.create_my_set_exercise(
-            my_set_id=my_set_id,
-            exercise_id=exercise_id,
-            one_rep_max=_parse_float(request.form.get("one_rep_max")),
-            weight_setting=_parse_float(request.form.get("weight_setting")),
-            weight_low_load=_parse_float(request.form.get("weight_low_load")),
-            reps=_parse_int(request.form.get("reps")),
-            reps_low=_parse_int(request.form.get("reps_low")),
-            muscle_groups=muscle_groups,
-        )
+        try:
+            db.create_my_set_exercise(
+                my_set_id=my_set_id,
+                exercise_id=exercise_id,
+                one_rep_max=_parse_float(request.form.get("one_rep_max")),
+                weight_setting=_parse_float(request.form.get("weight_setting")),
+                weight_low_load=_parse_float(request.form.get("weight_low_load")),
+                reps=_parse_int(request.form.get("reps")),
+                reps_low=_parse_int(request.form.get("reps_low")),
+                muscle_groups=muscle_groups,
+            )
+        except Exception as e:
+            import logging
+            logging.exception("create_my_set_exercise failed")
+            flash(f"保存に失敗しました: {e}", "danger")
+            return render_template("my_sets/exercise_form.html",
+                                   my_set=my_set, mse=None,
+                                   all_exercises=all_exercises, muscles=muscles)
         flash("種目を追加しました。", "success")
         return redirect(url_for("my_set_detail", my_set_id=my_set_id))
     return render_template("my_sets/exercise_form.html",
@@ -645,20 +653,26 @@ def my_set_exercise_edit(my_set_id, mse_id):
         if not exercise_id:
             flash("種目を選択してください。", "danger")
         else:
-            selected_muscles = request.form.getlist("muscle_groups")
+            selected_muscles = [m for m in request.form.getlist("muscle_groups") if m]
             muscle_groups = ",".join(selected_muscles) if selected_muscles else None
-            db.update_my_set_exercise(
-                mse_id=mse_id,
-                exercise_id=exercise_id,
-                one_rep_max=_parse_float(request.form.get("one_rep_max")),
-                weight_setting=_parse_float(request.form.get("weight_setting")),
-                weight_low_load=_parse_float(request.form.get("weight_low_load")),
-                reps=_parse_int(request.form.get("reps")),
-                reps_low=_parse_int(request.form.get("reps_low")),
-                muscle_groups=muscle_groups,
-            )
-            flash("更新しました。", "success")
-            return redirect(url_for("my_set_detail", my_set_id=my_set_id))
+            try:
+                db.update_my_set_exercise(
+                    mse_id=mse_id,
+                    exercise_id=exercise_id,
+                    one_rep_max=_parse_float(request.form.get("one_rep_max")),
+                    weight_setting=_parse_float(request.form.get("weight_setting")),
+                    weight_low_load=_parse_float(request.form.get("weight_low_load")),
+                    reps=_parse_int(request.form.get("reps")),
+                    reps_low=_parse_int(request.form.get("reps_low")),
+                    muscle_groups=muscle_groups,
+                )
+            except Exception as e:
+                import logging
+                logging.exception("update_my_set_exercise failed")
+                flash(f"保存に失敗しました: {e}", "danger")
+            else:
+                flash("更新しました。", "success")
+                return redirect(url_for("my_set_detail", my_set_id=my_set_id))
     with db._conn() as conn:
         cur = conn.cursor()
         cur.execute("SELECT * FROM my_set_exercises WHERE id = %s", (mse_id,))
