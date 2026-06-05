@@ -81,27 +81,18 @@
   </div>
 </div>
 
-{# ── バフ丸マスコット ── #}
-<div class="card mb-3" style="background:rgba(90,62,43,0.15);border:1px solid rgba(90,62,43,0.4);">
-  <div class="card-body py-3 px-3">
+{# ── ワークルー マスコット ── #}
+<div class="card mb-3" style="background:rgba(20,16,10,0.7);border:1px solid rgba(180,130,60,0.3);">
+  <div class="card-body py-2 px-3">
     <div class="mascot-wrap">
-      <div class="mascot-anim">
-        <div class="mascot-body-outer">
-          <div class="mascot-ear l"><div class="mascot-ear-inner"></div></div>
-          <div class="mascot-ear r"><div class="mascot-ear-inner"></div></div>
-          <div class="mascot-face">
-            <div class="mascot-eyes">
-              <div class="mascot-eye-white"><div class="mascot-pupil"></div></div>
-              <div class="mascot-eye-white"><div class="mascot-pupil"></div></div>
-            </div>
-            <div class="mascot-nose"></div>
-            <div class="mascot-mouth"></div>
-          </div>
-          <div class="mascot-badge">🏋️</div>
-        </div>
+      <div class="mascot-anim" style="flex-shrink:0;width:80px;height:80px;">
+        <img id="mascot-img"
+             src="{{ url_for('static', filename='img/workroo/main.png') }}"
+             alt="ワークルー"
+             style="width:80px;height:80px;object-fit:contain;">
       </div>
       <div class="mascot-bubble">
-        <div class="mascot-name">バフ丸</div>
+        <div class="mascot-name">ワークルー</div>
         <div id="mascot-msg" style="min-height:2.5em;"></div>
       </div>
     </div>
@@ -281,121 +272,96 @@
 
 <div style="height:calc(var(--tab-h) * 0.5);"></div>
 
-{# ── マスコット CSS ── #}
+{# ── ワークルー CSS ── #}
 <style>
-.mascot-wrap { display:flex; gap:0.75rem; align-items:flex-end; }
-.mascot-anim { animation:mascotBounce 2.8s ease-in-out infinite; flex-shrink:0; }
+.mascot-wrap  { display:flex; gap:0.75rem; align-items:center; }
+.mascot-anim  { animation:mascotBounce 2.8s ease-in-out infinite; flex-shrink:0; }
 @keyframes mascotBounce {
-  0%,100% { transform:translateY(0) rotate(-2deg); }
-  50%      { transform:translateY(-6px) rotate(2deg); }
+  0%,100% { transform:translateY(0) scale(1); }
+  50%      { transform:translateY(-5px) scale(1.04); }
 }
-.mascot-body-outer {
-  width:64px; height:64px; background:#5a3e2b; border-radius:50%;
-  position:relative; display:flex; align-items:center; justify-content:center;
-  box-shadow:0 2px 10px rgba(0,0,0,0.5);
-}
-.mascot-ear {
-  position:absolute; top:-6px; width:18px; height:18px;
-  background:#5a3e2b; border-radius:50%;
-}
-.mascot-ear.l { left:5px; }
-.mascot-ear.r { right:5px; }
-.mascot-ear-inner {
-  position:absolute; top:3px; left:3px;
-  width:12px; height:12px; background:#c26b6b; border-radius:50%;
-}
-.mascot-face { position:relative; text-align:center; }
-.mascot-eyes { display:flex; gap:10px; margin-bottom:3px; justify-content:center; }
-.mascot-eye-white {
-  width:10px; height:12px; background:#fff;
-  border-radius:50%; position:relative;
-  display:flex; align-items:flex-end; justify-content:center; padding-bottom:1px;
-}
-.mascot-pupil { width:6px; height:7px; background:#1a1a1a; border-radius:50%; }
-.mascot-nose  { width:8px; height:5px; background:#c26b6b; border-radius:50%; margin:0 auto 2px; }
-.mascot-mouth {
-  width:16px; height:8px;
-  border-bottom:2.5px solid rgba(255,255,255,0.85);
-  border-left:2px solid rgba(255,255,255,0.85);
-  border-right:2px solid rgba(255,255,255,0.85);
-  border-radius:0 0 8px 8px; margin:0 auto;
-}
-.mascot-badge { position:absolute; bottom:-5px; right:-5px; font-size:1.05rem; }
+#mascot-img   { transition:opacity 0.25s, transform 0.25s; }
+#mascot-img.changing { opacity:0; transform:scale(0.88); }
 .mascot-bubble {
   flex:1; min-width:0;
-  background:rgba(255,255,255,0.07);
-  border:1px solid rgba(255,255,255,0.16);
+  background:rgba(255,255,255,0.06);
+  border:1px solid rgba(180,130,60,0.35);
   border-radius:1rem 1rem 1rem 0.3rem;
   padding:0.65rem 0.85rem;
   font-size:0.82rem; line-height:1.5;
 }
 .mascot-name {
   font-size:0.6rem; color:var(--yellow); font-weight:700;
-  letter-spacing:0.07em; margin-bottom:0.2rem; text-transform:uppercase;
+  letter-spacing:0.07em; margin-bottom:0.2rem;
 }
 </style>
 
-{# ── マスコット メッセージ JS ── #}
+{# ── ワークルー メッセージ JS ── #}
 <script>
 (function () {
+  var BASE = '{{ url_for("static", filename="img/workroo/") }}';
   var totalSessions = {{ stats.total_sessions | int }};
   var weekCount     = {{ stats.week_count | int }};
   var totalExp      = {{ (stats.total_exp or 0) | int }};
   var recentExp     = {{ (exp_trend[-1].total_exp if exp_trend else 0) | int }};
 
+  // [メッセージ, 画像ファイル名]
   var tips = [
-    "タンパク質は体重×1.6〜2.0gが筋肥大の目安。毎食コンスタントに摂ろう！",
-    "筋肉は休息中に成長するよ。睡眠7〜9時間が最強のサプリ💊",
-    "セット間休憩は高重量なら3〜5分、代謝系なら60〜90秒が科学的に最適だよ。",
-    "水分不足は筋力を最大10%低下させるらしい。トレ前後に水をしっかり飲もう！",
-    "漸進性過負荷が筋肥大の黄金則。重量・rep数・セット数のどれかを少しずつ増やそう📈",
-    "プレワークアウトにカフェイン200〜400mgは集中力と筋持久力を上げる効果があるよ。",
-    "ウォームアップは怪我防止だけじゃなく、パフォーマンスを15%以上向上させるよ！",
-    "クレアチンは最も科学的根拠のあるサプリの一つ。1日3〜5gで筋力・パワーUP。",
-    "複合種目（スクワット・デッド・ベンチ）は成長ホルモンの分泌を最大化するよ💪",
-    "インクラインよりフラットベンチの方が大胸筋全体に効くことが多いよ。試してみて！",
-    "腹圧（ブレーシング）を意識すると高重量でも腰を守れるよ。深呼吸で腹を膨らませてから！",
-    "筋肉痛がないからといって効果がないわけじゃないよ。効率的に動員できてる証拠かも！",
-    "オーバートレーニングのサインは睡眠の質低下・安静時心拍数上昇・気分の落ち込み。要注意！",
-    "筋肥大には週あたり各筋群10〜20セットが推奨されてるよ。計画的に配分しよう。",
+    ["タンパク質は体重×1.6〜2.0gが筋肥大の目安。毎食コンスタントに摂ろう！",           "focus.png"],
+    ["筋肉は休息中に成長するよ。睡眠7〜9時間が最強のサプリ💊",                           "sleep.png"],
+    ["セット間休憩は高重量なら3〜5分、代謝系なら60〜90秒が科学的に最適だよ。",           "think.png"],
+    ["水分不足は筋力を最大10%低下させるらしい。トレ前後に水をしっかり飲もう！",           "focus.png"],
+    ["漸進性過負荷が筋肥大の黄金則。重量・rep数・セット数のどれかを少しずつ増やそう📈",  "levelup.png"],
+    ["プレワークアウトにカフェイン200〜400mgは集中力と筋持久力を上げる効果があるよ。",   "cool.png"],
+    ["ウォームアップは怪我防止だけじゃなく、パフォーマンスを15%以上向上させるよ！",      "focus.png"],
+    ["クレアチンは最も科学的根拠のあるサプリの一つ。1日3〜5gで筋力・パワーUP。",         "think.png"],
+    ["複合種目（スクワット・デッド・ベンチ）は成長ホルモンの分泌を最大化するよ💪",       "fire.png"],
+    ["腹圧（ブレーシング）を意識すると高重量でも腰を守れるよ。深呼吸で腹を膨らませてから！", "focus.png"],
+    ["筋肉痛がないからといって効果がないわけじゃないよ。効率的に動員できてる証拠かも！", "nice.png"],
+    ["オーバートレーニングのサインは睡眠の質低下・安静時心拍数上昇・気分の落ち込み。要注意！", "tired.png"],
+    ["筋肥大には週あたり各筋群10〜20セットが推奨されてるよ。計画的に配分しよう。",       "think.png"],
   ];
 
   var praise = [
-    "今週も" + weekCount + "回トレーニングしたね！バフ丸、誇らしいよ🎉",
-    "累計" + totalSessions + "セッション達成！継続は力なり、一緒に限界を超えよう！",
-    "前回のセッション " + recentExp.toLocaleString() + " EXP、すごい集中力だったね✨",
-    "累計" + Math.floor(totalExp / 1000) + "K EXP突破！積み重ねた努力は裏切らないよ💎",
-    "毎回トレーニングするたびに、確実に前より強くなってる。バフ丸はずっと見てるよ👀",
+    ["今週も" + weekCount + "回トレーニングしたね！ワークルー、誇らしいよ！",               "yay.png"],
+    ["累計" + totalSessions + "セッション達成！継続は力なり、一緒に限界を超えよう！",       "levelup.png"],
+    ["前回のセッション " + recentExp.toLocaleString() + " EXP、すごい集中力だったね！",      "happy.png"],
+    ["累計" + Math.floor(totalExp/1000) + "K EXP突破！積み重ねた努力は裏切らないよ！",      "cool.png"],
+    ["毎回トレーニングするたびに、確実に前より強くなってる。ワークルーはずっと見てるよ！", "nice.png"],
   ];
 
   var encourage = [
-    "今日はどんなトレーニング？一緒に頑張ろう！🔥",
-    "記録を更新しなくてもいい。昨日より少しだけ前に進めばOKだよ！",
-    "筋肉と心は同じ。追い込むほど、休むほど、強くなる。バランスが大事✨",
-    "今日のトレーニングが、1ヶ月後の自分を作る。未来の自分に投資しよう📈",
-    "何もしない日より、少しだけ動く日の方が必ず強くなれるよ！",
-    "ジムへ行くことが一番難しい。でも毎回それを乗り越えてる君はすごい💪",
-    "筋肉は嘘をつかない。正直な努力は必ず結果になるよ！",
-    "今日のバフ丸も全力でサポートするよ。さあ、一緒に記録を作ろう🏋️",
+    ["今日はどんなトレーニング？一緒に頑張ろう！",                                          "fire.png"],
+    ["記録を更新しなくてもいい。昨日より少しだけ前に進めばOKだよ！",                       "gooo.png"],
+    ["筋肉と心は同じ。追い込むほど、休むほど、強くなる。バランスが大事！",                 "main.png"],
+    ["今日のトレーニングが、1ヶ月後の自分を作る。未来の自分に投資しよう！",                "levelup.png"],
+    ["ジムへ行くことが一番難しい。でも毎回それを乗り越えてる君はすごい！",                 "fire.png"],
+    ["筋肉は嘘をつかない。正直な努力は必ず結果になるよ！",                                  "gooo.png"],
+    ["今日のワークルーも全力でサポートするよ。さあ、一緒に記録を作ろう！",                 "main.png"],
   ];
 
   var pool = tips.concat(tips).concat(encourage);
   if (recentExp > 0 || totalSessions > 0) pool = praise.concat(pool);
 
-  var idx = Math.floor(Math.random() * pool.length);
-  var el  = document.getElementById('mascot-msg');
+  var idx     = Math.floor(Math.random() * pool.length);
+  var msgEl   = document.getElementById('mascot-msg');
+  var imgEl   = document.getElementById('mascot-img');
 
   function showMsg() {
-    if (!el) return;
-    el.style.opacity = '0';
+    if (!msgEl || !imgEl) return;
+    imgEl.classList.add('changing');
+    msgEl.style.opacity = '0';
     setTimeout(function () {
-      el.textContent = pool[idx % pool.length];
-      el.style.opacity = '1';
+      var item = pool[idx % pool.length];
+      msgEl.textContent = item[0];
+      imgEl.src = BASE + item[1];
+      msgEl.style.opacity = '1';
+      imgEl.classList.remove('changing');
       idx++;
-    }, 300);
+    }, 280);
   }
 
-  el.style.transition = 'opacity 0.3s';
+  msgEl.style.transition = 'opacity 0.28s';
   showMsg();
   setInterval(showMsg, 10000);
 })();
