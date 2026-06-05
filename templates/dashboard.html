@@ -280,8 +280,18 @@
   0%,100% { transform:translateY(0) scale(1); }
   50%      { transform:translateY(-5px) scale(1.04); }
 }
-#mascot-img   { transition:opacity 0.25s, transform 0.25s; }
-#mascot-img.changing { opacity:0; transform:scale(0.88); }
+#mascot-img          { transition:opacity 0.22s, transform 0.22s; }
+#mascot-img.changing { opacity:0; transform:scale(0.82); }
+#mascot-img.appearing {
+  animation:mascotPopIn 0.38s ease-out both;
+  transition:none;
+}
+@keyframes mascotPopIn {
+  0%   { opacity:0; transform:scale(0.4); }
+  60%  { opacity:1; transform:scale(1.12); }
+  80%  { transform:scale(0.96); }
+  100% { opacity:1; transform:scale(1); }
+}
 .mascot-bubble {
   flex:1; min-width:0;
   background:rgba(255,255,255,0.06);
@@ -347,21 +357,43 @@
   var msgEl   = document.getElementById('mascot-msg');
   var imgEl   = document.getElementById('mascot-img');
 
-  function showMsg() {
-    if (!msgEl || !imgEl) return;
-    imgEl.classList.add('changing');
-    msgEl.style.opacity = '0';
-    setTimeout(function () {
-      var item = pool[idx % pool.length];
-      msgEl.textContent = item[0];
-      imgEl.src = BASE + item[1];
-      msgEl.style.opacity = '1';
-      imgEl.classList.remove('changing');
-      idx++;
-    }, 280);
+  // 次の画像を事前に読み込んでキャッシュに載せる
+  function preloadImg(filename) {
+    var pre = new Image();
+    pre.src = BASE + filename;
   }
 
-  msgEl.style.transition = 'opacity 0.28s';
+  function showMsg() {
+    if (!msgEl || !imgEl) return;
+    var item = pool[idx % pool.length];
+
+    // Phase 1: 画像・テキストを同時にフェードアウト (220ms)
+    imgEl.classList.add('changing');
+    msgEl.style.opacity = '0';
+
+    setTimeout(function () {
+      // Phase 2: 画像を差し替えてポップインアニメーション (380ms)
+      // キャッシュ済みなので即座に表示される
+      imgEl.src = BASE + item[1];
+      imgEl.classList.remove('changing');
+      imgEl.classList.add('appearing');
+
+      // Phase 3: 画像ポップイン完了後にテキストフェードイン
+      setTimeout(function () {
+        imgEl.classList.remove('appearing');
+        msgEl.textContent = item[0];
+        msgEl.style.opacity = '1';
+        idx++;
+        // 次のメッセージの画像を先読みしておく
+        preloadImg(pool[idx % pool.length][1]);
+      }, 380);
+    }, 220);
+  }
+
+  msgEl.style.transition = 'opacity 0.22s';
+  // 初回表示前に最初の2枚をプリロード
+  preloadImg(pool[idx % pool.length][1]);
+  preloadImg(pool[(idx + 1) % pool.length][1]);
   showMsg();
   setInterval(showMsg, 10000);
 })();
