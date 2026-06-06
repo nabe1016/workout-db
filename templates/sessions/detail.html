@@ -110,6 +110,30 @@
       </div>
       {% endif %}
 
+      {# 折りたたみ時のみ表示: 負荷情報行 #}
+      <div class="ex-collapsed-only" style="display:none;padding-left:1.8rem;margin-top:0.15rem;">
+        <div class="d-flex gap-2 align-items-center" style="font-size:0.72rem;color:var(--txt-2);">
+          <span id="collapsed-mode-{{ ex.id }}" style="font-weight:700;{% if mode == 'low' %}color:var(--orange){% else %}color:var(--blue){% endif %};">
+            {% if mode == 'low' %}低{% else %}高{% endif %}
+          </span>
+          <span id="collapsed-1rm-{{ ex.id }}"{% if not ex.one_rep_max %} style="display:none;"{% endif %}>
+            1RM:<strong class="text-light">{{ ex.one_rep_max }}kg</strong>
+          </span>
+          <span id="collapsed-weight-{{ ex.id }}">
+            {% if mode == 'low' and ex.weight_low_load %}
+              <strong style="color:var(--orange);">{{ ex.weight_low_load }}kg</strong><span class="text-secondary">({{ (ex.low_load_pct or 30)|int }}%)</span>
+            {% elif ex.weight_setting %}
+              <strong style="color:var(--blue);">{{ ex.weight_setting }}kg</strong><span class="text-secondary">(80%)</span>
+            {% else %}
+              <span class="text-secondary">重量未設定</span>
+            {% endif %}
+          </span>
+          <span id="collapsed-rep-{{ ex.id }}">
+            <strong class="text-light">{{ ex.reps if ex.reps else ('20-30' if mode == 'low' else '8-12') }}</strong>rep
+          </span>
+        </div>
+      </div>
+
       {# ── 常時表示: セットボタン + 完了・スキップ ── #}
       <div class="d-flex align-items-center gap-1 mt-1">
         {# ①〜⑥ 横並び #}
@@ -671,6 +695,41 @@
     if (rEl) {
       var repVal = data.reps ? data.reps : (isLow ? '20-30' : '8-12');
       rEl.innerHTML = ': <strong class="text-light">' + repVal + '</strong>';
+    }
+
+    // Collapsed info line
+    var cmEl = document.getElementById('collapsed-mode-' + seId);
+    if (cmEl) {
+      cmEl.textContent = isLow ? '低' : '高';
+      cmEl.style.color = isLow ? 'var(--orange)' : 'var(--blue)';
+    }
+    var c1rmEl = document.getElementById('collapsed-1rm-' + seId);
+    if (c1rmEl) {
+      if (data.one_rep_max) {
+        c1rmEl.innerHTML = '1RM:<strong class="text-light">' + data.one_rep_max + 'kg</strong>';
+        c1rmEl.style.display = '';
+      } else {
+        c1rmEl.innerHTML = '';
+        c1rmEl.style.display = 'none';
+      }
+    }
+    var cwEl = document.getElementById('collapsed-weight-' + seId);
+    if (cwEl) {
+      if (isLow && data.weight_low_load) {
+        var cpct = Math.round(data.low_load_pct || 30);
+        cwEl.innerHTML = '<strong style="color:var(--orange);">' + data.weight_low_load + 'kg</strong>'
+                       + '<span class="text-secondary">(' + cpct + '%)</span>';
+      } else if (data.weight_setting) {
+        cwEl.innerHTML = '<strong style="color:var(--blue);">' + data.weight_setting + 'kg</strong>'
+                       + '<span class="text-secondary">(80%)</span>';
+      } else {
+        cwEl.innerHTML = '<span class="text-secondary">重量未設定</span>';
+      }
+    }
+    var crEl = document.getElementById('collapsed-rep-' + seId);
+    if (crEl) {
+      var crepVal = data.reps ? data.reps : (isLow ? '20-30' : '8-12');
+      crEl.innerHTML = '<strong class="text-light">' + crepVal + '</strong>rep';
     }
 
     // EXP badge & session total
