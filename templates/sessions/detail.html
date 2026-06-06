@@ -101,6 +101,15 @@
                 style="font-size:0.7rem;padding:0.05rem 0.3rem;line-height:1.4;border-radius:4px;color:var(--txt-2);background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);flex-shrink:0;">▶</button>
       </div>
 
+      {% if ex.needs_bench %}
+      {# 折りたたみ時のみ表示: ベンチ角度 #}
+      <div class="ex-collapsed-only" style="display:none;font-size:0.72rem;color:var(--txt-2);padding-left:1.8rem;margin-top:0.1rem;">
+        🪑 <span id="collapsed-bench-angle-{{ ex.id }}">
+          {% if ex.bench_angle is not none and ex.bench_angle != '' %}{{ ex.bench_angle }}°{% else %}<span style="color:rgba(255,255,255,0.3);">角度未設定</span>{% endif %}
+        </span>
+      </div>
+      {% endif %}
+
       {# ── 常時表示: セットボタン + 完了・スキップ ── #}
       <div class="d-flex align-items-center gap-1 mt-1">
         {# ①〜⑥ 横並び #}
@@ -341,6 +350,9 @@
   function setCardCollapsed(card, collapsed) {
     card.querySelectorAll('.ex-detail-section').forEach(function (el) {
       el.style.display = collapsed ? 'none' : '';
+    });
+    card.querySelectorAll('.ex-collapsed-only').forEach(function (el) {
+      el.style.display = collapsed ? '' : 'none';
     });
     var toggleBtn = card.querySelector('.collapse-toggle-btn');
     if (toggleBtn) toggleBtn.textContent = collapsed ? '▶' : '▼';
@@ -645,6 +657,12 @@
         baEl.innerHTML = data.bench_angle !== null && data.bench_angle !== ''
           ? ': <strong class="text-light">' + data.bench_angle + '°</strong>'
           : '<span class="text-secondary">: —</span>';
+      }
+      var cbaEl = document.getElementById('collapsed-bench-angle-' + seId);
+      if (cbaEl) {
+        cbaEl.innerHTML = data.bench_angle !== null && data.bench_angle !== ''
+          ? data.bench_angle + '°'
+          : '<span style="color:rgba(255,255,255,0.3);">角度未設定</span>';
       }
     }
 
