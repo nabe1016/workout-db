@@ -226,3 +226,6 @@ UPDATE exercises SET bodyweight_ratio=0.65 WHERE name='片脚カーフレイズ'
 UPDATE exercises SET bodyweight_ratio=0.20 WHERE name='トゥレイズ';
 UPDATE exercises SET bodyweight_ratio=0.30 WHERE name='ベンチレッグレイズ';
 UPDATE exercises SET bodyweight_ratio=0.20, is_time_based=TRUE WHERE name='プランク';
+
+-- ベンチ台使用時の角度記録
+ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS bench_angle SMALLINT;

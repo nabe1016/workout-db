@@ -5,6 +5,10 @@
 {% block nav_mysets %}active{% endblock %}
 
 {% block nav_actions %}
+{% if exercises %}
+<button type="button" id="sync-btn"
+        class="btn btn-outline-secondary btn-sm" title="最新の記録に同期">🔁</button>
+{% endif %}
 <a href="{{ url_for('my_set_exercise_new', my_set_id=my_set.id) }}"
    class="btn btn-outline-warning btn-sm">➕🏋️</a>
 <a href="{{ url_for('my_set_load_from_session', my_set_id=my_set.id) }}"
@@ -140,6 +144,27 @@
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <script>
 (function () {
+  // ── 🔁 最新記録に同期 ─────────────────────────────────────────────────────
+  var syncBtn = document.getElementById('sync-btn');
+  if (syncBtn) {
+    syncBtn.addEventListener('click', function () {
+      if (!confirm('各種目の 1RM・重量・rep を\n最新のトレーニング記録に更新しますか？\n\n現在のマイセットの値が上書きされます。')) return;
+      syncBtn.disabled = true;
+      syncBtn.textContent = '⏳';
+      fetch('{{ url_for("my_set_sync_from_latest", my_set_id=my_set.id) }}', { method: 'POST' })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          syncBtn.textContent = '✓ ' + data.synced + '種目更新';
+          syncBtn.style.color = 'var(--green)';
+          setTimeout(function () { location.reload(); }, 1200);
+        })
+        .catch(function () {
+          syncBtn.textContent = 'エラー';
+          syncBtn.disabled = false;
+        });
+    });
+  }
+
   // ── Sortable ──────────────────────────────────────────────────────────────
   var reorderUrl = '{{ url_for("my_set_exercises_reorder", my_set_id=my_set.id) }}';
   Sortable.create(document.getElementById('sortable-list'), {

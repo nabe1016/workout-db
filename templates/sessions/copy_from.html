@@ -5,7 +5,7 @@
 
 {% block content %}
 <h5 class="mb-1">前回のメニューをコピー</h5>
-<p class="text-secondary small mb-4">コピーしたいセッションを選んでください。<br>重量・rep はそのまま引き継ぎ、セット完了はリセットされます。</p>
+<p class="text-secondary small mb-4">コピーしたいセッションを選んでください。</p>
 
 {% if candidates %}
 <div class="d-flex flex-column gap-3">
@@ -45,13 +45,28 @@
         {% endfor %}
       </div>
 
-      <form method="post"
-            action="{{ url_for('session_copy_execute', session_id=session.id, from_id=s.id) }}"
-            onsubmit="return confirm('このメニューをコピーしますか？\n（既存の種目はすべて置き換えられます）')">
-        <button type="submit" class="btn btn-warning btn-lg w-100 fw-bold">
-          このメニューをコピー
-        </button>
-      </form>
+      <div class="d-flex gap-2">
+        <form method="post"
+              action="{{ url_for('session_copy_execute', session_id=session.id, from_id=s.id) }}"
+              style="flex:1;"
+              onsubmit="return confirm('重量・rep込みでコピーしますか？\n（既存の種目は置き換えられます）')">
+          <input type="hidden" name="copy_type" value="full">
+          <button type="submit" class="btn btn-warning btn-lg w-100 fw-bold" style="font-size:0.88rem;">
+            📋 重量込みコピー
+          </button>
+          <div class="text-secondary text-center" style="font-size:0.65rem;margin-top:0.2rem;">1RM・重量・rep を引き継ぎ</div>
+        </form>
+        <form method="post"
+              action="{{ url_for('session_copy_execute', session_id=session.id, from_id=s.id) }}"
+              style="flex:1;"
+              onsubmit="return confirm('種目名のみコピーしますか？\n重量・repは空になります。')">
+          <input type="hidden" name="copy_type" value="menu_only">
+          <button type="submit" class="btn btn-outline-warning btn-lg w-100 fw-bold" style="font-size:0.88rem;">
+            📝 種目のみ
+          </button>
+          <div class="text-secondary text-center" style="font-size:0.65rem;margin-top:0.2rem;">値はリセット・新規入力</div>
+        </form>
+      </div>
 
     </div>
   </div>

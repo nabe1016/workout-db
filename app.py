@@ -380,7 +380,10 @@ def session_copy_from(session_id):
 
 @app.route("/sessions/<int:session_id>/copy-from/<int:from_id>", methods=["POST"])
 def session_copy_execute(session_id, from_id):
-    count = db.copy_exercises_to_session(from_session_id=from_id, to_session_id=session_id)
+    copy_type = request.form.get("copy_type", "full")
+    count = db.copy_exercises_to_session(
+        from_session_id=from_id, to_session_id=session_id, copy_type=copy_type
+    )
     flash(f"{count} 種目をコピーしました。", "success")
     return redirect(url_for("session_detail", session_id=session_id))
 
@@ -545,16 +548,40 @@ def api_toggle_complete(se_id):
 @app.route("/api/se/<int:se_id>/quick-edit", methods=["POST"])
 def api_quick_edit_se(se_id):
     data = request.get_json(force=True) or {}
-    result = db.quick_edit_se(
-        se_id,
+    kwargs = dict(
         one_rep_max=data.get("one_rep_max"),
         reps=data.get("reps"),
         low_load_pct=data.get("low_load_pct"),
         load_mode=data.get("load_mode"),
     )
+    if "bench_angle" in data:
+        kwargs["bench_angle"] = data.get("bench_angle")
+    result = db.quick_edit_se(se_id, **kwargs)
     if result is None:
         return jsonify({"error": "not found"}), 404
     return jsonify(result)
+
+
+@app.route("/api/sessions/<int:session_id>/apply-overload-tip", methods=["POST"])
+def api_apply_overload_tip(session_id):
+    data = request.get_json(force=True) or {}
+    se_id = data.get("se_id")
+    action = data.get("action")
+    new_value = data.get("new_value")
+    se = db.get_session_exercise(se_id)
+    if se is None:
+        return jsonify({"error": "not found"}), 404
+    count = db.apply_overload_tip(se["exercise_id"], action, new_value)
+    return jsonify({"updated": count, "exercise_name": se.get("exercise_name", "")})
+
+
+@app.route("/my-sets/<int:my_set_id>/sync-from-latest", methods=["POST"])
+def my_set_sync_from_latest(my_set_id):
+    my_set = db.get_my_set(my_set_id)
+    if my_set is None:
+        return jsonify({"error": "not found"}), 404
+    count = db.sync_my_set_from_latest(my_set_id)
+    return jsonify({"synced": count})
 
 
 # ── My Sets ───────────────────────────────────────────────────────────────────

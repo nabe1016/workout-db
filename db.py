@@ -244,9 +244,13 @@ def toggle_complete_exercise(se_id: int) -> dict:
     return {"completed": bool(row["completed"])}
 
 
+_MISSING = object()
+
+
 def quick_edit_se(se_id: int, one_rep_max=None, reps=None,
-                  low_load_pct=None, load_mode=None) -> dict | None:
-    """Inline update of 1RM / reps / low_load_pct / load_mode. Recalculates weights and EXP."""
+                  low_load_pct=None, load_mode=None,
+                  bench_angle=_MISSING) -> dict | None:
+    """Inline update of 1RM / reps / low_load_pct / load_mode / bench_angle. Recalculates weights and EXP."""
     with _conn() as conn:
         cur = conn.cursor()
         cur.execute("""
@@ -290,6 +294,9 @@ def quick_edit_se(se_id: int, one_rep_max=None, reps=None,
                 reps=%s, load_mode=%s, low_load_pct=%s, exp_earned=%s
             WHERE id = %s
         """, (new_orm, new_ws, new_ws, new_wl, new_reps, new_mode, new_pct, exp, se_id))
+        if bench_angle is not _MISSING:
+            cur.execute("UPDATE session_exercises SET bench_angle=%s WHERE id=%s",
+                        (bench_angle, se_id))
         session_id = se["session_id"]
 
     recalculate_session_exp(session_id)
@@ -298,7 +305,7 @@ def quick_edit_se(se_id: int, one_rep_max=None, reps=None,
         cur.execute("SELECT total_exp FROM workout_sessions WHERE id = %s", (session_id,))
         total = cur.fetchone()["total_exp"]
 
-    return {
+    result = {
         "one_rep_max":       new_orm,
         "weight_setting":    new_ws,
         "weight_low_load":   new_wl,
@@ -308,6 +315,9 @@ def quick_edit_se(se_id: int, one_rep_max=None, reps=None,
         "exp_earned":        exp,
         "session_total_exp": total,
     }
+    if bench_angle is not _MISSING:
+        result["bench_angle"] = bench_angle
+    return result
 
 
 # ── Exercises master ──────────────────────────────────────────────────────────
@@ -1052,8 +1062,12 @@ def get_recent_sessions_for_copy(exclude_session_id: int = None, limit: int = 2)
         return result
 
 
-def copy_exercises_to_session(from_session_id: int, to_session_id: int) -> int:
-    """Copy all exercises from one session to another. Resets set completions and EXP."""
+def copy_exercises_to_session(from_session_id: int, to_session_id: int,
+                              copy_type: str = "full") -> int:
+    """Copy all exercises from one session to another.
+    copy_type='full'      : copy 1RM/weight/reps, reset set completions
+    copy_type='menu_only' : copy exercise names only, clear weight/1RM/reps
+    """
     with _conn() as conn:
         cur = conn.cursor()
         cur.execute("""
@@ -1068,25 +1082,87 @@ def copy_exercises_to_session(from_session_id: int, to_session_id: int) -> int:
         cur.execute("DELETE FROM session_exercises WHERE session_id = %s", (to_session_id,))
 
         for i, ex in enumerate(exercises, 1):
-            cur.execute("""
-                INSERT INTO session_exercises
-                    (session_id, exercise_id, sort_order,
-                     one_rep_max, weight_pct80, weight_setting, weight_low_load, reps,
-                     ratio_pct, set1_completed, set2_completed, set3_completed,
-                     exp_earned, muscle_groups)
-                VALUES (%s,%s,%s, %s,%s,%s,%s,%s, %s,%s,%s,%s, %s,%s)
-            """, (
-                to_session_id, ex["exercise_id"], i,
-                ex["one_rep_max"], ex["weight_pct80"], ex["weight_setting"],
-                ex["weight_low_load"], ex["reps"],
-                ex["ratio_pct"], False, False, False,
-                0, ex["muscle_groups"],
-            ))
+            if copy_type == "menu_only":
+                cur.execute("""
+                    INSERT INTO session_exercises
+                        (session_id, exercise_id, sort_order,
+                         set1_completed, set2_completed, set3_completed,
+                         exp_earned, muscle_groups)
+                    VALUES (%s,%s,%s, %s,%s,%s, %s,%s)
+                """, (
+                    to_session_id, ex["exercise_id"], i,
+                    False, False, False,
+                    0, ex["muscle_groups"],
+                ))
+            else:
+                cur.execute("""
+                    INSERT INTO session_exercises
+                        (session_id, exercise_id, sort_order,
+                         one_rep_max, weight_pct80, weight_setting, weight_low_load, reps,
+                         ratio_pct, set1_completed, set2_completed, set3_completed,
+                         exp_earned, muscle_groups)
+                    VALUES (%s,%s,%s, %s,%s,%s,%s,%s, %s,%s,%s,%s, %s,%s)
+                """, (
+                    to_session_id, ex["exercise_id"], i,
+                    ex["one_rep_max"], ex["weight_pct80"], ex["weight_setting"],
+                    ex["weight_low_load"], ex["reps"],
+                    ex["ratio_pct"], False, False, False,
+                    0, ex["muscle_groups"],
+                ))
 
         count = len(exercises)
 
     recalculate_session_exp(to_session_id)
     return count
+
+
+def apply_overload_tip(exercise_id: int, action: str, new_value) -> int:
+    """Apply a progressive overload suggestion to all my_set_exercises for this exercise."""
+    with _conn() as conn:
+        cur = conn.cursor()
+        if action == "reps" and new_value is not None:
+            cur.execute(
+                "UPDATE my_set_exercises SET reps = %s WHERE exercise_id = %s",
+                (int(new_value), exercise_id)
+            )
+        elif action == "low_load_pct" and new_value is not None:
+            cur.execute(
+                "UPDATE my_set_exercises SET reps_low = %s WHERE exercise_id = %s",
+                (int(new_value), exercise_id)
+            )
+        return cur.rowcount
+
+
+def sync_my_set_from_latest(my_set_id: int) -> int:
+    """Update each my_set_exercise with the latest values from session_exercises."""
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM my_set_exercises WHERE my_set_id = %s", (my_set_id,))
+        mse_list = cur.fetchall()
+        updated = 0
+        for mse in mse_list:
+            cur.execute("""
+                SELECT se.one_rep_max, se.weight_setting, se.weight_low_load, se.reps
+                FROM session_exercises se
+                JOIN workout_sessions ws ON ws.id = se.session_id
+                WHERE se.exercise_id = %s
+                  AND se.one_rep_max IS NOT NULL
+                ORDER BY ws.session_date DESC
+                LIMIT 1
+            """, (mse["exercise_id"],))
+            latest = cur.fetchone()
+            if latest:
+                cur.execute("""
+                    UPDATE my_set_exercises
+                    SET one_rep_max   = COALESCE(%s, one_rep_max),
+                        weight_setting  = COALESCE(%s, weight_setting),
+                        weight_low_load = COALESCE(%s, weight_low_load),
+                        reps            = COALESCE(%s, reps)
+                    WHERE id = %s
+                """, (latest["one_rep_max"], latest["weight_setting"],
+                      latest["weight_low_load"], latest["reps"], mse["id"]))
+                updated += 1
+        return updated
 
 
 def get_last_exercise_values(exercise_id: int, exclude_session_id: int = None):
@@ -1491,6 +1567,7 @@ def build_advice(session, exercises: list) -> tuple:
         if done < 3 or reps <= 0:
             continue
 
+        se_id_val = ex.get("id")
         if mode == "low":
             if reps >= 30:
                 pct = float(ex.get("low_load_pct") or 30)
@@ -1499,34 +1576,39 @@ def build_advice(session, exercises: list) -> tuple:
                     overload_tips.append({
                         "icon": "📈", "name": name,
                         "title": "低負荷%を上げましょう",
-                        "body": f"{reps}rep × {done}セット達成！次回は低負荷% を {int(pct)}% → {new_pct}% に上げてみましょう。"
+                        "body": f"{reps}rep × {done}セット達成！次回は低負荷% を {int(pct)}% → {new_pct}% に上げてみましょう。",
+                        "se_id": se_id_val, "action": "low_load_pct", "new_value": new_pct,
                     })
                 else:
                     overload_tips.append({
                         "icon": "🚀", "name": name,
                         "title": "高負荷へ切り替えのチャンス",
-                        "body": f"低負荷で{reps}rep × {done}セット達成！次回は高負荷（1RM×80%）での8-12repに挑戦しましょう。"
+                        "body": f"低負荷で{reps}rep × {done}セット達成！次回は高負荷（1RM×80%）での8-12repに挑戦しましょう。",
+                        "se_id": se_id_val, "action": "mode_switch", "new_value": "high",
                     })
             elif reps < 30:
                 new_reps = reps + 2
                 overload_tips.append({
                     "icon": "📊", "name": name,
                     "title": "rep数を増やしましょう",
-                    "body": f"低負荷{reps}rep × {done}セット達成！次回は {reps} → {new_reps} rep に増やしてみましょう。30repで重量アップです。"
+                    "body": f"低負荷{reps}rep × {done}セット達成！次回は {reps} → {new_reps} rep に増やしてみましょう。30repで重量アップです。",
+                    "se_id": se_id_val, "action": "reps", "new_value": new_reps,
                 })
         else:
             if reps >= 12:
                 overload_tips.append({
                     "icon": "📈", "name": name,
                     "title": "次回は重量アップのチャンス！",
-                    "body": f"高負荷{reps}rep × {done}セット達成！1RMを更新して重量を1段階上げましょう。重量アップ後はrep数を8に戻してOKです。"
+                    "body": f"高負荷{reps}rep × {done}セット達成！1RMを更新して重量を1段階上げましょう。重量アップ後はrep数を8に戻してOKです。",
+                    "se_id": se_id_val, "action": "weight_up", "new_value": None,
                 })
             else:
                 new_reps = reps + 1
                 overload_tips.append({
                     "icon": "📊", "name": name,
                     "title": f"次回は {new_reps} rep を目標に",
-                    "body": f"高負荷{reps}rep × {done}セット達成！次回は {reps} → {new_reps} rep に増やしましょう。12repで重量アップです。"
+                    "body": f"高負荷{reps}rep × {done}セット達成！次回は {reps} → {new_reps} rep に増やしましょう。12repで重量アップです。",
+                    "se_id": se_id_val, "action": "reps", "new_value": new_reps,
                 })
 
     return advice, intensity, overload_tips
