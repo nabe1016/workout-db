@@ -57,7 +57,7 @@
 {% if exercises %}
 <div class="d-flex justify-content-end gap-2 mb-2">
   <button type="button" id="collapse-all-btn"
-          class="btn btn-outline-secondary btn-sm" data-collapsed="false">⊟ 折りたたむ</button>
+          class="btn btn-outline-secondary btn-sm" data-collapsed="true">⊞ 展開する</button>
   <button type="button" id="select-mode-btn"
           class="btn btn-outline-secondary btn-sm">選択</button>
 </div>
@@ -74,204 +74,66 @@
        data-completed="{{ 'true' if ex.completed else 'false' }}"
        style="{% if ex.body_part %}--card-bg:{{ category_bg(ex.body_part) }};{% endif %}">
     <div class="card-body py-2 px-2">
-      <div class="d-flex gap-2 align-items-stretch">
 
-        {# ── Main area ─────────────────────────────────────────── #}
-        <div class="flex-grow-1" style="min-width:0;">
+      {# ── 常時表示: 名前行 ── #}
+      <div class="d-flex align-items-center gap-1 flex-wrap">
+        <span class="drag-handle text-secondary"
+              style="font-size:1.6rem;cursor:grab;touch-action:none;user-select:none;opacity:0.55;flex-shrink:0;padding:0.1rem 0.35rem;line-height:1;">≡</span>
+        <div class="ex-checkbox-wrap" style="display:none;flex-shrink:0;">
+          <input type="checkbox" class="form-check-input ex-checkbox"
+                 name="se_ids" value="{{ ex.id }}"
+                 style="width:1.3rem;height:1.3rem;cursor:pointer;">
+        </div>
+        <a href="{{ url_for('exercise_progress', exercise_id=ex.exercise_id) }}"
+           class="fw-bold text-info text-decoration-none" style="font-size:0.92rem;line-height:1.3;">
+          {{ ex.exercise_name }}
+        </a>
+        {% if ex.needs_bench %}<span style="font-size:0.85rem;" title="ベンチ台必要">🪑</span>{% endif %}
+        {% if ex.body_part %}
+        <span class="badge" style="font-size:0.56rem;padding:0.12rem 0.35rem;background:{{ category_bg(ex.body_part) }};color:rgba(255,255,255,0.9);border-radius:4px;">{{ ex.body_part }}</span>
+        {% endif %}
+        {% if ex.primary_muscle %}
+        <strong style="color:var(--yellow);font-size:0.75rem;font-weight:700;">{{ ex.primary_muscle }}</strong>
+        {% endif %}
+        {# 折りたたみトグル #}
+        <button type="button" class="collapse-toggle-btn ms-auto btn btn-sm"
+                data-se-id="{{ ex.id }}"
+                style="font-size:0.7rem;padding:0.05rem 0.3rem;line-height:1.4;border-radius:4px;color:var(--txt-2);background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);flex-shrink:0;">▶</button>
+      </div>
 
-          {# メニュー情報ブロック #}
-          <div class="mb-1">
-            <div class="d-flex align-items-center gap-1 flex-wrap">
-              <span class="drag-handle text-secondary"
-                    style="font-size:1.6rem;cursor:grab;touch-action:none;user-select:none;opacity:0.55;flex-shrink:0;padding:0.1rem 0.35rem;line-height:1;">≡</span>
-              <div class="ex-checkbox-wrap" style="display:none;flex-shrink:0;">
-                <input type="checkbox" class="form-check-input ex-checkbox"
-                       name="se_ids" value="{{ ex.id }}"
-                       style="width:1.3rem;height:1.3rem;cursor:pointer;">
-              </div>
-              <a href="{{ url_for('exercise_progress', exercise_id=ex.exercise_id) }}"
-                 class="fw-bold text-info text-decoration-none" style="font-size:0.92rem;line-height:1.3;">
-                {{ ex.exercise_name }}
-              </a>
-              {% if ex.needs_bench %}<span style="font-size:0.85rem;" title="ベンチ台必要">🪑</span>{% endif %}
-              {% if ex.body_part %}
-              <span class="badge" style="font-size:0.56rem;padding:0.12rem 0.35rem;background:{{ category_bg(ex.body_part) }};color:rgba(255,255,255,0.9);border-radius:4px;">{{ ex.body_part }}</span>
-              {% endif %}
-              {% if ex.primary_muscle %}
-              <span class="text-secondary" style="font-size:0.72rem;">主導筋:</span>
-              <strong style="color:var(--yellow);font-size:0.75rem;font-weight:700;">{{ ex.primary_muscle }}</strong>
-              {% endif %}
-              {# 折りたたみトグル #}
-              <button type="button" class="collapse-toggle-btn ms-auto btn btn-sm"
-                      data-se-id="{{ ex.id }}"
-                      style="font-size:0.7rem;padding:0.05rem 0.3rem;line-height:1.4;border-radius:4px;color:var(--txt-2);background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);flex-shrink:0;">▼</button>
-            </div>
-            {# 折りたたみ時の要約表示 #}
-            <div class="ex-collapsed-summary" style="display:none;font-size:0.72rem;color:var(--txt-2);margin-top:0.1rem;">
-              <span id="col-weight-{{ ex.id }}">
-                {% if ex.load_mode == 'low' and ex.weight_low_load %}{{ ex.weight_low_load }}kg
-                {% elif ex.weight_setting %}{{ ex.weight_setting }}kg
-                {% endif %}
-              </span>
-              {% if ex.reps %}<span> × {{ ex.reps }}rep</span>{% endif %}
-              <span id="col-sets-{{ ex.id }}" class="ms-1" style="color:var(--green);">
-                {% set done_sets = [1,2,3,4,5,6]|select('le', 6)|list %}
-                {% set cs = [] %}
-                {% for i in range(1,7) %}{% if ex.get('set%d_completed'%i) %}{% set _ = cs.append(i) %}{% endif %}{% endfor %}
-                {% if cs %}✓×{{ cs|length }}{% endif %}
-              </span>
-            </div>
+      {# ── 常時表示: セットボタン + 完了・スキップ ── #}
+      <div class="d-flex align-items-center gap-2 mt-1">
+        <div class="d-flex gap-1">
+          {# 列1: ①②③ #}
+          <div class="d-flex flex-column gap-1">
+            {% for i in [1,2,3] %}
+            {% set c = ex.get("set%d_completed" % i) %}
+            <button type="button"
+                    class="set-toggle-btn btn btn-sm fw-bold {% if c %}btn-success{% else %}btn-outline-secondary{% endif %}"
+                    data-se-id="{{ ex.id }}" data-set-num="{{ i }}"
+                    data-completed="{{ 'true' if c else 'false' }}"
+                    style="width:2.4rem;height:2.4rem;font-size:1rem;padding:0;border-radius:7px;">
+              {% if i == 1 %}①{% elif i == 2 %}②{% else %}③{% endif %}
+            </button>
+            {% endfor %}
           </div>
-
-          {# 種目毎の表示ブロック ＋ 完了セット数操作ブロック #}
-          <div class="ex-detail-section d-flex gap-2 align-items-start">
-
-            {# 種目毎の表示ブロック #}
-            <div style="flex:1;min-width:0;">
-              {# 高/低トグル - フルwidth・明確なボタン表示 #}
-              <div class="d-flex mb-1" style="border:1.5px solid var(--sep);border-radius:7px;overflow:hidden;">
-                <button type="button" class="load-mode-btn btn flex-fill fw-bold"
-                        data-se-id="{{ ex.id }}" data-mode="high"
-                        style="border-radius:0;font-size:0.72rem;height:2rem;
-                               background:{% if mode != 'low' %}var(--blue);color:#fff{% else %}rgba(255,255,255,0.04);color:var(--txt-2){% endif %};">
-                  高負荷
-                </button>
-                <div style="width:1.5px;background:var(--sep);flex-shrink:0;"></div>
-                <button type="button" class="load-mode-btn btn flex-fill fw-bold"
-                        data-se-id="{{ ex.id }}" data-mode="low"
-                        style="border-radius:0;font-size:0.72rem;height:2rem;
-                               background:{% if mode == 'low' %}var(--orange);color:#000{% else %}rgba(255,255,255,0.04);color:var(--txt-2){% endif %};">
-                  低負荷
-                </button>
-              </div>
-              <div style="font-size:0.76rem;line-height:1.7;margin-top:0.25rem;">
-                {% if ex.one_rep_max %}
-                <div class="d-flex">
-                  <span class="text-secondary" style="width:2.8em;flex-shrink:0;">1RM</span>
-                  <span>: <strong class="text-light">{{ ex.one_rep_max }}kg</strong></span>
-                </div>
-                {% endif %}
-                {% if ex.needs_bench %}
-                <div class="d-flex">
-                  <span class="text-secondary" style="width:2.8em;flex-shrink:0;">角度</span>
-                  <span id="bench-angle-val-{{ ex.id }}">
-                    {% if ex.bench_angle is not none and ex.bench_angle != '' %}
-                    : <strong class="text-light">{{ ex.bench_angle }}°</strong>
-                    {% else %}
-                    <span class="text-secondary">: —</span>
-                    {% endif %}
-                  </span>
-                </div>
-                {% endif %}
-                <div class="d-flex align-items-center gap-1">
-                  <span class="text-secondary" style="width:2.8em;flex-shrink:0;">重量</span>
-                  <span id="weight-val-{{ ex.id }}">
-                    {% if mode == 'low' and ex.weight_low_load %}
-                      : <strong style="color:var(--orange);">{{ ex.weight_low_load }}kg</strong><span class="text-secondary" style="font-size:0.65rem;"> ({{ (ex.low_load_pct or 30)|int }}%)</span>
-                    {% elif ex.weight_setting %}
-                      : <strong style="color:var(--blue);">{{ ex.weight_setting }}kg</strong><span class="text-secondary" style="font-size:0.65rem;"> (80%)</span>
-                    {% else %}
-                      <span class="text-secondary">: —</span>
-                    {% endif %}
-                  </span>
-                  {% if not ex.one_rep_max %}
-                  <span style="font-size:0.58rem;padding:0.05rem 0.25rem;border-radius:3px;background:rgba(255,120,0,0.18);border:1px solid rgba(255,120,0,0.35);color:#ff9944;">1RM未設定</span>
-                  {% endif %}
-                </div>
-                <div class="d-flex">
-                  <span class="text-secondary" style="width:2.8em;flex-shrink:0;">rep</span>
-                  <span id="rep-val-{{ ex.id }}">: <strong class="text-light">{% if ex.reps %}{{ ex.reps }}{% else %}{% if mode == 'low' %}20-30{% else %}8-12{% endif %}{% endif %}</strong></span>
-                </div>
-              </div>
-              <div class="d-flex align-items-center gap-2 mt-1">
-                <button type="button" class="adjust-toggle-btn btn btn-sm btn-outline-secondary"
-                        data-se-id="{{ ex.id }}"
-                        style="font-size:0.6rem;padding:0.08rem 0.35rem;line-height:1.4;border-radius:4px;">⚙</button>
-                <span class="badge bg-warning text-dark exp-badge-{{ ex.id }}" style="font-size:0.62rem;">
-                  {{ "{:,}".format(ex.exp_earned) }} EXP
-                </span>
-              </div>
-              {# Inline adjust panel #}
-              <div class="adjust-panel mt-1 p-2" id="adjust-{{ ex.id }}"
-                   style="display:none;background:rgba(255,255,255,0.05);border-radius:7px;">
-                <div class="d-flex gap-2 align-items-end flex-wrap">
-                  <div>
-                    <div class="section-label" style="margin-bottom:0.15rem;font-size:0.6rem;">1RM kg</div>
-                    <input type="number" class="form-control form-control-sm adjust-input"
-                           data-se-id="{{ ex.id }}" data-field="one_rep_max"
-                           value="{{ ex.one_rep_max or '' }}" step="0.5" min="0"
-                           style="width:5rem;font-size:0.8rem;padding:0.25rem 0.4rem;">
-                  </div>
-                  <div>
-                    <div class="section-label" style="margin-bottom:0.15rem;font-size:0.6rem;">Reps</div>
-                    <input type="number" class="form-control form-control-sm adjust-input"
-                           data-se-id="{{ ex.id }}" data-field="reps"
-                           value="{{ ex.reps or '' }}" step="1" min="1"
-                           style="width:3.6rem;font-size:0.8rem;padding:0.25rem 0.4rem;">
-                  </div>
-                  <div>
-                    <div class="section-label" style="margin-bottom:0.15rem;font-size:0.6rem;">低%</div>
-                    <input type="number" class="form-control form-control-sm adjust-input"
-                           data-se-id="{{ ex.id }}" data-field="low_load_pct"
-                           value="{{ (ex.low_load_pct or 30)|int }}" step="5" min="10" max="80"
-                           style="width:3.6rem;font-size:0.8rem;padding:0.25rem 0.4rem;">
-                  </div>
-                  {% if ex.needs_bench %}
-                  <div>
-                    <div class="section-label" style="margin-bottom:0.15rem;font-size:0.6rem;">角度°</div>
-                    <select class="form-select form-select-sm adjust-select"
-                            data-se-id="{{ ex.id }}" data-field="bench_angle"
-                            style="width:5.5rem;font-size:0.78rem;padding:0.25rem 0.35rem;">
-                      <option value="">— なし</option>
-                      <option value="-15" {% if ex.bench_angle == -15 %}selected{% endif %}>-15° デクライン</option>
-                      <option value="0"   {% if ex.bench_angle is not none and ex.bench_angle|int == 0 %}selected{% endif %}>0° フラット</option>
-                      <option value="15"  {% if ex.bench_angle == 15 %}selected{% endif %}>15°</option>
-                      <option value="30"  {% if ex.bench_angle == 30 %}selected{% endif %}>30° インクライン</option>
-                      <option value="45"  {% if ex.bench_angle == 45 %}selected{% endif %}>45°</option>
-                    </select>
-                  </div>
-                  {% endif %}
-                </div>
-              </div>
-            </div>
-
-            {# 完了セット数操作ブロック #}
-            <div class="d-flex gap-1" style="flex-shrink:0;">
-              {# 列1: ①②③ (常時表示) #}
-              <div class="d-flex flex-column gap-1">
-                {% for i in [1,2,3] %}
-                {% set c = ex.get("set%d_completed" % i) %}
-                <button type="button"
-                        class="set-toggle-btn btn btn-sm fw-bold {% if c %}btn-success{% else %}btn-outline-secondary{% endif %}"
-                        data-se-id="{{ ex.id }}" data-set-num="{{ i }}"
-                        data-completed="{{ 'true' if c else 'false' }}"
-                        style="width:2.4rem;height:2.4rem;font-size:1rem;padding:0;border-radius:7px;">
-                  {% if i == 1 %}①{% elif i == 2 %}②{% else %}③{% endif %}
-                </button>
-                {% endfor %}
-              </div>
-              {# 列2: ④⑤⑥ (前セット完了後に順次表示) #}
-              <div class="d-flex flex-column gap-1" style="min-width:2.4rem;">
-                {% for i in [4,5,6] %}
-                {% set c  = ex.get("set%d_completed" % i) %}
-                {% set pc = ex.get("set%d_completed" % (i-1)) %}
-                <button type="button"
-                        class="set-toggle-btn btn btn-sm fw-bold {% if c %}btn-success{% else %}btn-outline-secondary{% endif %}{% if not pc and not c %} d-none{% endif %}"
-                        data-se-id="{{ ex.id }}" data-set-num="{{ i }}"
-                        data-completed="{{ 'true' if c else 'false' }}"
-                        style="width:2.4rem;height:2.4rem;font-size:1rem;padding:0;border-radius:7px;">
-                  {% if i == 4 %}④{% elif i == 5 %}⑤{% else %}⑥{% endif %}
-                </button>
-                {% endfor %}
-              </div>
-            </div>
-
-          </div>{# /bottom row #}
-        </div>{# /main area #}
-
-        {# ── 操作ブロック (右端、カード全高) ──────────── #}
-        <div class="action-block ex-detail-section d-flex flex-column align-items-center gap-1"
-             style="flex-shrink:0;width:2.5rem;">
+          {# 列2: ④⑤⑥ (前セット完了後に順次表示) #}
+          <div class="d-flex flex-column gap-1" style="min-width:2.4rem;">
+            {% for i in [4,5,6] %}
+            {% set c  = ex.get("set%d_completed" % i) %}
+            {% set pc = ex.get("set%d_completed" % (i-1)) %}
+            <button type="button"
+                    class="set-toggle-btn btn btn-sm fw-bold {% if c %}btn-success{% else %}btn-outline-secondary{% endif %}{% if not pc and not c %} d-none{% endif %}"
+                    data-se-id="{{ ex.id }}" data-set-num="{{ i }}"
+                    data-completed="{{ 'true' if c else 'false' }}"
+                    style="width:2.4rem;height:2.4rem;font-size:1rem;padding:0;border-radius:7px;">
+              {% if i == 4 %}④{% elif i == 5 %}⑤{% else %}⑥{% endif %}
+            </button>
+            {% endfor %}
+          </div>
+        </div>
+        {# 完了・スキップ #}
+        <div class="ms-auto d-flex gap-1">
           <button type="button"
                   class="complete-btn btn {% if ex.completed %}btn-success{% else %}btn-outline-secondary{% endif %}"
                   data-se-id="{{ ex.id }}" title="完了"
@@ -280,18 +142,136 @@
                   class="skip-btn btn {% if ex.skipped %}btn-warning{% else %}btn-outline-secondary{% endif %}"
                   data-se-id="{{ ex.id }}" title="スキップ"
                   style="width:2.5rem;height:3rem;font-size:1.1rem;padding:0;border-radius:7px;">⏭</button>
-          <a href="{{ url_for('exercise_edit', session_id=session.id, se_id=ex.id) }}"
-             class="btn btn-outline-secondary" title="編集"
-             style="width:2.5rem;height:1.7rem;font-size:0.78rem;padding:0;display:flex;align-items:center;justify-content:center;border-radius:5px;text-decoration:none;">📝</a>
-          <form method="post"
-                action="{{ url_for('exercise_delete', session_id=session.id, se_id=ex.id) }}"
-                onsubmit="return confirm('削除しますか？')" style="width:2.5rem;">
-            <button class="btn btn-outline-danger" title="削除"
-                    style="width:2.5rem;height:1.7rem;font-size:0.78rem;padding:0;border-radius:5px;">🗑️</button>
-          </form>
         </div>
-
       </div>
+
+      {# ── 折りたたみ部分（デフォルト非表示）── #}
+      <div class="ex-detail-section" style="display:none;margin-top:0.5rem;">
+        <div class="d-flex gap-2 align-items-start">
+          {# 左: 情報ブロック #}
+          <div style="flex:1;min-width:0;">
+            {# 高/低トグル #}
+            <div class="d-flex mb-1" style="border:1.5px solid var(--sep);border-radius:7px;overflow:hidden;">
+              <button type="button" class="load-mode-btn btn flex-fill fw-bold"
+                      data-se-id="{{ ex.id }}" data-mode="high"
+                      style="border-radius:0;font-size:0.72rem;height:2rem;
+                             background:{% if mode != 'low' %}var(--blue);color:#fff{% else %}rgba(255,255,255,0.04);color:var(--txt-2){% endif %};">
+                高負荷
+              </button>
+              <div style="width:1.5px;background:var(--sep);flex-shrink:0;"></div>
+              <button type="button" class="load-mode-btn btn flex-fill fw-bold"
+                      data-se-id="{{ ex.id }}" data-mode="low"
+                      style="border-radius:0;font-size:0.72rem;height:2rem;
+                             background:{% if mode == 'low' %}var(--orange);color:#000{% else %}rgba(255,255,255,0.04);color:var(--txt-2){% endif %};">
+                低負荷
+              </button>
+            </div>
+            <div style="font-size:0.76rem;line-height:1.7;margin-top:0.25rem;">
+              {% if ex.one_rep_max %}
+              <div class="d-flex">
+                <span class="text-secondary" style="width:2.8em;flex-shrink:0;">1RM</span>
+                <span>: <strong class="text-light">{{ ex.one_rep_max }}kg</strong></span>
+              </div>
+              {% endif %}
+              {% if ex.needs_bench %}
+              <div class="d-flex">
+                <span class="text-secondary" style="width:2.8em;flex-shrink:0;">角度</span>
+                <span id="bench-angle-val-{{ ex.id }}">
+                  {% if ex.bench_angle is not none and ex.bench_angle != '' %}
+                  : <strong class="text-light">{{ ex.bench_angle }}°</strong>
+                  {% else %}
+                  <span class="text-secondary">: —</span>
+                  {% endif %}
+                </span>
+              </div>
+              {% endif %}
+              <div class="d-flex align-items-center gap-1">
+                <span class="text-secondary" style="width:2.8em;flex-shrink:0;">重量</span>
+                <span id="weight-val-{{ ex.id }}">
+                  {% if mode == 'low' and ex.weight_low_load %}
+                    : <strong style="color:var(--orange);">{{ ex.weight_low_load }}kg</strong><span class="text-secondary" style="font-size:0.65rem;"> ({{ (ex.low_load_pct or 30)|int }}%)</span>
+                  {% elif ex.weight_setting %}
+                    : <strong style="color:var(--blue);">{{ ex.weight_setting }}kg</strong><span class="text-secondary" style="font-size:0.65rem;"> (80%)</span>
+                  {% else %}
+                    <span class="text-secondary">: —</span>
+                  {% endif %}
+                </span>
+                {% if not ex.one_rep_max %}
+                <span style="font-size:0.58rem;padding:0.05rem 0.25rem;border-radius:3px;background:rgba(255,120,0,0.18);border:1px solid rgba(255,120,0,0.35);color:#ff9944;">1RM未設定</span>
+                {% endif %}
+              </div>
+              <div class="d-flex">
+                <span class="text-secondary" style="width:2.8em;flex-shrink:0;">rep</span>
+                <span id="rep-val-{{ ex.id }}">: <strong class="text-light">{% if ex.reps %}{{ ex.reps }}{% else %}{% if mode == 'low' %}20-30{% else %}8-12{% endif %}{% endif %}</strong></span>
+              </div>
+            </div>
+            <div class="d-flex align-items-center gap-2 mt-1">
+              <button type="button" class="adjust-toggle-btn btn btn-sm btn-outline-secondary"
+                      data-se-id="{{ ex.id }}"
+                      style="font-size:0.6rem;padding:0.08rem 0.35rem;line-height:1.4;border-radius:4px;">⚙</button>
+              <span class="badge bg-warning text-dark exp-badge-{{ ex.id }}" style="font-size:0.62rem;">
+                {{ "{:,}".format(ex.exp_earned) }} EXP
+              </span>
+            </div>
+            {# Inline adjust panel #}
+            <div class="adjust-panel mt-1 p-2" id="adjust-{{ ex.id }}"
+                 style="display:none;background:rgba(255,255,255,0.05);border-radius:7px;">
+              <div class="d-flex gap-2 align-items-end flex-wrap">
+                <div>
+                  <div class="section-label" style="margin-bottom:0.15rem;font-size:0.6rem;">1RM kg</div>
+                  <input type="number" class="form-control form-control-sm adjust-input"
+                         data-se-id="{{ ex.id }}" data-field="one_rep_max"
+                         value="{{ ex.one_rep_max or '' }}" step="0.5" min="0"
+                         style="width:5rem;font-size:0.8rem;padding:0.25rem 0.4rem;">
+                </div>
+                <div>
+                  <div class="section-label" style="margin-bottom:0.15rem;font-size:0.6rem;">Reps</div>
+                  <input type="number" class="form-control form-control-sm adjust-input"
+                         data-se-id="{{ ex.id }}" data-field="reps"
+                         value="{{ ex.reps or '' }}" step="1" min="1"
+                         style="width:3.6rem;font-size:0.8rem;padding:0.25rem 0.4rem;">
+                </div>
+                <div>
+                  <div class="section-label" style="margin-bottom:0.15rem;font-size:0.6rem;">低%</div>
+                  <input type="number" class="form-control form-control-sm adjust-input"
+                         data-se-id="{{ ex.id }}" data-field="low_load_pct"
+                         value="{{ (ex.low_load_pct or 30)|int }}" step="5" min="10" max="80"
+                         style="width:3.6rem;font-size:0.8rem;padding:0.25rem 0.4rem;">
+                </div>
+                {% if ex.needs_bench %}
+                <div>
+                  <div class="section-label" style="margin-bottom:0.15rem;font-size:0.6rem;">角度°</div>
+                  <select class="form-select form-select-sm adjust-select"
+                          data-se-id="{{ ex.id }}" data-field="bench_angle"
+                          style="width:5.5rem;font-size:0.78rem;padding:0.25rem 0.35rem;">
+                    <option value="">— なし</option>
+                    <option value="-15" {% if ex.bench_angle == -15 %}selected{% endif %}>-15° デクライン</option>
+                    <option value="0"   {% if ex.bench_angle is not none and ex.bench_angle|int == 0 %}selected{% endif %}>0° フラット</option>
+                    <option value="15"  {% if ex.bench_angle == 15 %}selected{% endif %}>15°</option>
+                    <option value="30"  {% if ex.bench_angle == 30 %}selected{% endif %}>30° インクライン</option>
+                    <option value="45"  {% if ex.bench_angle == 45 %}selected{% endif %}>45°</option>
+                  </select>
+                </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          {# 右: 編集・削除 #}
+          <div class="d-flex flex-column gap-1" style="flex-shrink:0;">
+            <a href="{{ url_for('exercise_edit', session_id=session.id, se_id=ex.id) }}"
+               class="btn btn-outline-secondary" title="編集"
+               style="width:2.5rem;height:2rem;font-size:0.78rem;padding:0;display:flex;align-items:center;justify-content:center;border-radius:5px;text-decoration:none;">📝</a>
+            <form method="post"
+                  action="{{ url_for('exercise_delete', session_id=session.id, se_id=ex.id) }}"
+                  onsubmit="return confirm('削除しますか？')" style="width:2.5rem;">
+              <button class="btn btn-outline-danger" title="削除"
+                      style="width:2.5rem;height:2rem;font-size:0.78rem;padding:0;border-radius:5px;">🗑️</button>
+            </form>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
   {% endfor %}
@@ -379,8 +359,6 @@
     card.querySelectorAll('.ex-detail-section').forEach(function (el) {
       el.style.display = collapsed ? 'none' : '';
     });
-    var summary = card.querySelector('.ex-collapsed-summary');
-    if (summary) summary.style.display = collapsed ? '' : 'none';
     var toggleBtn = card.querySelector('.collapse-toggle-btn');
     if (toggleBtn) toggleBtn.textContent = collapsed ? '▶' : '▼';
     card.dataset.cardCollapsed = collapsed ? 'true' : 'false';
@@ -608,6 +586,11 @@
       }
     }
   }
+
+  // デフォルト: 全カード折りたたみ
+  document.querySelectorAll('.exercise-card').forEach(function (card) {
+    setCardCollapsed(card, true);
+  });
 
   checkMuscleConflicts();
 

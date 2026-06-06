@@ -1691,7 +1691,8 @@ def build_volume_metrics(session, exercises: list, body_weight: float = 65.0) ->
     cat_exp = {"上肢": 0, "下肢": 0, "体幹": 0}
     total_gym_volume = 0.0
     total_bw_volume  = 0.0
-    has_bodyweight   = False
+    gym_count        = 0
+    bw_count         = 0
     heavy_sets       = 0
     total_sets       = 0
 
@@ -1714,12 +1715,13 @@ def build_volume_metrics(session, exercises: list, body_weight: float = 65.0) ->
         exp = ex.get("exp_earned") or 0
 
         if bw_ratio:
-            has_bodyweight = True
+            bw_count += 1
             eff_weight = body_weight * bw_ratio
             bw_vol = eff_weight * reps * done
             total_bw_volume += bw_vol
             gym_eq = bw_vol
         else:
+            gym_count += 1
             w = float(weight or 0)
             gym_eq = w * reps * done
             total_gym_volume += gym_eq
@@ -1730,6 +1732,7 @@ def build_volume_metrics(session, exercises: list, body_weight: float = 65.0) ->
             cat_exp[bp] += exp
 
     total_volume = total_gym_volume + total_bw_volume
+    has_bodyweight = bw_count > 0 and gym_count == 0
 
     fatigue_pct = min(100, int(heavy_sets / max(total_sets, 1) * 100))
 
