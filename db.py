@@ -656,7 +656,8 @@ def get_my_set_with_exercises(my_set_id: int):
         my_set = cur.fetchone()
         cur.execute("""
             SELECT mse.*, ex.name AS exercise_name,
-                   ex.body_part, ex.needs_bench, ex.primary_muscle
+                   ex.body_part, ex.needs_bench, ex.primary_muscle,
+                   ex.bodyweight_ratio
             FROM my_set_exercises mse
             JOIN exercises ex ON ex.id = mse.exercise_id
             WHERE mse.my_set_id = %s
@@ -664,6 +665,59 @@ def get_my_set_with_exercises(my_set_id: int):
         """, (my_set_id,))
         exercises = cur.fetchall()
         return my_set, exercises
+
+
+def quick_edit_mse(mse_id: int, target_sets=None, reps=None,
+                   one_rep_max=None, low_load_pct=None,
+                   body_weight: float = 65.0) -> dict:
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT mse.*, ex.body_part, ex.bodyweight_ratio
+            FROM my_set_exercises mse
+            JOIN exercises ex ON ex.id = mse.exercise_id
+            WHERE mse.id = %s
+        """, (mse_id,))
+        mse = cur.fetchone()
+        if not mse:
+            return {}
+        mse = dict(mse)
+
+        new_sets = int(target_sets) if target_sets is not None else (mse.get('target_sets') or 3)
+        new_reps = int(reps)       if reps       is not None else (mse.get('reps') or 10)
+        new_orm  = float(one_rep_max) if one_rep_max is not None else mse.get('one_rep_max')
+        new_pct  = float(low_load_pct) if low_load_pct is not None else float(mse.get('low_load_pct') or 30)
+        new_sets = max(1, new_sets)
+        new_reps = max(1, new_reps)
+
+        new_ws = mse.get('weight_setting')
+        new_wl = mse.get('weight_low_load')
+        if new_orm:
+            new_ws = round(float(new_orm) * 0.8, 1)
+            new_wl = round(float(new_orm) * new_pct / 100, 1)
+
+        cur.execute("""
+            UPDATE my_set_exercises
+            SET target_sets=%s, reps=%s, one_rep_max=%s,
+                weight_setting=%s, weight_low_load=%s, low_load_pct=%s
+            WHERE id=%s
+        """, (new_sets, new_reps, new_orm, new_ws, new_wl, new_pct, mse_id))
+
+        bw_ratio = mse.get('bodyweight_ratio')
+        weight = (body_weight * bw_ratio) if bw_ratio else (new_ws or 0)
+        exp = round(weight * new_reps * new_sets)
+
+        return {
+            'id':            mse_id,
+            'target_sets':   new_sets,
+            'reps':          new_reps,
+            'one_rep_max':   new_orm,
+            'weight_setting': new_ws,
+            'weight_low_load': new_wl,
+            'low_load_pct':  new_pct,
+            'exp':           exp,
+            'body_part':     mse.get('body_part'),
+        }
 
 
 _HOME_PRESET = [

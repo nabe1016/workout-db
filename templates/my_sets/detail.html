@@ -18,6 +18,7 @@
 {% block content %}
 {% include "partials/muscle_legend.html" %}
 
+{# ── マイセット情報 ── #}
 <div class="card mb-3">
   <div class="card-body py-3 px-3">
     <div class="d-flex justify-content-between align-items-start">
@@ -42,7 +43,26 @@
 </div>
 
 {% if exercises %}
-<div class="d-flex justify-content-end mb-2">
+{# ── 理論EXPサマリー ── #}
+<div class="card mb-2">
+  <div class="card-body px-3 py-0">
+    <div class="row g-0">
+      {% set parts = [('上肢', 'var(--teal)'), ('下肢', 'var(--green)'), ('体幹', '#b06dff')] %}
+      {% for part, color in parts %}
+      <div class="col-4{% if not loop.last %}" style="border-right:0.5px solid var(--sep){% endif %}">
+        <div class="stat-block">
+          <div class="stat-value" style="font-size:1.05rem;color:{{ color }};" id="cat-exp-{{ part }}">{{ "{:,}".format(cat_exp[part]) }}</div>
+          <div class="stat-label">{{ part }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+<div class="d-flex justify-content-between align-items-center mb-2 px-1">
+  <div style="font-size:0.78rem;color:var(--txt-2);">
+    合計(理論) <strong class="text-warning" id="total-exp">{{ "{:,}".format(total_exp) }}</strong> EXP
+  </div>
   <button type="button" id="select-mode-btn"
           class="btn btn-outline-secondary btn-sm">選択</button>
 </div>
@@ -51,56 +71,115 @@
       action="{{ url_for('my_set_exercises_bulk_delete', my_set_id=my_set.id) }}">
 <div class="d-flex flex-column gap-2 mb-4" id="sortable-list">
   {% for ex in exercises %}
-  <div class="card" data-id="{{ ex.id }}"
+  <div class="card" data-id="{{ ex.id }}" id="mse-card-{{ ex.id }}"
        style="{% if ex.body_part %}--card-bg:{{ category_bg(ex.body_part) }};{% endif %}">
     <div class="card-body py-2 px-3">
-      <div class="d-flex align-items-center gap-2">
 
-        {# 選択チェックボックス #}
-        <div class="ex-checkbox-wrap" style="display:none;">
+      {# 名前行 #}
+      <div class="d-flex align-items-center gap-1 flex-wrap mb-2">
+        <div class="ex-checkbox-wrap" style="display:none;flex-shrink:0;">
           <input type="checkbox" class="form-check-input ex-checkbox"
                  name="mse_ids" value="{{ ex.id }}"
-                 style="width:1.5rem;height:1.5rem;cursor:pointer;">
+                 style="width:1.4rem;height:1.4rem;cursor:pointer;">
         </div>
-
-        {# ドラッグハンドル #}
         <div class="drag-handle text-secondary"
-             style="font-size:1.4rem;cursor:grab;padding:0.2rem 0.4rem;touch-action:none;user-select:none;">
-          ≡
-        </div>
+             style="font-size:1.4rem;cursor:grab;padding:0.1rem 0.3rem;touch-action:none;user-select:none;">≡</div>
+        <span class="fw-bold text-info" style="font-size:0.9rem;">{{ ex.exercise_name }}</span>
+        {% if ex.body_part %}
+        <span class="badge bg-secondary bg-opacity-50" style="font-size:0.6rem;">{{ ex.body_part }}</span>
+        {% endif %}
+        {% if ex.needs_bench %}
+        <span class="badge" style="background:rgba(255,193,7,0.25);border:1px solid rgba(255,193,7,0.5);color:#ffc107;font-size:0.6rem;">🪑</span>
+        {% endif %}
+        {% if ex.primary_muscle %}
+        <span class="text-secondary" style="font-size:0.7rem;">{{ ex.primary_muscle }}</span>
+        {% endif %}
+      </div>
 
-        <div class="flex-grow-1">
-          <div class="d-flex align-items-center gap-1 flex-wrap">
-            <span class="fw-bold text-info">{{ ex.exercise_name }}</span>
-            {% if ex.body_part %}
-            <span class="badge bg-secondary bg-opacity-50" style="font-size:0.6rem;">{{ ex.body_part }}</span>
-            {% endif %}
-            {% if ex.needs_bench %}
-            <span class="badge" style="background:rgba(255,193,7,0.25);border:1px solid rgba(255,193,7,0.5);color:#ffc107;font-size:0.6rem;">🪑</span>
-            {% endif %}
-          </div>
-          {% if ex.muscle_groups or ex.primary_muscle %}
-          <div class="text-secondary small">{{ ex.muscle_groups or ex.primary_muscle }}</div>
-          {% endif %}
-          <div class="d-flex flex-wrap gap-2 mt-1 small text-secondary">
-            {% if ex.target_sets %}<span>🎯 <strong class="text-light">{{ ex.target_sets }}セット</strong></span>{% endif %}
-            {% if ex.reps %}<span>× <strong class="text-light">{{ ex.reps }}回</strong></span>{% endif %}
-            {% if ex.one_rep_max %}<span>1RM: <strong class="text-light">{{ ex.one_rep_max }}kg</strong></span>{% endif %}
-            {% if ex.weight_setting %}<span>高負荷: <strong class="text-light">{{ ex.weight_setting }}kg</strong></span>{% endif %}
-            {% if ex.weight_low_load %}<span>低負荷: <strong class="text-light">{{ ex.weight_low_load }}kg</strong></span>{% endif %}
-          </div>
+      {# セット数・rep数 ステッパー #}
+      <div class="d-flex gap-3 align-items-center mb-2">
+        <div class="d-flex align-items-center gap-1">
+          <button type="button" class="stepper-btn btn btn-sm btn-outline-secondary"
+                  data-mse-id="{{ ex.id }}" data-field="target_sets" data-delta="-1"
+                  style="width:1.9rem;height:1.9rem;padding:0;font-size:1rem;border-radius:5px;line-height:1;">－</button>
+          <span style="font-size:0.82rem;min-width:3.4rem;text-align:center;">
+            🎯 <strong class="text-light" id="sets-val-{{ ex.id }}">{{ ex.target_sets or 3 }}</strong>セット
+          </span>
+          <button type="button" class="stepper-btn btn btn-sm btn-outline-secondary"
+                  data-mse-id="{{ ex.id }}" data-field="target_sets" data-delta="1"
+                  style="width:1.9rem;height:1.9rem;padding:0;font-size:1rem;border-radius:5px;line-height:1;">＋</button>
         </div>
-
-        <div class="d-flex flex-column gap-1 ms-1">
-          <a href="{{ url_for('my_set_exercise_edit', my_set_id=my_set.id, mse_id=ex.id) }}"
-             class="btn btn-outline-secondary btn-sm">編集</a>
-          <form method="post"
-                action="{{ url_for('my_set_exercise_delete', my_set_id=my_set.id, mse_id=ex.id) }}"
-                onsubmit="return confirm('削除しますか？')">
-            <button class="btn btn-outline-danger btn-sm w-100">削除</button>
-          </form>
+        <div class="d-flex align-items-center gap-1">
+          <button type="button" class="stepper-btn btn btn-sm btn-outline-secondary"
+                  data-mse-id="{{ ex.id }}" data-field="reps" data-delta="-1"
+                  style="width:1.9rem;height:1.9rem;padding:0;font-size:1rem;border-radius:5px;line-height:1;">－</button>
+          <span style="font-size:0.82rem;min-width:2.8rem;text-align:center;">
+            × <strong class="text-light" id="reps-val-{{ ex.id }}">{{ ex.reps or 10 }}</strong>回
+          </span>
+          <button type="button" class="stepper-btn btn btn-sm btn-outline-secondary"
+                  data-mse-id="{{ ex.id }}" data-field="reps" data-delta="1"
+                  style="width:1.9rem;height:1.9rem;padding:0;font-size:1rem;border-radius:5px;line-height:1;">＋</button>
         </div>
       </div>
+
+      {# 重量・EXP #}
+      <div class="d-flex align-items-center gap-2 flex-wrap mb-1" style="font-size:0.76rem;">
+        {% if ex.one_rep_max %}
+        <span class="text-secondary">1RM: <strong class="text-light">{{ ex.one_rep_max }}kg</strong></span>
+        {% endif %}
+        {% if ex.weight_setting %}
+        <span class="text-secondary">高: <strong style="color:var(--blue);" class="ws-display">{{ ex.weight_setting }}kg</strong></span>
+        {% endif %}
+        {% if ex.weight_low_load %}
+        <span class="text-secondary">低: <strong style="color:var(--orange);">{{ ex.weight_low_load }}kg</strong>
+          <span style="font-size:0.62rem;">({{ (ex.low_load_pct or 30)|int }}%)</span>
+        </span>
+        {% endif %}
+        {% if not ex.one_rep_max and not ex.weight_setting %}
+        <span style="font-size:0.62rem;padding:0.05rem 0.3rem;border-radius:3px;background:rgba(255,120,0,0.18);border:1px solid rgba(255,120,0,0.35);color:#ff9944;">1RM未設定</span>
+        {% endif %}
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <button type="button" class="mse-adjust-toggle btn btn-sm btn-outline-secondary"
+                data-mse-id="{{ ex.id }}"
+                style="font-size:0.6rem;padding:0.08rem 0.35rem;line-height:1.4;border-radius:4px;">⚙</button>
+        <span class="badge bg-warning text-dark" id="exp-badge-{{ ex.id }}" style="font-size:0.62rem;">
+          {{ "{:,}".format(ex.theoretical_exp) }} EXP
+        </span>
+      </div>
+
+      {# ⚙ 調整パネル #}
+      <div class="mt-2 p-2" id="mse-adjust-{{ ex.id }}"
+           style="display:none;background:rgba(255,255,255,0.05);border-radius:7px;">
+        <div class="d-flex gap-2 align-items-end flex-wrap">
+          <div>
+            <div class="section-label" style="font-size:0.6rem;margin-bottom:0.15rem;">1RM kg</div>
+            <input type="number" class="form-control form-control-sm mse-adjust-input"
+                   data-mse-id="{{ ex.id }}" data-field="one_rep_max"
+                   value="{{ ex.one_rep_max or '' }}" step="0.5" min="0"
+                   style="width:5rem;font-size:0.8rem;padding:0.25rem 0.4rem;">
+          </div>
+          <div>
+            <div class="section-label" style="font-size:0.6rem;margin-bottom:0.15rem;">低%</div>
+            <input type="number" class="form-control form-control-sm mse-adjust-input"
+                   data-mse-id="{{ ex.id }}" data-field="low_load_pct"
+                   value="{{ (ex.low_load_pct or 30)|int }}" step="5" min="10" max="80"
+                   style="width:3.6rem;font-size:0.8rem;padding:0.25rem 0.4rem;">
+          </div>
+        </div>
+      </div>
+
+      {# 編集・削除 #}
+      <div class="d-flex gap-1 justify-content-end mt-2">
+        <a href="{{ url_for('my_set_exercise_edit', my_set_id=my_set.id, mse_id=ex.id) }}"
+           class="btn btn-outline-secondary btn-sm">編集</a>
+        <form method="post"
+              action="{{ url_for('my_set_exercise_delete', my_set_id=my_set.id, mse_id=ex.id) }}"
+              onsubmit="return confirm('削除しますか？')">
+          <button class="btn btn-outline-danger btn-sm">削除</button>
+        </form>
+      </div>
+
     </div>
   </div>
   {% endfor %}
@@ -144,7 +223,7 @@
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <script>
 (function () {
-  // ── 🔁 最新記録に同期 ─────────────────────────────────────────────────────
+  // ── 🔁 最新記録に同期 ────────────────────────────────────────────────────────
   var syncBtn = document.getElementById('sync-btn');
   if (syncBtn) {
     syncBtn.addEventListener('click', function () {
@@ -158,15 +237,11 @@
           syncBtn.style.color = 'var(--green)';
           setTimeout(function () { location.reload(); }, 1200);
         })
-        .catch(function () {
-          syncBtn.textContent = 'エラー';
-          syncBtn.disabled = false;
-        });
+        .catch(function () { syncBtn.textContent = 'エラー'; syncBtn.disabled = false; });
     });
   }
 
-  // ── Sortable ──────────────────────────────────────────────────────────────
-  var reorderUrl = '{{ url_for("my_set_exercises_reorder", my_set_id=my_set.id) }}';
+  // ── Sortable ────────────────────────────────────────────────────────────────
   Sortable.create(document.getElementById('sortable-list'), {
     handle: '.drag-handle',
     animation: 150,
@@ -177,7 +252,7 @@
     onEnd: function () {
       var ids = Array.from(document.querySelectorAll('#sortable-list [data-id]'))
                      .map(function (el) { return el.dataset.id; });
-      fetch(reorderUrl, {
+      fetch('{{ url_for("my_set_exercises_reorder", my_set_id=my_set.id) }}', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ids: ids })
@@ -185,7 +260,97 @@
     }
   });
 
-  // ── Select mode ───────────────────────────────────────────────────────────
+  // ── EXP サマリー更新 ─────────────────────────────────────────────────────────
+  var catExp = {
+    '上肢': {{ cat_exp['上肢'] }},
+    '下肢': {{ cat_exp['下肢'] }},
+    '体幹': {{ cat_exp['体幹'] }}
+  };
+
+  function refreshExpSummary(bodyPart, oldExp, newExp) {
+    if (bodyPart && catExp[bodyPart] !== undefined) {
+      catExp[bodyPart] = Math.max(0, catExp[bodyPart] - oldExp + newExp);
+      var el = document.getElementById('cat-exp-' + bodyPart);
+      if (el) el.textContent = catExp[bodyPart].toLocaleString();
+    }
+    var total = catExp['上肢'] + catExp['下肢'] + catExp['体幹'];
+    var totalEl = document.getElementById('total-exp');
+    if (totalEl) totalEl.textContent = total.toLocaleString();
+  }
+
+  function applyMseResult(mseId, data) {
+    var expBadge = document.getElementById('exp-badge-' + mseId);
+    var oldExp = expBadge ? parseInt(expBadge.textContent.replace(/[^0-9]/g, '')) || 0 : 0;
+    if (expBadge) expBadge.textContent = (data.exp || 0).toLocaleString() + ' EXP';
+    refreshExpSummary(data.body_part, oldExp, data.exp || 0);
+    if (data.target_sets != null) {
+      var sv = document.getElementById('sets-val-' + mseId);
+      if (sv) sv.textContent = data.target_sets;
+    }
+    if (data.reps != null) {
+      var rv = document.getElementById('reps-val-' + mseId);
+      if (rv) rv.textContent = data.reps;
+    }
+  }
+
+  // ── ステッパー (セット数・rep数) ─────────────────────────────────────────────
+  document.querySelectorAll('.stepper-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var mseId = btn.dataset.mseId;
+      var field = btn.dataset.field;
+      var delta = parseInt(btn.dataset.delta);
+      var dispId = field === 'target_sets' ? 'sets-val-' + mseId : 'reps-val-' + mseId;
+      var current = parseInt(document.getElementById(dispId).textContent) || 1;
+      var next = Math.max(1, current + delta);
+      if (next === current) return;
+
+      btn.disabled = true;
+      var payload = {};
+      payload[field] = next;
+
+      fetch('/api/mse/' + mseId + '/quick-edit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      .then(function (r) { return r.json(); })
+      .then(function (data) { applyMseResult(mseId, data); })
+      .catch(function () {})
+      .finally(function () { btn.disabled = false; });
+    });
+  });
+
+  // ── ⚙ 調整パネル ────────────────────────────────────────────────────────────
+  document.querySelectorAll('.mse-adjust-toggle').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var panel = document.getElementById('mse-adjust-' + btn.dataset.mseId);
+      if (!panel) return;
+      var open = panel.style.display !== 'none';
+      panel.style.display = open ? 'none' : '';
+      btn.style.color = open ? '' : 'var(--yellow)';
+    });
+  });
+
+  document.querySelectorAll('.mse-adjust-input').forEach(function (input) {
+    input.addEventListener('blur', function () {
+      var val = parseFloat(input.value);
+      if (isNaN(val) || val < 0) return;
+      var mseId = input.dataset.mseId;
+      var payload = {};
+      payload[input.dataset.field] = val;
+
+      fetch('/api/mse/' + mseId + '/quick-edit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      .then(function (r) { return r.json(); })
+      .then(function (data) { applyMseResult(mseId, data); })
+      .catch(function () {});
+    });
+  });
+
+  // ── 選択モード ───────────────────────────────────────────────────────────────
   var selectMode = false;
   var selectBtn = document.getElementById('select-mode-btn');
   selectBtn.addEventListener('click', function () {
@@ -193,14 +358,12 @@
     selectBtn.textContent = selectMode ? 'キャンセル' : '選択';
     selectBtn.classList.toggle('btn-outline-secondary', !selectMode);
     selectBtn.classList.toggle('btn-warning', selectMode);
-
     document.querySelectorAll('.ex-checkbox-wrap').forEach(function (el) {
       el.style.display = selectMode ? 'flex' : 'none';
     });
     document.querySelectorAll('.drag-handle').forEach(function (el) {
       el.style.display = selectMode ? 'none' : '';
     });
-
     if (!selectMode) {
       document.querySelectorAll('.ex-checkbox').forEach(function (cb) { cb.checked = false; });
     }
@@ -215,11 +378,9 @@
     deleteBtn.textContent = count > 0 ? count + '件を削除' : '選択してください';
     deleteBtn.disabled = count === 0;
   }
-
   document.querySelectorAll('.ex-checkbox').forEach(function (cb) {
     cb.addEventListener('change', updateBulkBar);
   });
-
   document.getElementById('bulk-delete-form').addEventListener('submit', function (e) {
     var count = document.querySelectorAll('.ex-checkbox:checked').length;
     if (!confirm(count + '件を削除しますか？')) e.preventDefault();

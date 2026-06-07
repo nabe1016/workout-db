@@ -584,6 +584,21 @@ def my_set_sync_from_latest(my_set_id):
     return jsonify({"synced": count})
 
 
+@app.route("/api/mse/<int:mse_id>/quick-edit", methods=["POST"])
+def api_quick_edit_mse(mse_id):
+    data = request.get_json() or {}
+    result = db.quick_edit_mse(
+        mse_id,
+        target_sets  = data.get("target_sets"),
+        reps         = data.get("reps"),
+        one_rep_max  = data.get("one_rep_max"),
+        low_load_pct = data.get("low_load_pct"),
+    )
+    if not result:
+        return jsonify({"error": "not found"}), 404
+    return jsonify(result)
+
+
 # ── My Sets ───────────────────────────────────────────────────────────────────
 
 @app.route("/my-sets")
@@ -625,8 +640,26 @@ def my_set_detail(my_set_id):
     if my_set is None:
         return redirect(url_for("my_sets_list"))
     all_exercises = db.list_exercises()
+
+    # 理論EXP計算
+    BODY_WEIGHT = 65.0
+    cat_exp = {"上肢": 0, "下肢": 0, "体幹": 0}
+    exercises_list = []
+    for ex in exercises:
+        ex = dict(ex)
+        bw = ex.get("bodyweight_ratio")
+        w  = (BODY_WEIGHT * bw) if bw else (ex.get("weight_setting") or 0)
+        ex["theoretical_exp"] = round(w * (ex.get("reps") or 10) * (ex.get("target_sets") or 3))
+        bp = ex.get("body_part") or ""
+        if bp in cat_exp:
+            cat_exp[bp] += ex["theoretical_exp"]
+        exercises_list.append(ex)
+    total_exp = sum(cat_exp.values())
+
     return render_template("my_sets/detail.html",
-                           my_set=my_set, exercises=exercises, all_exercises=all_exercises)
+                           my_set=my_set, exercises=exercises_list,
+                           all_exercises=all_exercises,
+                           cat_exp=cat_exp, total_exp=total_exp)
 
 
 @app.route("/my-sets/<int:my_set_id>/edit", methods=["GET", "POST"])
