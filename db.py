@@ -676,6 +676,13 @@ _HOME_PRESET = [
 ]
 
 
+def find_my_set_by_name(name: str):
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT id, name FROM my_sets WHERE name = %s", (name,))
+        return cur.fetchone()
+
+
 def create_my_set(name: str, description: str, location: str = 'gym', purpose: str = None) -> int:
     with _conn() as conn:
         cur = conn.cursor()

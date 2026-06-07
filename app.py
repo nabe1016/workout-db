@@ -601,7 +601,17 @@ def my_set_new():
         if not name:
             flash("名前を入力してください。", "danger")
             return render_template("my_sets/form.html", my_set=None)
-        my_set_id = db.create_my_set(name, request.form.get("description", ""), location)
+        try:
+            my_set_id = db.create_my_set(name, request.form.get("description", ""), location)
+        except Exception as e:
+            if "unique" in str(e).lower() or "duplicate" in str(e).lower():
+                existing = db.find_my_set_by_name(name)
+                if existing:
+                    flash(f"「{name}」は既に存在します。", "warning")
+                    return redirect(url_for("my_set_detail", my_set_id=existing["id"]))
+            flash("作成に失敗しました。もう一度お試しください。", "danger")
+            app.logger.exception("create_my_set failed")
+            return render_template("my_sets/form.html", my_set=None)
         if location == "home" and use_preset:
             db.seed_home_preset_exercises(my_set_id)
         flash(f"「{name}」を作成しました。", "success")
