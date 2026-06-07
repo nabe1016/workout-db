@@ -7,7 +7,7 @@
 <h5 class="mb-3">{% if my_set %}マイセットを編集{% else %}マイセットを作成{% endif %}</h5>
 
 {% if my_set %}
-{# ── 編集モード（locationは変更不可） ── #}
+{# ── 編集モード ── #}
 <form method="post">
   <div class="mb-3">
     <label class="form-label">名前 <span class="text-danger">*</span></label>
@@ -31,29 +31,36 @@
 </form>
 
 {% else %}
-{# ── 新規作成：ステップ1 場所選択 ── #}
+{# ── 新規作成 ── #}
+
+{# Step 1: 場所選択 #}
 <div id="step-location">
+  <p class="text-secondary mb-3" style="font-size:0.9rem;">
+    マイセットを事前に作成しておくと、トレーニング当日に種目選びで迷いません。
+  </p>
   <div class="card mb-4">
     <div class="card-body py-4 px-3 text-center">
       <p class="mb-4" style="font-size:1rem;font-weight:600;">どちらのトレーニングですか？</p>
       <div class="d-flex gap-3">
         <button type="button" class="btn btn-warning btn-lg flex-fill fw-bold"
-                onclick="chooseLocation('gym')">🏋️ ジム</button>
+                onclick="goStep('gym-name')">🏋️ ジム</button>
         <button type="button" class="btn btn-outline-info btn-lg flex-fill fw-bold"
-                onclick="chooseLocation('home')">🏠 自宅</button>
+                onclick="goStep('home-preset')">🏠 自宅</button>
       </div>
     </div>
   </div>
 </div>
 
-{# ── ジム ブランチ ── #}
-<div id="branch-gym" style="display:none;">
+{# Step 2a: ジム — セット名入力 #}
+<div id="step-gym-name" class="step-panel" style="display:none;">
+  <button type="button" class="btn btn-link text-secondary ps-0 mb-3" onclick="goStep('location')">← 戻る</button>
   <form method="post">
     <input type="hidden" name="location" value="gym">
     <div class="mb-3">
-      <label class="form-label">名前 <span class="text-danger">*</span></label>
+      <label class="form-label fw-bold">セット名 <span class="text-danger">*</span></label>
       <input type="text" class="form-control form-control-lg bg-dark text-light border-secondary"
-             name="name" placeholder="例: 土曜日 高負荷" required>
+             name="name" placeholder="例: 土曜日 高負荷" required autofocus>
+      <div class="form-text text-secondary mt-1">曜日や目的がわかる名前にするとトレーニング当日に選びやすくなります</div>
     </div>
     <div class="mb-4">
       <label class="form-label">メモ <span class="text-secondary small">（任意）</span></label>
@@ -61,25 +68,24 @@
              name="description" placeholder="例: ベンチ・デッド・スクワット高負荷">
     </div>
     <div class="sticky-action-bar">
-      <button type="submit" class="btn btn-warning btn-lg w-100">作成</button>
+      <button type="submit" class="btn btn-warning btn-lg w-100 fw-bold">作成する</button>
     </div>
   </form>
 </div>
 
-{# ── 自宅 ブランチ ── #}
-<div id="branch-home" style="display:none;">
+{# Step 2b: 自宅 — プリセット確認 #}
+<div id="step-home-preset" class="step-panel" style="display:none;">
+  <button type="button" class="btn btn-link text-secondary ps-0 mb-3" onclick="goStep('location')">← 戻る</button>
 
-  {# プリセット案内カード #}
-  <div id="preset-card" class="card mb-3" style="border:1.5px solid rgba(100,210,255,0.4);">
+  {# プリセットカード #}
+  <div class="card mb-3" style="border:1.5px solid rgba(100,210,255,0.4);">
     <div class="card-body py-3 px-3">
       <div class="d-flex align-items-center gap-2 mb-2">
         <span style="font-size:1.1rem;">🏠</span>
         <span class="fw-bold" style="color:var(--teal);">木曜　維持回復トレーニング</span>
         <span class="badge bg-info text-dark ms-auto" style="font-size:0.65rem;">プリセット</span>
       </div>
-      <div style="font-size:0.8rem;color:var(--txt-2);margin-bottom:0.75rem;">
-        約20〜30分 ／ 自重メイン
-      </div>
+      <div style="font-size:0.8rem;color:var(--txt-2);margin-bottom:0.75rem;">約20〜30分 ／ 自重メイン</div>
       <table style="width:100%;font-size:0.78rem;border-collapse:collapse;">
         <thead>
           <tr style="color:var(--txt-2);font-size:0.7rem;">
@@ -116,45 +122,90 @@
           </tr>
         </tbody>
       </table>
-      <button type="button"
-              class="btn btn-info w-100 fw-bold mt-3"
-              onclick="usePreset()">このプリセットで作成</button>
+      <button type="button" class="btn btn-info w-100 fw-bold mt-3"
+              onclick="goStep('home-name', true)">このプリセットで作成 →</button>
     </div>
   </div>
 
   <p class="text-center text-secondary small mb-3">または</p>
 
-  <form method="post" id="home-form">
+  <button type="button" class="btn btn-outline-secondary w-100"
+          onclick="goStep('home-name', false)">空の自宅セットを作成</button>
+</div>
+
+{# Step 3: 自宅 — セット名を決める #}
+<div id="step-home-name" class="step-panel" style="display:none;">
+  <button type="button" class="btn btn-link text-secondary ps-0 mb-3" onclick="goStep('home-preset')">← 戻る</button>
+
+  {# プリセット使用時の種目サマリー（表示のみ） #}
+  <div id="preset-summary" style="display:none;" class="mb-3">
+    <div class="card" style="border:1px solid rgba(100,210,255,0.25);">
+      <div class="card-body py-2 px-3">
+        <div class="d-flex align-items-center gap-2">
+          <span style="font-size:0.78rem;color:var(--teal);">🏠 プリセット 5種目を読み込みます</span>
+          <span class="badge bg-info text-dark ms-auto" style="font-size:0.6rem;">あとで編集可</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <form method="post" id="home-name-form">
     <input type="hidden" name="location" value="home">
     <input type="hidden" name="use_preset" id="use-preset-val" value="0">
     <div class="mb-3">
-      <label class="form-label">名前 <span class="text-danger">*</span></label>
+      <label class="form-label fw-bold">セット名 <span class="text-danger">*</span></label>
       <input type="text" class="form-control form-control-lg bg-dark text-light border-secondary"
-             name="name" id="home-name" placeholder="例: 木曜　維持回復トレーニング" required>
+             name="name" id="home-set-name" required>
+      <div class="form-text text-secondary mt-1">曜日や目的がわかる名前にするとトレーニング当日に選びやすくなります</div>
     </div>
     <div class="mb-4">
       <label class="form-label">メモ <span class="text-secondary small">（任意）</span></label>
       <input type="text" class="form-control bg-dark text-light border-secondary"
-             name="description" placeholder="例: 自重メイン 20〜30分">
+             name="description" id="home-set-desc" placeholder="例: 自重メイン 20〜30分">
     </div>
     <div class="sticky-action-bar">
-      <button type="submit" class="btn btn-outline-info btn-lg w-100">空の自宅セットを作成</button>
+      <button type="submit" class="btn btn-info btn-lg w-100 fw-bold">✅ 作成する</button>
     </div>
   </form>
 </div>
 
 <script>
 (function () {
-  window.chooseLocation = function (loc) {
-    document.getElementById('step-location').style.display = 'none';
-    document.getElementById('branch-gym').style.display  = loc === 'gym'  ? '' : 'none';
-    document.getElementById('branch-home').style.display = loc === 'home' ? '' : 'none';
-  };
+  var usePreset = false;
 
-  window.usePreset = function () {
-    document.getElementById('use-preset-val').value = '1';
-    document.getElementById('home-name').value = '木曜　維持回復トレーニング';
-    document.getElementById('home-form').submit();
+  window.goStep = function (step, withPreset) {
+    // すべてのステップを隠す
+    document.getElementById('step-location').style.display = 'none';
+    document.querySelectorAll('.step-panel').forEach(function (el) {
+      el.style.display = 'none';
+    });
+
+    if (step === 'location') {
+      document.getElementById('step-location').style.display = '';
+      return;
+    }
+
+    var panel = document.getElementById('step-' + step);
+    if (panel) panel.style.display = '';
+
+    if (step === 'home-name') {
+      usePreset = withPreset === true;
+      document.getElementById('use-preset-val').value = usePreset ? '1' : '0';
+
+      var summaryEl = document.getElementById('preset-summary');
+      summaryEl.style.display = usePreset ? '' : 'none';
+
+      var nameInput = document.getElementById('home-set-name');
+      var descInput = document.getElementById('home-set-desc');
+      if (usePreset) {
+        nameInput.value = '木曜　維持回復トレーニング';
+        descInput.placeholder = '例: 自重メイン 20〜30分';
+      } else {
+        nameInput.value = '';
+      }
+      nameInput.focus();
+      nameInput.select();
+    }
   };
 })();
 </script>
