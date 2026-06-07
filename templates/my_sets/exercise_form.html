@@ -78,6 +78,13 @@
   </div>
 </form>
 
+<form method="post"
+      action="{{ url_for('my_set_exercise_delete', my_set_id=my_set.id, mse_id=mse.id) }}"
+      onsubmit="return confirm('「{{ mse.exercise_name }}」をこのマイセットから削除しますか？')"
+      class="mt-3">
+  <button type="submit" class="btn btn-outline-danger w-100">この種目をマイセットから削除</button>
+</form>
+
 {# ══════════════════════════════════════════════════════
    新規追加モード（2択フロー）
 ════════════════════════════════════════════════════════ #}
