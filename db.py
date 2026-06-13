@@ -1112,7 +1112,11 @@ def get_recent_sessions_for_copy(exclude_session_id: int = None, limit: int = 2)
         result = []
         for s in sessions:
             cur.execute("""
-                SELECT ex.name, se.one_rep_max, se.weight_setting, se.weight_low_load, se.reps
+                SELECT ex.name, se.one_rep_max, se.weight_setting, se.weight_low_load,
+                       se.reps, se.load_mode,
+                       (COALESCE(se.set1_completed::int,0) + COALESCE(se.set2_completed::int,0) +
+                        COALESCE(se.set3_completed::int,0) + COALESCE(se.set4_completed::int,0) +
+                        COALESCE(se.set5_completed::int,0) + COALESCE(se.set6_completed::int,0)) AS sets_done
                 FROM session_exercises se
                 JOIN exercises ex ON ex.id = se.exercise_id
                 WHERE se.session_id = %s
@@ -1126,8 +1130,9 @@ def get_recent_sessions_for_copy(exclude_session_id: int = None, limit: int = 2)
 def copy_exercises_to_session(from_session_id: int, to_session_id: int,
                               copy_type: str = "full") -> int:
     """Copy all exercises from one session to another.
-    copy_type='full'      : copy 1RM/weight/reps, reset set completions
-    copy_type='menu_only' : copy exercise names only, clear weight/1RM/reps
+    copy_type='full'       : copy 1RM/weight/reps/load_mode, reset set completions
+    copy_type='menu_only'  : copy exercise names only, clear weight/1RM/reps
+    copy_type='with_sets'  : copy everything + actual set completion states
     """
     with _conn() as conn:
         cur = conn.cursor()
@@ -1155,19 +1160,44 @@ def copy_exercises_to_session(from_session_id: int, to_session_id: int,
                     False, False, False,
                     0, ex["muscle_groups"],
                 ))
+            elif copy_type == "with_sets":
+                cur.execute("""
+                    INSERT INTO session_exercises
+                        (session_id, exercise_id, sort_order,
+                         one_rep_max, weight_pct80, weight_setting, weight_low_load, reps,
+                         ratio_pct, load_mode, low_load_pct,
+                         set1_completed, set2_completed, set3_completed,
+                         set4_completed, set5_completed, set6_completed,
+                         set7_completed, set8_completed, set9_completed, set10_completed,
+                         exp_earned, muscle_groups)
+                    VALUES (%s,%s,%s, %s,%s,%s,%s,%s, %s,%s,%s,
+                            %s,%s,%s, %s,%s,%s, %s,%s,%s,%s,
+                            %s,%s)
+                """, (
+                    to_session_id, ex["exercise_id"], i,
+                    ex["one_rep_max"], ex["weight_pct80"], ex["weight_setting"],
+                    ex["weight_low_load"], ex["reps"],
+                    ex["ratio_pct"], ex["load_mode"], ex["low_load_pct"],
+                    ex["set1_completed"], ex["set2_completed"], ex["set3_completed"],
+                    ex["set4_completed"], ex["set5_completed"], ex["set6_completed"],
+                    ex["set7_completed"], ex["set8_completed"], ex["set9_completed"], ex["set10_completed"],
+                    ex["exp_earned"], ex["muscle_groups"],
+                ))
             else:
                 cur.execute("""
                     INSERT INTO session_exercises
                         (session_id, exercise_id, sort_order,
                          one_rep_max, weight_pct80, weight_setting, weight_low_load, reps,
-                         ratio_pct, set1_completed, set2_completed, set3_completed,
+                         ratio_pct, load_mode, low_load_pct,
+                         set1_completed, set2_completed, set3_completed,
                          exp_earned, muscle_groups)
-                    VALUES (%s,%s,%s, %s,%s,%s,%s,%s, %s,%s,%s,%s, %s,%s)
+                    VALUES (%s,%s,%s, %s,%s,%s,%s,%s, %s,%s,%s, %s,%s,%s, %s,%s)
                 """, (
                     to_session_id, ex["exercise_id"], i,
                     ex["one_rep_max"], ex["weight_pct80"], ex["weight_setting"],
                     ex["weight_low_load"], ex["reps"],
-                    ex["ratio_pct"], False, False, False,
+                    ex["ratio_pct"], ex["load_mode"], ex["low_load_pct"],
+                    False, False, False,
                     0, ex["muscle_groups"],
                 ))
 

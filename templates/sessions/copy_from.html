@@ -36,32 +36,47 @@
         {% for ex in exlist %}
         <div class="d-flex justify-content-between align-items-center py-1 border-bottom border-secondary border-opacity-25">
           <span class="text-info small fw-bold">{{ ex.name }}</span>
-          <span class="text-secondary small">
-            {% if ex.weight_setting %}{{ ex.weight_setting }}kg{% endif %}
-            {% if ex.weight_low_load %} / {{ ex.weight_low_load }}kg{% endif %}
-            {% if ex.reps %} × {{ ex.reps }}rep{% endif %}
-          </span>
+          <div class="d-flex align-items-center gap-2">
+            {% if ex.sets_done %}
+            <span class="badge bg-success bg-opacity-75" style="font-size:0.65rem;">{{ ex.sets_done }}セット</span>
+            {% endif %}
+            <span class="text-secondary small">
+              {% if ex.weight_setting %}{{ ex.weight_setting }}kg{% endif %}
+              {% if ex.weight_low_load %} / {{ ex.weight_low_load }}kg{% endif %}
+              {% if ex.reps %} × {{ ex.reps }}rep{% endif %}
+            </span>
+          </div>
         </div>
         {% endfor %}
       </div>
 
-      <div class="d-flex gap-2">
+      <div class="d-flex gap-2 flex-wrap">
         <form method="post"
               action="{{ url_for('session_copy_execute', session_id=session.id, from_id=s.id) }}"
-              style="flex:1;"
+              style="flex:1;min-width:0;"
+              onsubmit="return confirm('セット数も含めてコピーしますか？\n（既存の種目は置き換えられます）')">
+          <input type="hidden" name="copy_type" value="with_sets">
+          <button type="submit" class="btn btn-success btn-lg w-100 fw-bold" style="font-size:0.85rem;">
+            📊 セット数込み
+          </button>
+          <div class="text-secondary text-center" style="font-size:0.65rem;margin-top:0.2rem;">重量・セット完了を引き継ぎ</div>
+        </form>
+        <form method="post"
+              action="{{ url_for('session_copy_execute', session_id=session.id, from_id=s.id) }}"
+              style="flex:1;min-width:0;"
               onsubmit="return confirm('重量・rep込みでコピーしますか？\n（既存の種目は置き換えられます）')">
           <input type="hidden" name="copy_type" value="full">
-          <button type="submit" class="btn btn-warning btn-lg w-100 fw-bold" style="font-size:0.88rem;">
-            📋 重量込みコピー
+          <button type="submit" class="btn btn-warning btn-lg w-100 fw-bold" style="font-size:0.85rem;">
+            📋 重量込み
           </button>
           <div class="text-secondary text-center" style="font-size:0.65rem;margin-top:0.2rem;">1RM・重量・rep を引き継ぎ</div>
         </form>
         <form method="post"
               action="{{ url_for('session_copy_execute', session_id=session.id, from_id=s.id) }}"
-              style="flex:1;"
+              style="flex:1;min-width:0;"
               onsubmit="return confirm('種目名のみコピーしますか？\n重量・repは空になります。')">
           <input type="hidden" name="copy_type" value="menu_only">
-          <button type="submit" class="btn btn-outline-warning btn-lg w-100 fw-bold" style="font-size:0.88rem;">
+          <button type="submit" class="btn btn-outline-warning btn-lg w-100 fw-bold" style="font-size:0.85rem;">
             📝 種目のみ
           </button>
           <div class="text-secondary text-center" style="font-size:0.65rem;margin-top:0.2rem;">値はリセット・新規入力</div>
