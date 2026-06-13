@@ -61,7 +61,8 @@ def get_session_with_exercises(session_id: int):
         cur.execute("""
             SELECT se.*, ex.name AS exercise_name,
                    ex.body_part, ex.needs_bench, ex.primary_muscle,
-                   ex.bodyweight_ratio, ex.is_time_based
+                   ex.bodyweight_ratio, ex.is_time_based,
+                   ex.lvup_high, ex.lvup_low
             FROM session_exercises se
             JOIN exercises ex ON ex.id = se.exercise_id
             WHERE se.session_id = %s
@@ -657,7 +658,7 @@ def get_my_set_with_exercises(my_set_id: int):
         cur.execute("""
             SELECT mse.*, ex.name AS exercise_name,
                    ex.body_part, ex.needs_bench, ex.primary_muscle,
-                   ex.bodyweight_ratio
+                   ex.bodyweight_ratio, ex.lvup_high, ex.lvup_low
             FROM my_set_exercises mse
             JOIN exercises ex ON ex.id = mse.exercise_id
             WHERE mse.my_set_id = %s
@@ -1057,6 +1058,19 @@ def toggle_set_completion(se_id: int, set_num: int) -> dict:
         reps = se["reps"] or se["session_rep_count"] or default_reps
         exp = round((weight or 1) * reps * completed_count)
 
+        # Check progressive overload criteria
+        reps_val = se.get("reps") or 0
+        exercise_id = se["exercise_id"]
+        lvup_high_achieved = False
+        lvup_low_achieved  = False
+        if new_val:
+            if mode == "high" and reps_val >= 12 and completed_count >= 3:
+                lvup_high_achieved = True
+                cur.execute("UPDATE exercises SET lvup_high = TRUE WHERE id = %s", (exercise_id,))
+            elif mode == "low" and reps_val >= 40 and completed_count >= 3:
+                lvup_low_achieved = True
+                cur.execute("UPDATE exercises SET lvup_low = TRUE WHERE id = %s", (exercise_id,))
+
         cur.execute(f"""
             UPDATE session_exercises
             SET {col} = %s, exp_earned = %s
@@ -1089,7 +1103,18 @@ def toggle_set_completion(se_id: int, set_num: int) -> dict:
         "exp_earned": exp,
         "session_total_exp": total,
         "category_exp": category_exp,
+        "lvup_high": lvup_high_achieved,
+        "lvup_low":  lvup_low_achieved,
+        "exercise_id": exercise_id,
     }
+
+
+def clear_lvup(exercise_id: int, lvup_type: str) -> None:
+    """Clear the lvup_high or lvup_low flag on an exercise."""
+    col = "lvup_high" if lvup_type == "high" else "lvup_low"
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(f"UPDATE exercises SET {col} = FALSE WHERE id = %s", (exercise_id,))
 
 
 def get_recent_sessions_for_copy(exclude_session_id: int = None, limit: int = 2) -> list:

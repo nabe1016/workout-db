@@ -584,6 +584,16 @@ def my_set_sync_from_latest(my_set_id):
     return jsonify({"synced": count})
 
 
+@app.route("/api/exercise/<int:exercise_id>/clear-lvup", methods=["POST"])
+def api_clear_lvup(exercise_id):
+    data = request.get_json(force=True) or {}
+    lvup_type = data.get("type", "high")
+    if lvup_type not in ("high", "low"):
+        return jsonify({"error": "invalid type"}), 400
+    db.clear_lvup(exercise_id, lvup_type)
+    return jsonify({"ok": True})
+
+
 @app.route("/api/mse/<int:mse_id>/quick-edit", methods=["POST"])
 def api_quick_edit_mse(mse_id):
     data = request.get_json() or {}

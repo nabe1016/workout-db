@@ -94,6 +94,22 @@
         {% if ex.primary_muscle %}
         <span class="text-secondary" style="font-size:0.7rem;">{{ ex.primary_muscle }}</span>
         {% endif %}
+        {% if ex.lvup_high %}
+        <button type="button" class="lvup-badge-mse btn btn-sm py-0 px-1"
+                data-exercise-id="{{ ex.exercise_id }}"
+                data-lvup-type="high"
+                id="lvup-mse-{{ ex.exercise_id }}-high"
+                style="background:#ffd700;color:#333;font-size:0.6rem;border:none;border-radius:3px;font-weight:800;line-height:1.6;"
+                title="高負荷 12rep×3set 達成！タップで解除">📈 Lvup!可</button>
+        {% endif %}
+        {% if ex.lvup_low %}
+        <button type="button" class="lvup-badge-mse btn btn-sm py-0 px-1"
+                data-exercise-id="{{ ex.exercise_id }}"
+                data-lvup-type="low"
+                id="lvup-mse-{{ ex.exercise_id }}-low"
+                style="background:#ff9a3c;color:#fff;font-size:0.6rem;border:none;border-radius:3px;font-weight:800;line-height:1.6;"
+                title="低負荷 40rep×3set 達成！タップで解除">📈 Lvup!可</button>
+        {% endif %}
       </div>
 
       {# セット数・rep数 ステッパー #}
@@ -386,6 +402,22 @@
     if (!confirm(count + '件を削除しますか？')) e.preventDefault();
   });
 })();
+
+// ── Lvup badge dismiss ───────────────────────────────────────────────────────
+document.addEventListener('click', function (e) {
+  var badge = e.target.closest('.lvup-badge-mse');
+  if (!badge) return;
+  var exId = badge.dataset.exerciseId;
+  var type = badge.dataset.lvupType;
+  badge.disabled = true;
+  fetch('/api/exercise/' + exId + '/clear-lvup', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: type })
+  }).then(function (r) { return r.json(); }).then(function () {
+    badge.remove();
+  }).catch(function () { badge.disabled = false; });
+});
 </script>
 {% endif %}
 {% endblock %}
