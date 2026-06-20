@@ -132,7 +132,7 @@
           <span id="collapsed-mode-{{ ex.id }}" style="font-weight:700;{% if mode == 'low' %}color:var(--orange){% else %}color:var(--blue){% endif %};">
             {% if mode == 'low' %}低{% else %}高{% endif %}
           </span>
-          <span id="collapsed-1rm-{{ ex.id }}"{% if not ex.one_rep_max %} style="display:none;"{% endif %}>
+          <span id="collapsed-1rm-{{ ex.id }}" style="display:none;">
             1RM:<strong class="text-light">{{ ex.one_rep_max }}kg</strong>
           </span>
           <span id="collapsed-weight-{{ ex.id }}">
@@ -773,10 +773,10 @@
     if (c1rmEl) {
       if (data.one_rep_max) {
         c1rmEl.innerHTML = '1RM:<strong class="text-light">' + data.one_rep_max + 'kg</strong>';
-        c1rmEl.style.display = '';
       } else {
         c1rmEl.innerHTML = '';
-        c1rmEl.style.display = 'none';
+      }
+      c1rmEl.style.display = 'none';
       }
     }
     var cwEl = document.getElementById('collapsed-weight-' + seId);
