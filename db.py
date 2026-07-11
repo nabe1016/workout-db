@@ -264,11 +264,25 @@ def quick_edit_se(se_id: int, one_rep_max=None, reps=None,
         if se is None:
             return None
 
-        new_orm  = one_rep_max  if one_rep_max  is not None else se["one_rep_max"]
-        new_reps = reps         if reps         is not None else se["reps"]
+        new_orm  = one_rep_max if one_rep_max is not None else se["one_rep_max"]
         new_pct  = float(low_load_pct) if low_load_pct is not None \
-                   else float(se.get("low_load_pct") or 30)
+                   else float(se.get("low_load_pct") or 50)
         new_mode = load_mode if load_mode is not None else (se.get("load_mode") or "high")
+
+        # Keep high/low reps separately; update only the active mode's reps
+        stored_reps_high = se.get("reps")     or 8
+        stored_reps_low  = se.get("reps_low") or 20
+        if reps is not None:
+            if new_mode == "low":
+                new_reps_high = stored_reps_high
+                new_reps_low  = int(reps)
+            else:
+                new_reps_high = int(reps)
+                new_reps_low  = stored_reps_low
+        else:
+            new_reps_high = stored_reps_high
+            new_reps_low  = stored_reps_low
+        display_reps = new_reps_low if new_mode == "low" else new_reps_high
 
         bw_ratio = se.get("bodyweight_ratio")
         if new_orm:
@@ -288,14 +302,15 @@ def quick_edit_se(se_id: int, one_rep_max=None, reps=None,
         completions = {i: bool(se.get(f"set{i}_completed")) for i in range(1, 11)}
         completed_count = sum(1 for v in completions.values() if v)
         w = (new_wl if new_mode == "low" else new_ws) or (new_wl or new_ws)
-        exp = round((w or 1) * (new_reps or 0) * completed_count)
+        exp = round((w or 1) * display_reps * completed_count)
 
         cur.execute("""
             UPDATE session_exercises
             SET one_rep_max=%s, weight_pct80=%s, weight_setting=%s, weight_low_load=%s,
-                reps=%s, load_mode=%s, low_load_pct=%s, exp_earned=%s
+                reps=%s, reps_low=%s, load_mode=%s, low_load_pct=%s, exp_earned=%s
             WHERE id = %s
-        """, (new_orm, new_ws, new_ws, new_wl, new_reps, new_mode, new_pct, exp, se_id))
+        """, (new_orm, new_ws, new_ws, new_wl,
+              new_reps_high, new_reps_low, new_mode, new_pct, exp, se_id))
         if bench_angle is not _MISSING:
             cur.execute("UPDATE session_exercises SET bench_angle=%s WHERE id=%s",
                         (bench_angle, se_id))
@@ -311,7 +326,9 @@ def quick_edit_se(se_id: int, one_rep_max=None, reps=None,
         "one_rep_max":       new_orm,
         "weight_setting":    new_ws,
         "weight_low_load":   new_wl,
-        "reps":              new_reps,
+        "reps":              display_reps,
+        "reps_high":         new_reps_high,
+        "reps_low":          new_reps_low,
         "load_mode":         new_mode,
         "low_load_pct":      new_pct,
         "exp_earned":        exp,
@@ -1002,17 +1019,22 @@ def copy_my_set_to_session(my_set_id: int, session_id: int) -> int:
             weight_pct80 = round(float(ex["one_rep_max"]) * 0.8, 1) if ex["one_rep_max"] else None
             ratio_pct = (round(float(ex["weight_setting"]) / float(ex["one_rep_max"]) * 100, 1)
                          if ex["weight_setting"] and ex["one_rep_max"] else None)
+            low_pct = float(ex.get("low_load_pct") or 50)
+            new_wl = ex["weight_low_load"]
+            if ex["one_rep_max"] and not new_wl:
+                new_wl = round(float(ex["one_rep_max"]) * low_pct / 100, 1)
             cur.execute("""
                 INSERT INTO session_exercises
                     (session_id, exercise_id, sort_order,
-                     one_rep_max, weight_pct80, weight_setting, weight_low_load, reps,
+                     one_rep_max, weight_pct80, weight_setting, weight_low_load,
+                     reps, reps_low, low_load_pct,
                      ratio_pct, set1_completed, set2_completed, set3_completed,
                      exp_earned, muscle_groups)
-                VALUES (%s,%s,%s, %s,%s,%s,%s,%s, %s,%s,%s,%s, %s,%s)
+                VALUES (%s,%s,%s, %s,%s,%s,%s, %s,%s,%s, %s,%s,%s,%s, %s,%s)
             """, (
                 session_id, ex["exercise_id"], i,
-                ex["one_rep_max"], weight_pct80, ex["weight_setting"],
-                ex["weight_low_load"], ex["reps"],
+                ex["one_rep_max"], weight_pct80, ex["weight_setting"], new_wl,
+                ex.get("reps") or 8, ex.get("reps_low") or 20, low_pct,
                 ratio_pct, False, False, False, 0, ex["muscle_groups"],
             ))
 

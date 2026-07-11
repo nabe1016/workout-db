@@ -236,3 +236,6 @@ ALTER TABLE my_set_exercises ADD COLUMN IF NOT EXISTS low_load_pct NUMERIC(5,1) 
 -- プログレッシブオーバーロード到達フラグ
 ALTER TABLE exercises ADD COLUMN IF NOT EXISTS lvup_high BOOLEAN DEFAULT FALSE;
 ALTER TABLE exercises ADD COLUMN IF NOT EXISTS lvup_low  BOOLEAN DEFAULT FALSE;
+
+-- セッション種目: 高/低負荷別rep数
+ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS reps_low INTEGER;

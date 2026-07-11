@@ -95,6 +95,9 @@
         {% if ex.primary_muscle %}
         <strong style="color:var(--yellow);font-size:0.75rem;font-weight:700;">{{ ex.primary_muscle }}</strong>
         {% endif %}
+        {% if not ex.one_rep_max %}
+        <span style="font-size:0.58rem;padding:0.05rem 0.25rem;border-radius:3px;background:rgba(255,80,0,0.22);border:1px solid rgba(255,80,0,0.45);color:#ff7744;font-weight:700;">⚠ 1RM未設定</span>
+        {% endif %}
         {% if ex.lvup_high %}
         <button type="button" class="lvup-badge btn btn-sm py-0 px-1"
                 data-exercise-id="{{ ex.exercise_id }}"
@@ -145,7 +148,7 @@
             {% endif %}
           </span>
           <span id="collapsed-rep-{{ ex.id }}">
-            <strong class="text-light">{{ ex.reps if ex.reps else ('20-30' if mode == 'low' else '8-12') }}</strong>rep
+            <strong class="text-light">{% if mode == 'low' %}{{ ex.reps_low or 20 }}{% else %}{{ ex.reps or 8 }}{% endif %}</strong>rep
           </span>
         </div>
       </div>
@@ -234,7 +237,7 @@
               </div>
               <div class="d-flex">
                 <span class="text-secondary" style="width:2.8em;flex-shrink:0;">rep</span>
-                <span id="rep-val-{{ ex.id }}">: <strong class="text-light">{% if ex.reps %}{{ ex.reps }}{% else %}{% if mode == 'low' %}20-30{% else %}8-12{% endif %}{% endif %}</strong></span>
+                <span id="rep-val-{{ ex.id }}">: <strong class="text-light">{% if mode == 'low' %}{{ ex.reps_low or 20 }}{% else %}{{ ex.reps or 8 }}{% endif %}</strong></span>
               </div>
             </div>
             <div class="d-flex align-items-center gap-2 mt-1">
@@ -260,14 +263,14 @@
                   <div class="section-label" style="margin-bottom:0.15rem;font-size:0.6rem;">Reps</div>
                   <input type="number" class="form-control form-control-sm adjust-input"
                          data-se-id="{{ ex.id }}" data-field="reps"
-                         value="{{ ex.reps or '' }}" step="1" min="1"
+                         value="{{ (ex.reps_low if mode == 'low' else ex.reps) or '' }}" step="1" min="1"
                          style="width:3.6rem;font-size:0.8rem;padding:0.25rem 0.4rem;">
                 </div>
                 <div>
                   <div class="section-label" style="margin-bottom:0.15rem;font-size:0.6rem;">低%</div>
                   <input type="number" class="form-control form-control-sm adjust-input"
                          data-se-id="{{ ex.id }}" data-field="low_load_pct"
-                         value="{{ (ex.low_load_pct or 30)|int }}" step="5" min="10" max="80"
+                         value="{{ (ex.low_load_pct or 50)|int }}" step="5" min="10" max="80"
                          style="width:3.6rem;font-size:0.8rem;padding:0.25rem 0.4rem;">
                 </div>
                 {% if ex.needs_bench %}
@@ -731,7 +734,7 @@
     var wEl = document.getElementById('weight-val-' + seId);
     if (wEl) {
       if (isLow && data.weight_low_load) {
-        var pct = Math.round(data.low_load_pct || 30);
+        var pct = Math.round(data.low_load_pct || 50);
         wEl.innerHTML = ': <strong style="color:var(--orange);">' + data.weight_low_load + 'kg</strong>'
                       + '<span class="text-secondary" style="font-size:0.65rem;"> (' + pct + '%)</span>';
       } else if (data.weight_setting) {
@@ -759,7 +762,7 @@
     // Rep value span
     var rEl = document.getElementById('rep-val-' + seId);
     if (rEl) {
-      var repVal = data.reps ? data.reps : (isLow ? '20-30' : '8-12');
+      var repVal = data.reps != null ? data.reps : (isLow ? 20 : 8);
       rEl.innerHTML = ': <strong class="text-light">' + repVal + '</strong>';
     }
 
@@ -781,7 +784,7 @@
     var cwEl = document.getElementById('collapsed-weight-' + seId);
     if (cwEl) {
       if (isLow && data.weight_low_load) {
-        var cpct = Math.round(data.low_load_pct || 30);
+        var cpct = Math.round(data.low_load_pct || 50);
         cwEl.innerHTML = '<strong style="color:var(--orange);">' + data.weight_low_load + 'kg</strong>'
                        + '<span class="text-secondary">(' + cpct + '%)</span>';
       } else if (data.weight_setting) {
@@ -793,7 +796,7 @@
     }
     var crEl = document.getElementById('collapsed-rep-' + seId);
     if (crEl) {
-      var crepVal = data.reps ? data.reps : (isLow ? '20-30' : '8-12');
+      var crepVal = data.reps != null ? data.reps : (isLow ? 20 : 8);
       crEl.innerHTML = '<strong class="text-light">' + crepVal + '</strong>rep';
     }
 
