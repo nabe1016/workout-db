@@ -271,15 +271,16 @@ def quick_edit_se(se_id: int, one_rep_max=None, reps=None,
         new_mode = load_mode if load_mode is not None else (se.get("load_mode") or "high")
 
         bw_ratio = se.get("bodyweight_ratio")
-        if bw_ratio:
+        if new_orm:
+            # Explicit 1RM always takes priority over bodyweight ratio
+            new_ws = round(float(new_orm) * 0.8, 1)
+            new_wl = round(float(new_orm) * new_pct / 100, 1)
+        elif bw_ratio:
             bw_row = get_latest_weight()
             body_weight = float(bw_row["weight_kg"]) if bw_row else 65.0
             eff_weight = round(body_weight * bw_ratio, 1)
             new_ws = eff_weight
             new_wl = eff_weight
-        elif new_orm:
-            new_ws  = round(float(new_orm) * 0.8, 1)
-            new_wl  = round(float(new_orm) * new_pct / 100, 1)
         else:
             new_ws = se["weight_setting"]
             new_wl = se["weight_low_load"]
@@ -1046,7 +1047,14 @@ def toggle_set_completion(se_id: int, set_num: int) -> dict:
 
         mode = se.get("load_mode") or "high"
         bw_ratio = se.get("bodyweight_ratio")
-        if bw_ratio:
+        orm = se.get("one_rep_max")
+        if orm:
+            # Explicit 1RM takes priority: use stored weight_setting/weight_low_load
+            if mode == "low":
+                weight = se["weight_low_load"] or se["weight_setting"]
+            else:
+                weight = se["weight_setting"] or se["weight_low_load"]
+        elif bw_ratio:
             bw_row = get_latest_weight()
             body_weight = float(bw_row["weight_kg"]) if bw_row else 65.0
             weight = round(body_weight * bw_ratio, 1)
