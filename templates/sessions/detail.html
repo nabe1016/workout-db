@@ -150,6 +150,28 @@
           <span id="collapsed-rep-{{ ex.id }}">
             <strong class="text-light">{% if mode == 'low' %}{{ ex.reps_low or 20 }}{% else %}{{ ex.reps or 8 }}{% endif %}</strong>rep
           </span>
+          {# 8→12 rep progress dots (hidden in low mode) #}
+          {% set cur_reps = ex.reps or 8 %}
+          <span id="rep-progress-{{ ex.id }}" style="display:{% if mode == 'low' %}none{% else %}flex{% endif %};gap:0.25rem;align-items:center;margin-left:0.25rem;flex-shrink:0;">
+            {% for n in [8,9,10,11,12] %}
+            <span style="width:7px;height:7px;border-radius:50%;display:inline-block;flex-shrink:0;
+                         background:{% if cur_reps >= n %}var(--blue){% else %}rgba(255,255,255,0.15){% endif %};"></span>
+            {% endfor %}
+          </span>
+        </div>
+        {# 前回の実績 #}
+        <div id="prev-row-{{ ex.id }}"
+             class="gap-2 align-items-center mt-0"
+             style="display:{% if ex.prev_weight or ex.prev_reps %}flex{% else %}none{% endif %};font-size:0.65rem;color:rgba(255,255,255,0.38);"
+             data-prev-high-weight="{{ ex.prev_high_weight or '' }}"
+             data-prev-high-reps="{{ ex.prev_high_reps or '' }}"
+             data-prev-low-weight="{{ ex.prev_low_weight or '' }}"
+             data-prev-low-reps="{{ ex.prev_low_reps or '' }}"
+             data-prev-sets="{{ ex.prev_sets or '' }}">
+          <span>前回:</span>
+          <span id="prev-weight-{{ ex.id }}">{% if ex.prev_weight %}{{ ex.prev_weight }}kg{% endif %}</span>
+          <span id="prev-reps-{{ ex.id }}">{% if ex.prev_reps %}×<strong style="color:rgba(255,255,255,0.5);">{{ ex.prev_reps }}</strong>rep{% endif %}</span>
+          <span id="prev-sets-{{ ex.id }}">{% if ex.prev_sets %}/ {{ ex.prev_sets }}set{% endif %}</span>
         </div>
       </div>
 
@@ -798,6 +820,30 @@
     if (crEl) {
       var crepVal = data.reps != null ? data.reps : (isLow ? 20 : 8);
       crEl.innerHTML = '<strong class="text-light">' + crepVal + '</strong>rep';
+    }
+
+    // Rep progress dots (high mode: 8→12)
+    var rpEl = document.getElementById('rep-progress-' + seId);
+    if (rpEl) {
+      rpEl.style.display = isLow ? 'none' : 'flex';
+      if (!isLow) {
+        var curReps = data.reps_high != null ? data.reps_high : (data.reps != null ? data.reps : 8);
+        rpEl.querySelectorAll('span').forEach(function(dot, i) {
+          dot.style.background = curReps >= (i + 8) ? 'var(--blue)' : 'rgba(255,255,255,0.15)';
+        });
+      }
+    }
+
+    // Prev row: update on mode switch or reps change
+    var prevRow = document.getElementById('prev-row-' + seId);
+    if (prevRow) {
+      var pw = isLow ? (prevRow.dataset.prevLowWeight || '') : (prevRow.dataset.prevHighWeight || '');
+      var pr = isLow ? (prevRow.dataset.prevLowReps   || '') : (prevRow.dataset.prevHighReps  || '');
+      prevRow.style.display = (pw || pr) ? 'flex' : 'none';
+      var pwEl = document.getElementById('prev-weight-' + seId);
+      var prEl = document.getElementById('prev-reps-' + seId);
+      if (pwEl) pwEl.textContent = pw ? pw + 'kg' : '';
+      if (prEl) prEl.innerHTML   = pr ? '×<strong style="color:rgba(255,255,255,0.5);">' + pr + '</strong>rep' : '';
     }
 
     // EXP badge & session total

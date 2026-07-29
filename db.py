@@ -1311,6 +1311,30 @@ def sync_my_set_from_latest(my_set_id: int) -> int:
         return updated
 
 
+def get_prev_exercise_values_batch(session_id: int) -> dict:
+    """Return {exercise_id: prev_row} for all exercises in a session (most recent previous session each)."""
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT DISTINCT ON (prev.exercise_id)
+                   prev.exercise_id,
+                   prev.one_rep_max, prev.weight_setting, prev.weight_low_load,
+                   prev.reps, prev.reps_low, prev.load_mode, prev.low_load_pct,
+                   (COALESCE(prev.set1_completed::int,0) + COALESCE(prev.set2_completed::int,0) +
+                    COALESCE(prev.set3_completed::int,0) + COALESCE(prev.set4_completed::int,0) +
+                    COALESCE(prev.set5_completed::int,0) + COALESCE(prev.set6_completed::int,0)) AS sets_done,
+                   ws.session_date
+            FROM session_exercises prev
+            JOIN workout_sessions ws ON ws.id = prev.session_id
+            WHERE prev.exercise_id IN (
+                SELECT exercise_id FROM session_exercises WHERE session_id = %s
+            )
+            AND prev.session_id != %s
+            ORDER BY prev.exercise_id, ws.session_date DESC
+        """, (session_id, session_id))
+        return {row["exercise_id"]: row for row in cur.fetchall()}
+
+
 def get_last_exercise_values(exercise_id: int, exclude_session_id: int = None):
     """Return the most recent session_exercises row for this exercise."""
     with _conn() as conn:

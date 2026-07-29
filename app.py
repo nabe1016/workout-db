@@ -236,12 +236,26 @@ def session_detail(session_id):
         flash("セッションが見つかりません。", "danger")
         return redirect(url_for("sessions_list"))
     category_exp = {"上肢": 0, "下肢": 0, "体幹": 0}
+    prev_map = db.get_prev_exercise_values_batch(session_id)
+    merged = []
     for ex in exercises:
+        ex = dict(ex)
         bp = ex.get("body_part")
         if bp in category_exp:
             category_exp[bp] += ex.get("exp_earned") or 0
+        prev = prev_map.get(ex["exercise_id"])
+        if prev:
+            mode = ex.get("load_mode") or "high"
+            ex["prev_weight"] = prev["weight_low_load"] if mode == "low" else prev["weight_setting"]
+            ex["prev_reps"]   = prev["reps_low"] if mode == "low" else prev["reps"]
+            ex["prev_sets"]   = prev["sets_done"]
+            ex["prev_high_weight"] = prev["weight_setting"]
+            ex["prev_high_reps"]   = prev["reps"]
+            ex["prev_low_weight"]  = prev["weight_low_load"]
+            ex["prev_low_reps"]    = prev["reps_low"]
+        merged.append(ex)
     return render_template("sessions/detail.html",
-                           session=session, exercises=exercises,
+                           session=session, exercises=merged,
                            category_exp=category_exp)
 
 
