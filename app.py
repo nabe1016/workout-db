@@ -246,13 +246,15 @@ def session_detail(session_id):
         prev = prev_map.get(ex["exercise_id"])
         if prev:
             mode = ex.get("load_mode") or "high"
+            prev_high_reps = prev["reps"]     or 8
+            prev_low_reps  = prev["reps_low"] or 20
             ex["prev_weight"] = prev["weight_low_load"] if mode == "low" else prev["weight_setting"]
-            ex["prev_reps"]   = prev["reps_low"] if mode == "low" else prev["reps"]
+            ex["prev_reps"]   = prev_low_reps if mode == "low" else prev_high_reps
             ex["prev_sets"]   = prev["sets_done"]
             ex["prev_high_weight"] = prev["weight_setting"]
-            ex["prev_high_reps"]   = prev["reps"]
+            ex["prev_high_reps"]   = prev_high_reps
             ex["prev_low_weight"]  = prev["weight_low_load"]
-            ex["prev_low_reps"]    = prev["reps_low"]
+            ex["prev_low_reps"]    = prev_low_reps
         merged.append(ex)
     return render_template("sessions/detail.html",
                            session=session, exercises=merged,
