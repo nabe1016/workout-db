@@ -538,7 +538,7 @@ def session_advice(session_id):
                 status = "new"; new_count += 1
 
         comparison.append({
-            "name":        ex["name"],
+            "name":        ex["exercise_name"],
             "body_part":   ex.get("body_part") or "",
             "mode":        mode,
             "cur_weight":  cur_weight,
