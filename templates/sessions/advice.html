@@ -116,6 +116,122 @@
 </div>
 {% endif %}
 
+{# ── 前回との比較 ── #}
+{% if comparison %}
+<div class="section-label mb-2">前回との比較</div>
+
+{# Summary chips #}
+<div class="d-flex gap-2 mb-3 flex-wrap">
+  {% if cmp_summary.growth %}
+  <span style="font-size:0.72rem;font-weight:700;padding:0.25rem 0.55rem;border-radius:20px;
+               background:rgba(52,199,89,0.15);border:1px solid rgba(52,199,89,0.4);color:var(--green);">
+    📈 成長 {{ cmp_summary.growth }}種目
+  </span>
+  {% endif %}
+  {% if cmp_summary.save %}
+  <span style="font-size:0.72rem;font-weight:700;padding:0.25rem 0.55rem;border-radius:20px;
+               background:rgba(255,154,60,0.15);border:1px solid rgba(255,154,60,0.4);color:var(--orange);">
+    💤 セーブ {{ cmp_summary.save }}種目
+  </span>
+  {% endif %}
+  {% if cmp_summary.same %}
+  <span style="font-size:0.72rem;font-weight:700;padding:0.25rem 0.55rem;border-radius:20px;
+               background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);color:var(--txt-2);">
+    → 維持 {{ cmp_summary.same }}種目
+  </span>
+  {% endif %}
+  {% if cmp_summary.new %}
+  <span style="font-size:0.72rem;font-weight:700;padding:0.25rem 0.55rem;border-radius:20px;
+               background:rgba(90,215,210,0.12);border:1px solid rgba(90,215,210,0.35);color:var(--teal);">
+    ✨ 初回 {{ cmp_summary.new }}種目
+  </span>
+  {% endif %}
+</div>
+
+<div class="card mb-4">
+  <div class="card-body p-0">
+    {% for cmp in comparison %}
+    <div class="px-3 py-2{% if not loop.last %} border-bottom border-secondary border-opacity-25{% endif %}">
+
+      {# Name row #}
+      <div class="d-flex align-items-center gap-2">
+        {# Status icon #}
+        {% if cmp.status == 'growth' %}
+          <span style="font-size:0.8rem;flex-shrink:0;">📈</span>
+        {% elif cmp.status == 'save' %}
+          <span style="font-size:0.8rem;flex-shrink:0;">💤</span>
+        {% elif cmp.status == 'skipped' %}
+          <span style="font-size:0.8rem;flex-shrink:0;opacity:0.4;">⏭</span>
+        {% elif cmp.status == 'new' %}
+          <span style="font-size:0.8rem;flex-shrink:0;">✨</span>
+        {% else %}
+          <span style="font-size:0.7rem;color:rgba(255,255,255,0.3);flex-shrink:0;width:0.8rem;text-align:center;">—</span>
+        {% endif %}
+        <span style="font-size:0.88rem;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ cmp.name }}</span>
+        {% if cmp.body_part %}
+        <span style="font-size:0.6rem;padding:0.05rem 0.3rem;border-radius:3px;background:rgba(255,255,255,0.07);color:var(--txt-2);flex-shrink:0;">{{ cmp.body_part }}</span>
+        {% endif %}
+        {# Diff badges on right #}
+        {% if not cmp.skipped and (cmp.w_diff is not none or cmp.r_diff is not none or cmp.s_diff is not none) %}
+        <div class="d-flex gap-1 flex-shrink-0">
+          {% if cmp.w_diff is not none and cmp.w_diff != 0 %}
+          <span style="font-size:0.62rem;font-weight:800;padding:0.05rem 0.3rem;border-radius:3px;
+                       background:{% if cmp.w_diff > 0 %}rgba(52,199,89,0.18){% else %}rgba(255,154,60,0.18){% endif %};
+                       color:{% if cmp.w_diff > 0 %}var(--green){% else %}var(--orange){% endif %};">
+            {% if cmp.w_diff > 0 %}+{% endif %}{{ cmp.w_diff }}kg
+          </span>
+          {% endif %}
+          {% if cmp.r_diff is not none and cmp.r_diff != 0 %}
+          <span style="font-size:0.62rem;font-weight:800;padding:0.05rem 0.3rem;border-radius:3px;
+                       background:{% if cmp.r_diff > 0 %}rgba(52,199,89,0.18){% else %}rgba(255,154,60,0.18){% endif %};
+                       color:{% if cmp.r_diff > 0 %}var(--green){% else %}var(--orange){% endif %};">
+            {% if cmp.r_diff > 0 %}+{% endif %}{{ cmp.r_diff }}rep
+          </span>
+          {% endif %}
+          {% if cmp.s_diff is not none and cmp.s_diff != 0 %}
+          <span style="font-size:0.62rem;font-weight:800;padding:0.05rem 0.3rem;border-radius:3px;
+                       background:{% if cmp.s_diff > 0 %}rgba(52,199,89,0.18){% else %}rgba(255,154,60,0.18){% endif %};
+                       color:{% if cmp.s_diff > 0 %}var(--green){% else %}var(--orange){% endif %};">
+            {% if cmp.s_diff > 0 %}+{% endif %}{{ cmp.s_diff }}set
+          </span>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+
+      {% if not cmp.skipped %}
+      {# Current values #}
+      <div class="d-flex align-items-center gap-2 mt-1" style="padding-left:1.5rem;">
+        <span style="font-size:0.62rem;font-weight:800;padding:0.02rem 0.28rem;border-radius:3px;
+                     background:{% if cmp.mode == 'low' %}rgba(255,154,60,0.2){% else %}rgba(10,132,255,0.2){% endif %};
+                     color:{% if cmp.mode == 'low' %}var(--orange){% else %}var(--blue){% endif %};">
+          {% if cmp.mode == 'low' %}低{% else %}高{% endif %}
+        </span>
+        <span class="fw-bold" style="font-size:0.82rem;color:var(--txt-1);">
+          {% if cmp.cur_weight %}{{ cmp.cur_weight }}kg{% else %}—{% endif %}
+        </span>
+        <span style="font-size:0.78rem;color:var(--txt-2);">×{{ cmp.cur_reps }}rep</span>
+        <span style="font-size:0.78rem;color:var(--txt-2);">×{{ cmp.cur_sets }}set</span>
+      </div>
+      {# Prev values #}
+      {% if cmp.prev_weight is not none or cmp.prev_reps is not none %}
+      <div class="d-flex align-items-center gap-2" style="padding-left:1.5rem;font-size:0.7rem;color:rgba(255,255,255,0.32);">
+        <span>前回:</span>
+        {% if cmp.prev_weight is not none %}<span>{{ cmp.prev_weight }}kg</span>{% endif %}
+        {% if cmp.prev_reps is not none %}<span>×{{ cmp.prev_reps }}rep</span>{% endif %}
+        {% if cmp.prev_sets is not none %}<span>×{{ cmp.prev_sets }}set</span>{% endif %}
+      </div>
+      {% endif %}
+      {% else %}
+      <div style="padding-left:1.5rem;font-size:0.72rem;color:rgba(255,255,255,0.28);">スキップ</div>
+      {% endif %}
+
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
 {# ── 次回への提案（漸進性過負荷） ── #}
 {% if overload_tips %}
 <div class="section-label mb-2">次回へ向けて</div>

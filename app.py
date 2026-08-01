@@ -492,13 +492,74 @@ def session_advice(session_id):
     bw_row = db.get_latest_weight()
     body_weight = float(bw_row["weight_kg"]) if bw_row else 65.0
     volume_metrics = db.build_volume_metrics(session, exercises, body_weight)
+
+    # Per-exercise comparison with previous session
+    prev_map = db.get_prev_exercise_values_batch(session_id)
+    comparison = []
+    growth_count = save_count = same_count = new_count = skip_count = 0
+    for ex in exercises:
+        mode       = ex.get("load_mode") or "high"
+        cur_weight = ex.get("weight_low_load") if mode == "low" else ex.get("weight_setting")
+        cur_reps   = int(ex.get("reps_low") or 20) if mode == "low" else int(ex.get("reps") or 8)
+        cur_sets   = sum(1 for i in range(1, 7) if ex.get(f"set{i}_completed"))
+        is_skipped = bool(ex.get("skipped"))
+
+        prev = prev_map.get(ex["exercise_id"])
+        if prev:
+            prev_weight = prev.get("weight_low_load") if mode == "low" else prev.get("weight_setting")
+            prev_reps   = int(prev.get("reps_low") or 20) if mode == "low" else int(prev.get("reps") or 8)
+            prev_sets   = int(prev.get("sets_done") or 0)
+            w_diff = round(float(cur_weight or 0) - float(prev_weight or 0), 1) \
+                     if cur_weight is not None and prev_weight is not None else None
+            r_diff = (cur_reps - prev_reps) if not is_skipped else None
+            s_diff = (cur_sets - prev_sets) if not is_skipped else None
+            if is_skipped:
+                status = "skipped"; skip_count += 1
+            elif (w_diff and w_diff > 0) or (r_diff and r_diff > 0) or \
+                 (w_diff == 0 and r_diff == 0 and s_diff and s_diff > 0):
+                status = "growth"; growth_count += 1
+            elif (w_diff and w_diff < 0) or (r_diff and r_diff < 0) or \
+                 (s_diff is not None and s_diff < 0):
+                status = "save"; save_count += 1
+            else:
+                status = "same"; same_count += 1
+        else:
+            prev_weight = prev_reps = prev_sets = None
+            w_diff = r_diff = s_diff = None
+            if is_skipped:
+                status = "skipped"; skip_count += 1
+            else:
+                status = "new"; new_count += 1
+
+        comparison.append({
+            "name":        ex["name"],
+            "body_part":   ex.get("body_part") or "",
+            "mode":        mode,
+            "cur_weight":  cur_weight,
+            "cur_reps":    cur_reps,
+            "cur_sets":    cur_sets,
+            "prev_weight": prev_weight,
+            "prev_reps":   prev_reps,
+            "prev_sets":   prev_sets,
+            "w_diff":      w_diff,
+            "r_diff":      r_diff,
+            "s_diff":      s_diff,
+            "status":      status,
+            "skipped":     is_skipped,
+        })
+
+    cmp_summary = {"growth": growth_count, "save": save_count,
+                   "same": same_count, "new": new_count, "skip": skip_count}
+
     return render_template("sessions/advice.html",
                            session=session, exercises=exercises,
                            advice=advice, intensity=intensity,
                            overload_tips=overload_tips,
                            completed_count=completed_count,
                            volume_metrics=volume_metrics,
-                           body_weight=body_weight)
+                           body_weight=body_weight,
+                           comparison=comparison,
+                           cmp_summary=cmp_summary)
 
 
 # ── Reorder (AJAX) ───────────────────────────────────────────────────────────
