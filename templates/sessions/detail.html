@@ -53,6 +53,36 @@
   </div>
 </div>
 
+{# ── ウェイトアップリマインダー ── #}
+{% set wup_list = exercises | selectattr('lvup_high', 'equalto', True) | list %}
+{% if wup_list %}
+<div class="card mb-3" style="border:1px solid rgba(255,214,10,0.45);background:rgba(255,214,10,0.05);">
+  <div class="card-body py-2 px-3">
+    <div class="d-flex align-items-center gap-2 mb-2">
+      <span style="font-size:1.4rem;line-height:1;flex-shrink:0;">📈</span>
+      <div>
+        <div style="font-size:0.62rem;font-weight:900;color:var(--yellow);letter-spacing:0.06em;text-transform:uppercase;">Weight Up Ready</div>
+        <div style="font-size:0.82rem;font-weight:700;">以下の種目は重量アップのタイミングです</div>
+      </div>
+    </div>
+    <div class="d-flex flex-column" style="gap:0.3rem;">
+      {% for ex in wup_list %}
+      <div class="d-flex align-items-center justify-content-between py-1{% if not loop.last %} border-bottom{% endif %}"
+           style="border-color:rgba(255,214,10,0.2);">
+        <span style="font-size:0.85rem;font-weight:600;">{{ ex.exercise_name }}</span>
+        {% if ex.weight_setting %}
+        <span style="font-size:0.72rem;color:var(--yellow);font-weight:700;">{{ ex.weight_setting }}kg → 次へ</span>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    <div style="font-size:0.65rem;color:rgba(255,255,255,0.35);margin-top:0.5rem;">
+      各種目の「📈 Lvup!可」バッジをタップして確認・解除できます
+    </div>
+  </div>
+</div>
+{% endif %}
+
 {# Exercise list #}
 {% if exercises %}
 <div class="d-flex justify-content-end gap-2 mb-2">

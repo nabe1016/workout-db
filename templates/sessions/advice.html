@@ -232,11 +232,37 @@
 </div>
 {% endif %}
 
+{# ── ウェイトアップ達成種目（高負荷 12rep×3set） ── #}
+{% set wup_tips = overload_tips | selectattr('action', 'equalto', 'weight_up') | list %}
+{% set rep_tips = overload_tips | rejectattr('action', 'equalto', 'weight_up') | list %}
+
+{% if wup_tips %}
+<div class="card mb-4" style="border:2px solid rgba(255,214,10,0.55);background:linear-gradient(135deg,rgba(255,214,10,0.07) 0%,rgba(255,214,10,0.02) 100%);">
+  <div class="card-body py-3 px-3">
+    <div class="d-flex align-items-center gap-3 mb-3">
+      <span style="font-size:2.2rem;line-height:1;flex-shrink:0;">🏆</span>
+      <div>
+        <div style="font-size:0.62rem;font-weight:900;color:var(--yellow);letter-spacing:0.08em;text-transform:uppercase;">Weight Up Ready</div>
+        <div style="font-size:1rem;font-weight:800;">次回は重量アップのチャンス！</div>
+        <div style="font-size:0.72rem;color:var(--txt-2);margin-top:0.1rem;">高負荷 12rep × 3set 達成。1RMを更新して次のウェイトへ。重量アップ後はrepを8に戻してOK</div>
+      </div>
+    </div>
+    {% for tip in wup_tips %}
+    <div class="d-flex align-items-center justify-content-between py-2{% if not loop.last %} border-bottom{% endif %}"
+         style="border-color:rgba(255,214,10,0.2);">
+      <span style="font-size:0.9rem;font-weight:700;color:var(--yellow);">{{ tip.name }}</span>
+      <span style="font-size:1.1rem;">📈</span>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
 {# ── 次回への提案（漸進性過負荷） ── #}
-{% if overload_tips %}
+{% if rep_tips %}
 <div class="section-label mb-2">次回へ向けて</div>
 <div class="d-flex flex-column gap-2 mb-4">
-  {% for tip in overload_tips %}
+  {% for tip in rep_tips %}
   <div class="card" style="--card-bg:rgba(255,214,10,0.07);">
     <div class="card-body py-2 px-3">
       <div class="d-flex gap-2 align-items-start">
@@ -261,6 +287,7 @@
   </div>
   {% endfor %}
 </div>
+{% endif %}
 <script>
 document.querySelectorAll('.apply-tip-btn').forEach(function (btn) {
   btn.addEventListener('click', function () {
