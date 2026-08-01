@@ -189,7 +189,7 @@
             {% endfor %}
           </span>
         </div>
-        {# 前回の実績 #}
+        {# 前回の実績（前回セッション自身のモードに基づいて表示） #}
         <div id="prev-row-{{ ex.id }}"
              class="gap-2 align-items-center mt-0"
              style="display:{% if ex.prev_weight or ex.prev_reps %}flex{% else %}none{% endif %};font-size:0.65rem;color:rgba(255,255,255,0.38);"
@@ -197,8 +197,16 @@
              data-prev-high-reps="{{ ex.prev_high_reps or '' }}"
              data-prev-low-weight="{{ ex.prev_low_weight or '' }}"
              data-prev-low-reps="{{ ex.prev_low_reps or '' }}"
-             data-prev-sets="{{ ex.prev_sets or '' }}">
-          <span>前回:</span>
+             data-prev-sets="{{ ex.prev_sets or '' }}"
+             data-prev-mode="{{ ex.prev_mode or 'high' }}">
+          <span>前回</span>
+          {% if ex.prev_mode %}
+          <span style="font-size:0.58rem;font-weight:800;
+                       color:{% if ex.prev_mode == 'low' %}var(--orange){% else %}var(--blue){% endif %};">
+            {% if ex.prev_mode == 'low' %}低{% else %}高{% endif %}
+          </span>
+          {% endif %}
+          <span style="color:rgba(255,255,255,0.25);">:</span>
           <span id="prev-weight-{{ ex.id }}">{% if ex.prev_weight %}{{ ex.prev_weight }}kg{% endif %}</span>
           <span id="prev-reps-{{ ex.id }}">{% if ex.prev_reps %}×<strong style="color:rgba(255,255,255,0.5);">{{ ex.prev_reps }}</strong>rep{% endif %}</span>
           <span id="prev-sets-{{ ex.id }}">{% if ex.prev_sets %}/ {{ ex.prev_sets }}set{% endif %}</span>

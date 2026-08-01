@@ -1219,19 +1219,19 @@ def copy_exercises_to_session(from_session_id: int, to_session_id: int,
                 cur.execute("""
                     INSERT INTO session_exercises
                         (session_id, exercise_id, sort_order,
-                         one_rep_max, weight_pct80, weight_setting, weight_low_load, reps,
+                         one_rep_max, weight_pct80, weight_setting, weight_low_load, reps, reps_low,
                          ratio_pct, load_mode, low_load_pct,
                          set1_completed, set2_completed, set3_completed,
                          set4_completed, set5_completed, set6_completed,
                          set7_completed, set8_completed, set9_completed, set10_completed,
                          exp_earned, muscle_groups)
-                    VALUES (%s,%s,%s, %s,%s,%s,%s,%s, %s,%s,%s,
+                    VALUES (%s,%s,%s, %s,%s,%s,%s,%s,%s, %s,%s,%s,
                             %s,%s,%s, %s,%s,%s, %s,%s,%s,%s,
                             %s,%s)
                 """, (
                     to_session_id, ex["exercise_id"], i,
                     ex["one_rep_max"], ex["weight_pct80"], ex["weight_setting"],
-                    ex["weight_low_load"], ex["reps"],
+                    ex["weight_low_load"], ex["reps"], ex.get("reps_low"),
                     ex["ratio_pct"], ex["load_mode"], ex["low_load_pct"],
                     ex["set1_completed"], ex["set2_completed"], ex["set3_completed"],
                     ex["set4_completed"], ex["set5_completed"], ex["set6_completed"],
@@ -1242,15 +1242,15 @@ def copy_exercises_to_session(from_session_id: int, to_session_id: int,
                 cur.execute("""
                     INSERT INTO session_exercises
                         (session_id, exercise_id, sort_order,
-                         one_rep_max, weight_pct80, weight_setting, weight_low_load, reps,
+                         one_rep_max, weight_pct80, weight_setting, weight_low_load, reps, reps_low,
                          ratio_pct, load_mode, low_load_pct,
                          set1_completed, set2_completed, set3_completed,
                          exp_earned, muscle_groups)
-                    VALUES (%s,%s,%s, %s,%s,%s,%s,%s, %s,%s,%s, %s,%s,%s, %s,%s)
+                    VALUES (%s,%s,%s, %s,%s,%s,%s,%s,%s, %s,%s,%s, %s,%s,%s, %s,%s)
                 """, (
                     to_session_id, ex["exercise_id"], i,
                     ex["one_rep_max"], ex["weight_pct80"], ex["weight_setting"],
-                    ex["weight_low_load"], ex["reps"],
+                    ex["weight_low_load"], ex["reps"], ex.get("reps_low"),
                     ex["ratio_pct"], ex["load_mode"], ex["low_load_pct"],
                     False, False, False,
                     0, ex["muscle_groups"],
