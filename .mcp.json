@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "youtube-transcript": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@kimtaeyoon83/mcp-server-youtube-transcript"
+      ],
+      "env": {}
+    }
+  }
+}
