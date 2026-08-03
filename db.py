@@ -1679,7 +1679,7 @@ def finish_session(session_id: int, post_notes: str) -> None:
         """, (_now_jst().strftime("%H:%M"), post_notes or None, session_id))
 
 
-def build_advice(session, exercises: list) -> tuple:
+def build_advice(session, exercises: list, body_weight: float = 65.0) -> tuple:
     """Return (advice_list, intensity_label, overload_tips)."""
     total_exp = session["total_exp"] or 0
 
@@ -1689,6 +1689,10 @@ def build_advice(session, exercises: list) -> tuple:
         intensity = "medium"
     else:
         intensity = "light"
+
+    # タンパク質目標量（体重ベース）
+    protein_int  = round(body_weight * 1.6)   # 中級者最適量
+    protein_max  = round(body_weight * 2.4)   # 科学的上限
 
     advice = []
 
@@ -1706,13 +1710,40 @@ def build_advice(session, exercises: list) -> tuple:
                         "title": "軽めのトレーニング完了",
                         "body": f"{total_exp:,} EXP 獲得。軽負荷セッションは回復を促進します。翌日もトレーニング可能です。"})
 
+    # 栄養：科学的タンパク質ガイドライン（2018・2024年研究）
     advice.append({"icon": "🍗", "cat": "栄養",
-                    "title": "トレーニング後30分以内に",
-                    "body": "プロテイン20〜30g ＋ 糖質（バナナ・ご飯など）を摂取すると筋タンパク合成が最大化されます。"})
+                    "title": f"今日の目標タンパク質：{protein_int}〜{protein_max}g",
+                    "body": (
+                        f"中級者の最適量は体重×1.6g（{body_weight:.0f}kgなら約{protein_int}g/日）。"
+                        f"2.4g/kg（{protein_max}g）を超えると過剰分はエネルギーとして燃焼されるだけで、炭水化物など他の必須栄養素を圧迫します。"
+                        "トレーニング後30分以内にプロテイン＋糖質で合成を最大化。"
+                    )})
 
-    advice.append({"icon": "😴", "cat": "睡眠",
-                    "title": "睡眠が最強のリカバリー",
-                    "body": "成長ホルモンは深い睡眠中に最も多く分泌されます。今夜は7〜9時間を確保し、就寝1時間前はスマホを置きましょう。"})
+    # 睡眠：週ボリューム優先の最新エビデンス
+    advice.append({"icon": "😴", "cat": "睡眠 × ボリューム",
+                    "title": "頻度より「質」と「7時間睡眠」",
+                    "body": (
+                        "最新研究（2026年フロリダ・アトランティック大学）では、筋肥大を決めるのは「週の総ボリューム（重量×回数×セット数）」であり、"
+                        "週4回以上と週2〜3回で差はないと結論。ジムに通う回数より1セットの質と7時間以上の睡眠を優先することが現代のスタンダードです。"
+                    )})
+
+    # サプリメント：BCAA/EAA戦略的活用法
+    if intensity == "high":
+        advice.append({"icon": "💊", "cat": "サプリメント",
+                        "title": "BCAA：激しい筋肉痛を予防する",
+                        "body": (
+                            "今日のような高強度セッション後はBCAAが有効です。"
+                            "2024年スファックス大学の研究では、BCAAが活性酸素による二次損傷を抑制し、96時間以内の筋肉痛を大幅軽減することが確認されています。"
+                            "プロテインの代替にはなりませんが、筋肉痛ケアの補助として活用を。"
+                        )})
+    else:
+        advice.append({"icon": "💊", "cat": "サプリメント",
+                        "title": "EAA：空腹時トレーニング前の切り札",
+                        "body": (
+                            "朝食前や空腹時にトレーニングする場合はEAA 6gが効果的。"
+                            "研究では4時間の絶食後のトレーニングで筋分解が56%増加するところ、EAA摂取で27%まで抑制できると示されています。"
+                            "BCAAやEAAはプロテイン（3〜5時間の合成維持）の代替にはならず、あくまで補助的に活用してください。"
+                        )})
 
     advice.append({"icon": "💧", "cat": "水分",
                     "title": "水分補給を忘れずに",
@@ -1721,11 +1752,11 @@ def build_advice(session, exercises: list) -> tuple:
     if intensity == "high":
         advice.append({"icon": "🗓️", "cat": "翌日の目安",
                         "title": "明日の身体の状態を確認",
-                        "body": "軽い筋肉痛→回復が順調なサイン。強い痛みや疲労感が残る場合はもう1日休息を。無理は逆効果です。"})
+                        "body": "軽い筋肉痛→回復が順調なサイン。強い痛みや疲労感が残る場合はもう1日休息を。週の総ボリュームを維持するほうが、無理して追加セッションをこなすより効果的です。"})
     else:
         advice.append({"icon": "🗓️", "cat": "翌日の目安",
                         "title": "明日は積極的リカバリーを",
-                        "body": "ウォーキングや軽いストレッチで血流を促進すると回復が早まります。翌日のコンディションも記録してみましょう。"})
+                        "body": "ウォーキングや軽いストレッチで血流を促進すると回復が早まります。週2〜3回の高品質セッションを継続することが、最新科学が示す最も効率的な筋肥大戦略です。"})
 
     # ── 漸進性過負荷の分析 ────────────────────────────────────────────────────
     overload_tips = []

@@ -490,13 +490,13 @@ def session_advice(session_id):
     session, exercises = db.get_session_with_exercises(session_id)
     if session is None:
         return redirect(url_for("sessions_list"))
-    advice, intensity, overload_tips = db.build_advice(session, exercises)
     completed_count = sum(
         1 for ex in exercises
         if ex["set1_completed"] and ex["set2_completed"] and ex["set3_completed"]
     )
     bw_row = db.get_latest_weight()
     body_weight = float(bw_row["weight_kg"]) if bw_row else 65.0
+    advice, intensity, overload_tips = db.build_advice(session, exercises, body_weight)
     volume_metrics = db.build_volume_metrics(session, exercises, body_weight)
 
     # Per-exercise comparison with previous session
