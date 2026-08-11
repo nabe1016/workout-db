@@ -1262,21 +1262,31 @@ def copy_exercises_to_session(from_session_id: int, to_session_id: int,
     return count
 
 
-def apply_overload_tip(exercise_id: int, action: str, new_value) -> int:
-    """Apply a progressive overload suggestion to all my_set_exercises for this exercise."""
+def apply_overload_tip(exercise_id: int, se_id: int, action: str, new_value, mode: str = "high") -> int:
+    """Update my_set_exercises AND current session_exercises for both session-start flows.
+
+    Updating session_exercises ensures the change carries over when the user copies
+    from the previous session (copy_exercises_to_session flow).
+    Updating my_set_exercises ensures the change carries over when starting from a My Set.
+    """
     with _conn() as conn:
         cur = conn.cursor()
+        count = 0
         if action == "reps" and new_value is not None:
-            cur.execute(
-                "UPDATE my_set_exercises SET reps = %s WHERE exercise_id = %s",
-                (int(new_value), exercise_id)
-            )
+            reps_int = int(new_value)
+            col = "reps_low" if mode == "low" else "reps"
+            cur.execute(f"UPDATE my_set_exercises SET {col} = %s WHERE exercise_id = %s",
+                        (reps_int, exercise_id))
+            count = max(count, cur.rowcount)
+            cur.execute(f"UPDATE session_exercises SET {col} = %s WHERE id = %s",
+                        (reps_int, se_id))
+            count = max(count, 1)
         elif action == "low_load_pct" and new_value is not None:
-            cur.execute(
-                "UPDATE my_set_exercises SET reps_low = %s WHERE exercise_id = %s",
-                (int(new_value), exercise_id)
-            )
-        return cur.rowcount
+            # my_set_exercises has no low_load_pct column; update session_exercises only
+            cur.execute("UPDATE session_exercises SET low_load_pct = %s WHERE id = %s",
+                        (float(new_value), se_id))
+            count = max(count, cur.rowcount)
+        return count
 
 
 def sync_my_set_from_latest(my_set_id: int) -> int:
@@ -1763,7 +1773,7 @@ def build_advice(session, exercises: list, body_weight: float = 65.0) -> tuple:
     for ex in exercises:
         name = ex.get("exercise_name") or "この種目"
         mode = ex.get("load_mode") or "high"
-        reps = ex.get("reps") or 0
+        reps = int(ex.get("reps_low") or 20) if mode == "low" else (ex.get("reps") or 0)
         done = sum(1 for i in range(1, 11) if ex.get(f"set{i}_completed"))
         if done < 3 or reps <= 0:
             continue

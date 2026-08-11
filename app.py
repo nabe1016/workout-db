@@ -654,7 +654,8 @@ def api_apply_overload_tip(session_id):
     se = db.get_session_exercise(se_id)
     if se is None:
         return jsonify({"error": "not found"}), 404
-    count = db.apply_overload_tip(se["exercise_id"], action, new_value)
+    mode = se.get("load_mode") or "high"
+    count = db.apply_overload_tip(se["exercise_id"], se_id, action, new_value, mode)
     return jsonify({"updated": count, "exercise_name": se.get("exercise_name", "")})
 
 
