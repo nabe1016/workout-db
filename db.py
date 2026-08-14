@@ -1893,25 +1893,26 @@ def build_volume_metrics(session, exercises: list, body_weight: float = 65.0) ->
 
     Returns dict with:
       cat_exp: {上肢, 下肢, 体幹}
+      muscle_exp_list: [{name, exp, pct, body_part}] sorted by exp desc
       has_bodyweight: bool
-      purpose: str | None  (determined from session's my_set or exercise mix)
-      fatigue_pct: int  (estimated CNS fatigue 0-100)
-      neural_pct: int   (neural vs metabolic ratio 0-100)
-      gym_eq_pct: int   (bodyweight volume as % of gym-equivalent)
+      purpose: str
+      gym_eq_pct: int  (bodyweight volume as % of gym-equivalent, only when pure BW)
     """
-    cat_exp = {"上肢": 0, "下肢": 0, "体幹": 0}
+    cat_exp    = {"上肢": 0, "下肢": 0, "体幹": 0}
+    muscle_exp = {}   # primary_muscle -> exp
+    muscle_bp  = {}   # primary_muscle -> body_part
+
     total_gym_volume = 0.0
     total_bw_volume  = 0.0
-    gym_count        = 0
-    bw_count         = 0
-    heavy_sets       = 0
-    total_sets       = 0
+    gym_count = 0
+    bw_count  = 0
 
     for ex in exercises:
-        bp = ex.get("body_part") or ""
+        bp       = ex.get("body_part") or ""
         bw_ratio = ex.get("bodyweight_ratio")
-        mode = ex.get("load_mode") or "high"
-        reps = ex.get("reps") or 10
+        mode     = ex.get("load_mode") or "high"
+        reps     = ex.get("reps") or 10
+        muscle   = ex.get("primary_muscle") or ex.get("exercise_name") or "その他"
 
         if mode == "low":
             weight = ex.get("weight_low_load") or ex.get("weight_setting")
@@ -1922,37 +1923,28 @@ def build_volume_metrics(session, exercises: list, body_weight: float = 65.0) ->
         if done == 0:
             continue
 
-        total_sets += done
         exp = ex.get("exp_earned") or 0
 
         if bw_ratio:
             bw_count += 1
             eff_weight = body_weight * bw_ratio
-            bw_vol = eff_weight * reps * done
-            total_bw_volume += bw_vol
-            gym_eq = bw_vol
+            total_bw_volume += eff_weight * reps * done
         else:
             gym_count += 1
             w = float(weight or 0)
-            gym_eq = w * reps * done
-            total_gym_volume += gym_eq
-            if (weight or 0) >= 40:
-                heavy_sets += done
+            total_gym_volume += w * reps * done
 
         if bp in cat_exp:
             cat_exp[bp] += exp
 
+        muscle_exp[muscle] = muscle_exp.get(muscle, 0) + exp
+        if muscle not in muscle_bp:
+            muscle_bp[muscle] = bp
+
     total_volume = total_gym_volume + total_bw_volume
     has_bodyweight = bw_count > 0 and gym_count == 0
-
-    fatigue_pct = min(100, int(heavy_sets / max(total_sets, 1) * 100))
-
-    if total_volume > 0:
-        neural_pct = min(100, int(total_gym_volume / total_volume * 100))
-        gym_eq_pct = min(100, int(total_bw_volume / total_volume * 100)) if has_bodyweight else 0
-    else:
-        neural_pct = 0
-        gym_eq_pct = 0
+    gym_eq_pct = (min(100, int(total_bw_volume / total_volume * 100))
+                  if has_bodyweight and total_volume > 0 else 0)
 
     total_exp = session.get("total_exp") or 0
     if total_exp >= 500 and has_bodyweight and not total_gym_volume:
@@ -1964,11 +1956,19 @@ def build_volume_metrics(session, exercises: list, body_weight: float = 65.0) ->
     else:
         purpose = "維持・回復"
 
+    # Per-muscle list sorted by EXP descending, with relative % of total muscle exp
+    total_muscle_exp = sum(muscle_exp.values()) or 1
+    muscle_exp_list = sorted(
+        [{"name": m, "exp": v, "pct": round(v / total_muscle_exp * 100),
+          "body_part": muscle_bp.get(m, "")}
+         for m, v in muscle_exp.items()],
+        key=lambda x: x["exp"], reverse=True
+    )
+
     return {
-        "cat_exp":       cat_exp,
-        "has_bodyweight": has_bodyweight,
-        "purpose":        purpose,
-        "fatigue_pct":    fatigue_pct,
-        "neural_pct":     neural_pct,
-        "gym_eq_pct":     gym_eq_pct,
+        "cat_exp":         cat_exp,
+        "muscle_exp_list": muscle_exp_list,
+        "has_bodyweight":  has_bodyweight,
+        "purpose":         purpose,
+        "gym_eq_pct":      gym_eq_pct,
     }

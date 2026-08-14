@@ -50,13 +50,13 @@
 <div class="card mb-3">
   <div class="card-body py-3 px-3">
     <div class="d-flex align-items-center justify-content-between mb-3">
-      <div class="section-label mb-0">筋ボリューム分析</div>
+      <div class="section-label mb-0">今日の刺激まとめ</div>
       <span class="badge"
             style="background:rgba(255,214,10,0.15);border:1px solid rgba(255,214,10,0.4);
                    color:var(--yellow);font-size:0.7rem;">{{ vm.purpose }}</span>
     </div>
 
-    {# EXP 内訳 #}
+    {# 部位別EXP #}
     <div class="mb-3">
       <div style="font-size:0.72rem;color:var(--txt-2);margin-bottom:0.4rem;">部位別EXP</div>
       <div class="d-flex gap-2">
@@ -70,9 +70,33 @@
       </div>
     </div>
 
+    {# 筋肉別EXP内訳 #}
+    {% if vm.muscle_exp_list %}
+    <div>
+      <div style="font-size:0.72rem;color:var(--txt-2);margin-bottom:0.5rem;">筋肉別EXP（主動筋ベース）</div>
+      {% for m in vm.muscle_exp_list %}
+      {% set bp_color = 'var(--teal)' if m.body_part == '上肢' else ('var(--green)' if m.body_part == '下肢' else '#b06dff') %}
+      <div class="d-flex align-items-center gap-2 mb-1" style="min-width:0;">
+        <span style="font-size:0.62rem;font-weight:800;color:{{ bp_color }};flex-shrink:0;width:1.8rem;text-align:right;">{{ m.pct }}%</span>
+        <div style="flex:1;min-width:0;">
+          <div class="d-flex align-items-center justify-content-between" style="margin-bottom:0.15rem;">
+            <span style="font-size:0.75rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ m.name }}</span>
+            <span style="font-size:0.68rem;color:{{ bp_color }};flex-shrink:0;margin-left:0.4rem;font-weight:700;">{{ "{:,}".format(m.exp) }} exp</span>
+          </div>
+          <div style="height:4px;background:rgba(255,255,255,0.08);border-radius:2px;overflow:hidden;">
+            <div style="height:100%;width:{{ m.pct }}%;background:{{ bp_color }};border-radius:2px;"></div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+      <div style="font-size:0.6rem;color:rgba(255,255,255,0.25);margin-top:0.5rem;">
+        ※ コンパウンド種目は主動筋に集計。下肢は筋肉量が大きいためEXPが高くなります
+      </div>
+    </div>
+    {% endif %}
+
     {% if vm.has_bodyweight %}
-    {# 自重ボリューム指標 #}
-    <div class="mb-2">
+    <div class="mt-2">
       <div class="d-flex justify-content-between mb-1" style="font-size:0.72rem;color:var(--txt-2);">
         <span>ジム換算ボリューム比（{{ body_weight | int }}kg基準）</span>
         <span style="color:var(--teal);">{{ vm.gym_eq_pct }}%</span>
@@ -82,28 +106,6 @@
       </div>
     </div>
     {% endif %}
-
-    <div class="mb-2">
-      <div class="d-flex justify-content-between mb-1" style="font-size:0.72rem;color:var(--txt-2);">
-        <span>神経系負荷（高重量セット比率）</span>
-        <span style="color:var(--yellow);">{{ vm.neural_pct }}%</span>
-      </div>
-      <div class="progress" style="height:6px;background:rgba(255,255,255,0.08);">
-        <div class="progress-bar" style="width:{{ vm.neural_pct }}%;background:var(--yellow);"></div>
-      </div>
-    </div>
-
-    <div>
-      <div class="d-flex justify-content-between mb-1" style="font-size:0.72rem;color:var(--txt-2);">
-        <span>疲労推定</span>
-        <span style="color:{% if vm.fatigue_pct >= 70 %}#ff6b6b{% elif vm.fatigue_pct >= 40 %}var(--yellow){% else %}var(--green){% endif %};">
-          {{ vm.fatigue_pct }}%
-        </span>
-      </div>
-      <div class="progress" style="height:6px;background:rgba(255,255,255,0.08);">
-        <div class="progress-bar" style="width:{{ vm.fatigue_pct }}%;background:{% if vm.fatigue_pct >= 70 %}#ff6b6b{% elif vm.fatigue_pct >= 40 %}var(--yellow){% else %}var(--green){% endif %};"></div>
-      </div>
-    </div>
   </div>
 </div>
 
