@@ -343,11 +343,13 @@
                           data-se-id="{{ ex.id }}" data-field="bench_angle"
                           style="width:5.5rem;font-size:0.78rem;padding:0.25rem 0.35rem;">
                     <option value="">— なし</option>
+                    <option value="-60" {% if ex.bench_angle == -60 %}selected{% endif %}>-60°</option>
                     <option value="-15" {% if ex.bench_angle == -15 %}selected{% endif %}>-15° デクライン</option>
                     <option value="0"   {% if ex.bench_angle is not none and ex.bench_angle|int == 0 %}selected{% endif %}>0° フラット</option>
                     <option value="15"  {% if ex.bench_angle == 15 %}selected{% endif %}>15°</option>
                     <option value="30"  {% if ex.bench_angle == 30 %}selected{% endif %}>30° インクライン</option>
                     <option value="45"  {% if ex.bench_angle == 45 %}selected{% endif %}>45°</option>
+                    <option value="60"  {% if ex.bench_angle == 60 %}selected{% endif %}>60°</option>
                   </select>
                 </div>
                 {% endif %}
