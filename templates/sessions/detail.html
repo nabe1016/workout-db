@@ -160,8 +160,13 @@
             1RM:<strong class="text-light">{{ ex.one_rep_max }}kg</strong>
           </span>
           <span id="collapsed-weight-{{ ex.id }}">
-            {% if mode == 'low' and ex.weight_low_load %}
-              <strong style="color:var(--orange);">{{ ex.weight_low_load }}kg</strong><span class="text-secondary">({{ (ex.low_load_pct or 30)|int }}%)</span>
+            {% if mode == 'low' %}
+              {% set wl = ex.weight_low_load or (((ex.one_rep_max or 0) * ((ex.low_load_pct or 30) / 100))|round(1) if ex.one_rep_max else none) %}
+              {% if wl %}
+                <strong style="color:var(--orange);">{{ wl }}kg</strong><span class="text-secondary">({{ (ex.low_load_pct or 30)|int }}%)</span>
+              {% else %}
+                <span class="text-secondary">重量未設定</span>
+              {% endif %}
             {% elif ex.weight_setting %}
               <strong style="color:var(--blue);">{{ ex.weight_setting }}kg</strong><span class="text-secondary">(80%)</span>
             {% else %}
@@ -280,8 +285,13 @@
               <div class="d-flex align-items-center gap-1">
                 <span class="text-secondary" style="width:2.8em;flex-shrink:0;">重量</span>
                 <span id="weight-val-{{ ex.id }}">
-                  {% if mode == 'low' and ex.weight_low_load %}
-                    : <strong style="color:var(--orange);">{{ ex.weight_low_load }}kg</strong><span class="text-secondary" style="font-size:0.65rem;"> ({{ (ex.low_load_pct or 30)|int }}%)</span>
+                  {% if mode == 'low' %}
+                    {% set wl = ex.weight_low_load or (((ex.one_rep_max or 0) * ((ex.low_load_pct or 30) / 100))|round(1) if ex.one_rep_max else none) %}
+                    {% if wl %}
+                      : <strong style="color:var(--orange);">{{ wl }}kg</strong><span class="text-secondary" style="font-size:0.65rem;"> ({{ (ex.low_load_pct or 30)|int }}%)</span>
+                    {% else %}
+                      <span class="text-secondary">: —</span>
+                    {% endif %}
                   {% elif ex.weight_setting %}
                     : <strong style="color:var(--blue);">{{ ex.weight_setting }}kg</strong><span class="text-secondary" style="font-size:0.65rem;"> (80%)</span>
                   {% else %}

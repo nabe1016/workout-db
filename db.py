@@ -141,6 +141,8 @@ def create_session_exercise(session_id, exercise_id, one_rep_max,
                              weight_setting, weight_low_load, reps,
                              set1, set2, set3, exp_earned, muscle_groups) -> int:
     weight_pct80 = round(float(one_rep_max) * 0.8, 1) if one_rep_max else None
+    if not weight_low_load and one_rep_max:
+        weight_low_load = round(float(one_rep_max) * 0.30, 1)
     ratio_pct = (round(float(weight_setting) / float(one_rep_max) * 100, 1)
                  if weight_setting and one_rep_max else None)
     with _conn() as conn:
@@ -1203,6 +1205,12 @@ def copy_exercises_to_session(from_session_id: int, to_session_id: int,
         cur.execute("DELETE FROM session_exercises WHERE session_id = %s", (to_session_id,))
 
         for i, ex in enumerate(exercises, 1):
+            orm = ex["one_rep_max"]
+            low_pct = float(ex["low_load_pct"] or 30) if ex["low_load_pct"] else 30.0
+            wll = ex["weight_low_load"]
+            if not wll and orm:
+                wll = round(float(orm) * low_pct / 100, 1)
+
             if copy_type == "menu_only":
                 cur.execute("""
                     INSERT INTO session_exercises
@@ -1230,8 +1238,8 @@ def copy_exercises_to_session(from_session_id: int, to_session_id: int,
                             %s,%s)
                 """, (
                     to_session_id, ex["exercise_id"], i,
-                    ex["one_rep_max"], ex["weight_pct80"], ex["weight_setting"],
-                    ex["weight_low_load"], ex["reps"], ex.get("reps_low"),
+                    orm, ex["weight_pct80"], ex["weight_setting"],
+                    wll, ex["reps"], ex.get("reps_low"),
                     ex["ratio_pct"], ex["load_mode"], ex["low_load_pct"],
                     ex["set1_completed"], ex["set2_completed"], ex["set3_completed"],
                     ex["set4_completed"], ex["set5_completed"], ex["set6_completed"],
@@ -1249,8 +1257,8 @@ def copy_exercises_to_session(from_session_id: int, to_session_id: int,
                     VALUES (%s,%s,%s, %s,%s,%s,%s,%s,%s, %s,%s,%s, %s,%s,%s, %s,%s)
                 """, (
                     to_session_id, ex["exercise_id"], i,
-                    ex["one_rep_max"], ex["weight_pct80"], ex["weight_setting"],
-                    ex["weight_low_load"], ex["reps"], ex.get("reps_low"),
+                    orm, ex["weight_pct80"], ex["weight_setting"],
+                    wll, ex["reps"], ex.get("reps_low"),
                     ex["ratio_pct"], ex["load_mode"], ex["low_load_pct"],
                     False, False, False,
                     0, ex["muscle_groups"],
