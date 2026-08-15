@@ -150,16 +150,7 @@
                 style="font-size:0.7rem;padding:0.05rem 0.3rem;line-height:1.4;border-radius:4px;color:var(--txt-2);background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);flex-shrink:0;">▶</button>
       </div>
 
-      {% if ex.needs_bench %}
-      {# 折りたたみ時のみ表示: ベンチ角度 #}
-      <div class="ex-collapsed-only" style="display:none;font-size:0.72rem;color:var(--txt-2);padding-left:1.8rem;margin-top:0.1rem;">
-        🪑 <span id="collapsed-bench-angle-{{ ex.id }}">
-          {% if ex.bench_angle is not none and ex.bench_angle != '' %}{{ ex.bench_angle }}°{% else %}<span style="color:rgba(255,255,255,0.3);">角度未設定</span>{% endif %}
-        </span>
-      </div>
-      {% endif %}
-
-      {# 折りたたみ時のみ表示: 負荷情報行 #}
+      {# 折りたたみ時のみ表示: 負荷情報行（角度もここにインライン） #}
       <div class="ex-collapsed-only" style="display:none;padding-left:1.8rem;margin-top:0.15rem;">
         <div class="d-flex gap-2 align-items-center" style="font-size:0.72rem;color:var(--txt-2);">
           <span id="collapsed-mode-{{ ex.id }}" style="font-weight:700;{% if mode == 'low' %}color:var(--orange){% else %}color:var(--blue){% endif %};">
@@ -182,12 +173,18 @@
           </span>
           {# 8→12 rep progress dots (hidden in low mode) #}
           {% set cur_reps = ex.reps or 8 %}
-          <span id="rep-progress-{{ ex.id }}" style="display:{% if mode == 'low' %}none{% else %}flex{% endif %};gap:0.25rem;align-items:center;margin-left:0.25rem;flex-shrink:0;">
+          <span id="rep-progress-{{ ex.id }}" style="display:{% if mode == 'low' %}none{% else %}flex{% endif %};gap:0.25rem;align-items:center;flex-shrink:0;">
             {% for n in [8,9,10,11,12] %}
             <span style="width:7px;height:7px;border-radius:50%;display:inline-block;flex-shrink:0;
                          background:{% if cur_reps >= n %}var(--blue){% else %}rgba(255,255,255,0.15){% endif %};"></span>
             {% endfor %}
           </span>
+          {# ベンチ角度インライン表示 #}
+          {% if ex.needs_bench %}
+          <span id="collapsed-bench-angle-{{ ex.id }}" style="flex-shrink:0;color:rgba(255,255,255,0.4);">
+            {% if ex.bench_angle is not none and ex.bench_angle != '' %}🪑{{ ex.bench_angle }}°{% endif %}
+          </span>
+          {% endif %}
         </div>
         {# 前回の実績（前回セッション自身のモードに基づいて表示） #}
         <div id="prev-row-{{ ex.id }}"
@@ -818,9 +815,8 @@
       }
       var cbaEl = document.getElementById('collapsed-bench-angle-' + seId);
       if (cbaEl) {
-        cbaEl.innerHTML = data.bench_angle !== null && data.bench_angle !== ''
-          ? data.bench_angle + '°'
-          : '<span style="color:rgba(255,255,255,0.3);">角度未設定</span>';
+        cbaEl.textContent = data.bench_angle !== null && data.bench_angle !== ''
+          ? '🪑' + data.bench_angle + '°' : '';
       }
     }
 
