@@ -230,6 +230,11 @@ UPDATE exercises SET bodyweight_ratio=0.20, is_time_based=TRUE WHERE name='プ�
 -- ベンチ台使用時の角度記録
 ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS bench_angle SMALLINT;
 
+-- ルーマニアンデッドリフトを登録
+INSERT INTO exercises (name, body_part, needs_bench, primary_muscle, location)
+VALUES ('ルーマニアンデッドリフト', '下肢', false, 'ハムストリングス', 'gym')
+ON CONFLICT (name) DO UPDATE SET body_part='下肢', needs_bench=false, primary_muscle='ハムストリングス', location='gym';
+
 -- マイセット種目: 低負荷割合
 ALTER TABLE my_set_exercises ADD COLUMN IF NOT EXISTS low_load_pct NUMERIC(5,1) DEFAULT 30;
 
