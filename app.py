@@ -691,8 +691,8 @@ def api_session_finish_rpe(session_id):
     duration_min = _parse_int(data.get("duration_min"))
     session_rpe  = _parse_int(data.get("session_rpe"))
     session_type = data.get("session_type")
-    if not duration_min or not session_rpe:
-        return jsonify({"error": "duration_min and session_rpe required"}), 400
+    if not session_rpe:
+        return jsonify({"error": "session_rpe required"}), 400
     result = db.record_session_finish(session_id, duration_min, session_rpe, session_type)
     return jsonify(result)
 
