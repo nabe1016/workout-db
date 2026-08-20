@@ -5,47 +5,216 @@
 
 {% block content %}
 <h5 class="mb-1">マイセットから入力</h5>
-<p class="text-secondary small mb-4">適用するマイセットを選んでください。<br>既存の種目はすべて置き換えられます。</p>
+<p class="text-secondary small mb-3">適用するマイセットを選んでください。<br>既存の種目はすべて置き換えられます。</p>
 
 {% if my_sets %}
-<div class="d-flex flex-column gap-3">
-  {% for ms in my_sets %}
+
+{# ── Volleyball Performance v1.0 ── #}
+{% set vball = my_sets | selectattr('program_name', 'equalto', 'Volleyball Performance v1.0') | list %}
+{% if vball %}
+<div class="mb-4">
+  <div style="font-size:0.65rem;font-weight:900;color:#e040fb;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:0.6rem;">
+    🏐 Volleyball Performance v1.0
+  </div>
+  <div class="d-flex flex-column gap-2">
+
+    {# DAY A — 通常ボタン #}
+    {% for ms in vball if ms.session_type not in ('DAY_B_POWER_GYM', 'DAY_B_POWER_OUTDOOR') %}
+    <div class="card" style="border:1px solid rgba(224,64,251,0.35);background:rgba(224,64,251,0.06);">
+      <div class="card-body py-2 px-3">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div>
+            <div style="font-size:0.6rem;color:rgba(224,64,251,0.8);font-weight:700;letter-spacing:0.06em;">
+              {{ ms.session_type or '' }}
+            </div>
+            <div class="fw-bold" style="font-size:0.95rem;color:#e040fb;">{{ ms.name }}</div>
+            {% if ms.description %}<div class="text-secondary small">{{ ms.description }}</div>{% endif %}
+          </div>
+          <span class="badge" style="background:rgba(224,64,251,0.2);color:#e040fb;">{{ ms.exercise_count }} 種目</span>
+        </div>
+        <form method="post"
+              action="{{ url_for('session_apply_my_set_execute', session_id=session.id, my_set_id=ms.id) }}"
+              onsubmit="return confirm('「{{ ms.name }}」を適用しますか？')">
+          <button type="submit" class="btn btn-lg w-100 fw-bold"
+                  style="background:#e040fb;color:#fff;letter-spacing:0.03em;">
+            このセットを適用
+          </button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+
+    {# DAY B — ジム有無で分岐 #}
+    {% set gym_set    = vball | selectattr('session_type', 'equalto', 'DAY_B_POWER_GYM')     | list | first %}
+    {% set outdoor_set = vball | selectattr('session_type', 'equalto', 'DAY_B_POWER_OUTDOOR') | list | first %}
+    {% if gym_set or outdoor_set %}
+    <div class="card" style="border:1px solid rgba(224,64,251,0.35);background:rgba(224,64,251,0.06);">
+      <div class="card-body py-2 px-3">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div>
+            <div style="font-size:0.6rem;color:rgba(224,64,251,0.8);font-weight:700;letter-spacing:0.06em;">DAY B · POWER</div>
+            <div class="fw-bold" style="font-size:0.95rem;color:#e040fb;">DAY B POWER</div>
+            <div class="text-secondary small">ジム有無で自動切り替え</div>
+          </div>
+          <div class="text-end">
+            {% if gym_set %}<div style="font-size:0.65rem;color:rgba(224,64,251,0.7);">GYM: {{ gym_set.exercise_count }}種目</div>{% endif %}
+            {% if outdoor_set %}<div style="font-size:0.65rem;color:rgba(224,64,251,0.7);">OUTDOOR: {{ outdoor_set.exercise_count }}種目</div>{% endif %}
+          </div>
+        </div>
+        <button type="button" class="btn btn-lg w-100 fw-bold day-b-trigger"
+                style="background:#e040fb;color:#fff;letter-spacing:0.03em;"
+                data-gym-id="{{ gym_set.id if gym_set else '' }}"
+                data-gym-name="{{ gym_set.name if gym_set else '' }}"
+                data-gym-count="{{ gym_set.exercise_count if gym_set else '' }}"
+                data-outdoor-id="{{ outdoor_set.id if outdoor_set else '' }}"
+                data-outdoor-name="{{ outdoor_set.name if outdoor_set else '' }}"
+                data-outdoor-count="{{ outdoor_set.exercise_count if outdoor_set else '' }}">
+          DAY B を選ぶ
+        </button>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+{% endif %}
+
+{# ── 通常マイセット ── #}
+{% set normal = my_sets | selectattr('program_name', 'ne', 'Volleyball Performance v1.0') | list %}
+{% if normal %}
+{% if vball %}
+<div style="font-size:0.65rem;font-weight:900;color:var(--txt-2);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:0.6rem;">マイセット</div>
+{% endif %}
+<div class="d-flex flex-column gap-2">
+  {% for ms in normal %}
   <div class="card bg-secondary bg-opacity-25 border-warning">
     <div class="card-body pb-2">
       <div class="d-flex justify-content-between align-items-center mb-2">
         <div>
           <div class="fw-bold fs-5 text-warning">{{ ms.name }}</div>
-          {% if ms.description %}
-          <div class="text-secondary small">{{ ms.description }}</div>
-          {% endif %}
+          {% if ms.description %}<div class="text-secondary small">{{ ms.description }}</div>{% endif %}
         </div>
         <span class="badge bg-secondary">{{ ms.exercise_count }} 種目</span>
       </div>
       <form method="post"
             action="{{ url_for('session_apply_my_set_execute', session_id=session.id, my_set_id=ms.id) }}"
             onsubmit="return confirm('「{{ ms.name }}」を適用しますか？')">
-        <button type="submit" class="btn btn-warning btn-lg w-100 fw-bold">
-          このセットを適用
-        </button>
+        <button type="submit" class="btn btn-warning btn-lg w-100 fw-bold">このセットを適用</button>
       </form>
     </div>
   </div>
   {% endfor %}
 </div>
+{% endif %}
 
 <div class="text-center mt-4">
-  <a href="{{ url_for('my_sets_list') }}" class="text-secondary small">
-    マイセットを編集・追加する →
-  </a>
+  <a href="{{ url_for('my_sets_list') }}" class="text-secondary small">マイセットを編集・追加する →</a>
 </div>
 
 {% else %}
 <div class="text-center text-secondary my-5">
   <div style="font-size:3rem;">⚙️</div>
   <p class="mt-2">マイセットがまだありません。</p>
-  <a href="{{ url_for('my_set_new') }}" class="btn btn-warning mt-2">
-    マイセットを作成する
-  </a>
+  <a href="{{ url_for('my_set_new') }}" class="btn btn-warning mt-2">マイセットを作成する</a>
 </div>
 {% endif %}
+
+{# ── DAY B 分岐モーダル ── #}
+<div id="dayb-modal-overlay"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;
+            align-items:flex-end;justify-content:center;">
+  <div style="background:var(--card-bg,#1c1c1e);border-radius:20px 20px 0 0;
+              padding:1.5rem 1.25rem 2.5rem;width:100%;max-width:480px;
+              box-shadow:0 -4px 32px rgba(0,0,0,0.5);">
+    <div style="width:2.5rem;height:4px;border-radius:2px;background:rgba(255,255,255,0.2);margin:0 auto 1.2rem;"></div>
+    <div style="font-size:1rem;font-weight:800;text-align:center;margin-bottom:0.4rem;">🏐 DAY B — POWER</div>
+    <div style="font-size:0.82rem;text-align:center;color:var(--txt-2);margin-bottom:1.5rem;">
+      今日はジムを利用できますか？
+    </div>
+
+    <div class="d-flex gap-3 mb-3">
+      {# GYM #}
+      <form id="dayb-gym-form" method="post" action="" style="flex:1;">
+        <button type="submit" class="btn btn-lg w-100 fw-bold"
+                style="background:#4caf50;color:#fff;border-radius:12px;padding:1rem;
+                       display:flex;flex-direction:column;align-items:center;gap:0.3rem;height:auto;">
+          <span style="font-size:2rem;">🏋️</span>
+          <span style="font-size:1rem;">ジム使える</span>
+          <span id="dayb-gym-label" style="font-size:0.65rem;opacity:0.8;"></span>
+        </button>
+      </form>
+      {# OUTDOOR #}
+      <form id="dayb-outdoor-form" method="post" action="" style="flex:1;">
+        <button type="submit" class="btn btn-lg w-100 fw-bold"
+                style="background:#2196f3;color:#fff;border-radius:12px;padding:1rem;
+                       display:flex;flex-direction:column;align-items:center;gap:0.3rem;height:auto;">
+          <span style="font-size:2rem;">🌳</span>
+          <span style="font-size:1rem;">ジム使えない</span>
+          <span id="dayb-outdoor-label" style="font-size:0.65rem;opacity:0.8;"></span>
+        </button>
+      </form>
+    </div>
+
+    <button type="button" id="dayb-cancel"
+            class="btn btn-outline-secondary w-100" style="height:2.8rem;">
+      キャンセル
+    </button>
+  </div>
+</div>
+
+<script>
+(function () {
+  var overlay    = document.getElementById('dayb-modal-overlay');
+  var gymForm    = document.getElementById('dayb-gym-form');
+  var outdoorForm = document.getElementById('dayb-outdoor-form');
+  var gymLabel   = document.getElementById('dayb-gym-label');
+  var outdoorLabel = document.getElementById('dayb-outdoor-label');
+  var sessionId  = '{{ session.id }}';
+
+  function applyUrl(mySetId) {
+    return '/sessions/' + sessionId + '/apply-my-set/' + mySetId;
+  }
+
+  document.querySelectorAll('.day-b-trigger').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var gymId      = btn.dataset.gymId;
+      var gymCount   = btn.dataset.gymCount;
+      var outdoorId  = btn.dataset.outdoorId;
+      var outdoorCount = btn.dataset.outdoorCount;
+
+      if (gymForm)    gymForm.action    = gymId    ? applyUrl(gymId)    : '#';
+      if (outdoorForm) outdoorForm.action = outdoorId ? applyUrl(outdoorId) : '#';
+      if (gymLabel)     gymLabel.textContent    = gymCount    ? gymCount    + '種目' : '';
+      if (outdoorLabel) outdoorLabel.textContent = outdoorCount ? outdoorCount + '種目' : '';
+
+      overlay.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+    });
+  });
+
+  if (overlay) {
+    overlay.addEventListener('click', function (e) {
+      if (e.target === overlay) close();
+    });
+  }
+  document.getElementById('dayb-cancel') && document.getElementById('dayb-cancel')
+    .addEventListener('click', close);
+
+  function close() {
+    overlay.style.display = 'none';
+    document.body.style.overflow = '';
+  }
+
+  // confirm on submit
+  [
+    { form: gymForm,     label: 'ジムあり（GYM）' },
+    { form: outdoorForm, label: 'ジムなし（OUTDOOR）' }
+  ].forEach(function (item) {
+    if (!item.form) return;
+    item.form.addEventListener('submit', function (e) {
+      if (!confirm('DAY B ' + item.label + ' を適用しますか？')) e.preventDefault();
+    });
+  });
+})();
+</script>
 {% endblock %}
