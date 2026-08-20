@@ -125,8 +125,12 @@
         {% if ex.primary_muscle %}
         <strong style="color:var(--yellow);font-size:0.75rem;font-weight:700;">{{ ex.primary_muscle }}</strong>
         {% endif %}
-        {% if not ex.one_rep_max %}
+        {% if not ex.one_rep_max and ex.exercise_type in ('strength', 'accessory') %}
         <span style="font-size:0.58rem;padding:0.05rem 0.25rem;border-radius:3px;background:rgba(255,80,0,0.22);border:1px solid rgba(255,80,0,0.45);color:#ff7744;font-weight:700;">⚠ 1RM未設定</span>
+        {% endif %}
+        {% if ex.exercise_type and ex.exercise_type != 'strength' %}
+        {% set type_colors = {'power':'#e040fb','plyometric':'#00e5ff','core':'#69f0ae','accessory':'#78909c','conditioning':'#ffb300','warmup':'#607d8b'} %}
+        <span style="font-size:0.55rem;padding:0.05rem 0.28rem;border-radius:3px;background:rgba(0,0,0,0.3);border:1px solid {{ type_colors.get(ex.exercise_type,'#888') }};color:{{ type_colors.get(ex.exercise_type,'#888') }};font-weight:700;letter-spacing:0.04em;">{{ ex.exercise_type }}</span>
         {% endif %}
         {% if ex.lvup_high %}
         <button type="button" class="lvup-badge btn btn-sm py-0 px-1"
@@ -229,8 +233,24 @@
           {{ ['①','②','③','④','⑤','⑥'][i-1] }}
         </button>
         {% endfor %}
+        {# Quality selector (plyometric / power のみ) #}
+        {% if ex.exercise_type in ('plyometric', 'power') %}
+        <div class="quality-selector d-flex gap-0 ms-1" data-se-id="{{ ex.id }}">
+          {% for q in [1,2,3,4,5] %}
+          <button type="button" class="quality-btn btn btn-sm"
+                  data-se-id="{{ ex.id }}" data-quality="{{ q }}"
+                  style="width:1.5rem;height:2rem;font-size:0.68rem;padding:0;border-radius:{% if loop.first %}4px 0 0 4px{% elif loop.last %}0 4px 4px 0{% else %}0{% endif %};
+                         border:1px solid rgba(255,255,255,0.2);{% if ex.quality == q %}background:{% if q <= 2 %}#f44336{% elif q == 3 %}#ff9800{% else %}#4caf50{% endif %};color:#fff;{% else %}background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.4);{% endif %}">Q{{ q }}</button>
+          {% endfor %}
+        </div>
+        {% endif %}
         {# 完了・スキップ #}
         <div class="ms-auto d-flex gap-1 flex-shrink-0">
+          {# 痛みフラグ (全種目) #}
+          <button type="button"
+                  class="pain-btn btn {% if ex.pain_flag %}btn-danger{% else %}btn-outline-secondary{% endif %}"
+                  data-se-id="{{ ex.id }}" title="痛みあり"
+                  style="width:2.1rem;height:2rem;font-size:0.85rem;padding:0;border-radius:6px;">🩹</button>
           <button type="button"
                   class="complete-btn btn {% if ex.completed %}btn-success{% else %}btn-outline-secondary{% endif %}"
                   data-se-id="{{ ex.id }}" title="完了"
@@ -247,7 +267,8 @@
         <div class="d-flex gap-2 align-items-start">
           {# 左: 情報ブロック #}
           <div style="flex:1;min-width:0;">
-            {# 高/低トグル #}
+            {% if ex.exercise_type not in ('plyometric', 'power') %}
+            {# 高/低トグル (strength / core / accessory 等のみ) #}
             <div class="d-flex mb-1" style="border:1.5px solid var(--sep);border-radius:7px;overflow:hidden;">
               <button type="button" class="load-mode-btn btn flex-fill fw-bold"
                       data-se-id="{{ ex.id }}" data-mode="high"
@@ -263,7 +284,43 @@
                 低負荷
               </button>
             </div>
+            {% endif %}
             <div style="font-size:0.76rem;line-height:1.7;margin-top:0.25rem;">
+              {% if ex.exercise_type in ('plyometric', 'power') %}
+              {# Quality スコア表示 #}
+              <div class="d-flex align-items-center gap-1">
+                <span class="text-secondary" style="width:3.4em;flex-shrink:0;">Quality</span>
+                <span id="quality-val-{{ ex.id }}">
+                  {% if ex.quality %}
+                  : <strong style="color:{% if ex.quality <= 2 %}#f44336{% elif ex.quality == 3 %}#ff9800{% else %}#4caf50{% endif %};">Q{{ ex.quality }}</strong>
+                  {% else %}<span class="text-secondary">: 未記録</span>{% endif %}
+                </span>
+              </div>
+              {# contacts or throws #}
+              {% if ex.exercise_type == 'plyometric' %}
+              <div class="d-flex align-items-center gap-1">
+                <span class="text-secondary" style="width:3.4em;flex-shrink:0;">接地</span>
+                <span id="contacts-val-{{ ex.id }}">
+                  {% if ex.contacts %}: <strong class="text-light">{{ ex.contacts }}</strong>回{% else %}<span class="text-secondary">: —</span>{% endif %}
+                </span>
+                <input type="number" class="form-control form-control-sm contacts-input ms-1"
+                       data-se-id="{{ ex.id }}" placeholder="接地数" min="0"
+                       value="{{ ex.contacts or '' }}"
+                       style="width:4.5rem;font-size:0.75rem;padding:0.15rem 0.3rem;">
+              </div>
+              {% elif ex.exercise_type == 'power' %}
+              <div class="d-flex align-items-center gap-1">
+                <span class="text-secondary" style="width:3.4em;flex-shrink:0;">投数</span>
+                <span id="throws-val-{{ ex.id }}">
+                  {% if ex.throws %}: <strong class="text-light">{{ ex.throws }}</strong>投{% else %}<span class="text-secondary">: —</span>{% endif %}
+                </span>
+                <input type="number" class="form-control form-control-sm throws-input ms-1"
+                       data-se-id="{{ ex.id }}" placeholder="投数" min="0"
+                       value="{{ ex.throws or '' }}"
+                       style="width:4.5rem;font-size:0.75rem;padding:0.15rem 0.3rem;">
+              </div>
+              {% endif %}
+              {% else %}
               {% if ex.one_rep_max %}
               <div class="d-flex">
                 <span class="text-secondary" style="width:2.8em;flex-shrink:0;">1RM</span>
@@ -306,6 +363,7 @@
                 <span class="text-secondary" style="width:2.8em;flex-shrink:0;">rep</span>
                 <span id="rep-val-{{ ex.id }}">: <strong class="text-light">{% if mode == 'low' %}{{ ex.reps_low or 20 }}{% else %}{{ ex.reps or 8 }}{% endif %}</strong></span>
               </div>
+              {% endif %}
             </div>
             <div class="d-flex align-items-center gap-2 mt-1">
               <button type="button" class="adjust-toggle-btn btn btn-sm btn-outline-secondary"
@@ -977,6 +1035,98 @@
       })
       .then(function (r) { return r.json(); })
       .then(function (data) { applyQuickEdit(sel.dataset.seId, data); })
+      .catch(function () {});
+    });
+  });
+
+  // ── Quality buttons ───────────────────────────────────────────────────────
+  document.querySelectorAll('.quality-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var seId = btn.dataset.seId;
+      var q    = parseInt(btn.dataset.quality);
+      btn.disabled = true;
+      fetch('/api/se/' + seId + '/quality-pain', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quality: q })
+      })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        // Re-style all quality buttons for this exercise
+        document.querySelectorAll('.quality-btn[data-se-id="' + seId + '"]').forEach(function (b) {
+          var bq = parseInt(b.dataset.quality);
+          var active = (bq === data.quality);
+          var color = bq <= 2 ? '#f44336' : (bq === 3 ? '#ff9800' : '#4caf50');
+          b.style.background = active ? color : 'rgba(255,255,255,0.04)';
+          b.style.color      = active ? '#fff' : 'rgba(255,255,255,0.4)';
+        });
+        // Update quality val span
+        var qEl = document.getElementById('quality-val-' + seId);
+        if (qEl && data.quality) {
+          var qColor = data.quality <= 2 ? '#f44336' : (data.quality === 3 ? '#ff9800' : '#4caf50');
+          qEl.innerHTML = ': <strong style="color:' + qColor + ';">Q' + data.quality + '</strong>';
+        }
+        // Quality ≤ 2 warning
+        if (data.quality && data.quality <= 2) {
+          if (confirm('Quality ' + data.quality + ' — パフォーマンスが低下しています。この種目を終了しますか？')) {
+            fetch('/api/se/' + seId + '/complete', { method: 'POST' });
+            var card = document.getElementById('ex-card-' + seId);
+            if (card) {
+              card.dataset.completed = 'true';
+              card.classList.add('se-completed');
+              setTimeout(function () { setCardCollapsed(card, true); }, 400);
+            }
+          }
+        }
+      })
+      .catch(function () {})
+      .finally(function () { btn.disabled = false; });
+    });
+  });
+
+  // ── Pain flag ─────────────────────────────────────────────────────────────
+  document.querySelectorAll('.pain-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var seId = btn.dataset.seId;
+      btn.disabled = true;
+      var currentPain = btn.classList.contains('btn-danger');
+      fetch('/api/se/' + seId + '/quality-pain', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pain_flag: !currentPain })
+      })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        btn.classList.toggle('btn-danger', data.pain_flag);
+        btn.classList.toggle('btn-outline-secondary', !data.pain_flag);
+      })
+      .catch(function () {})
+      .finally(function () { btn.disabled = false; });
+    });
+  });
+
+  // ── Contacts / Throws inputs ──────────────────────────────────────────────
+  document.querySelectorAll('.contacts-input, .throws-input').forEach(function (input) {
+    var field = input.classList.contains('contacts-input') ? 'contacts' : 'throws';
+    input.addEventListener('blur', function () {
+      var val = parseInt(input.value);
+      if (isNaN(val) || val < 0) return;
+      var seId = input.dataset.seId;
+      fetch('/api/se/' + seId + '/quality-pain', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [field]: val })
+      })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        var valEl = document.getElementById(field + '-val-' + seId);
+        if (valEl) {
+          var v = data[field];
+          if (v != null) {
+            valEl.innerHTML = ': <strong class="text-light">' + v + '</strong>' + (field === 'contacts' ? '回' : '投');
+          }
+        }
+      })
       .catch(function () {});
     });
   });

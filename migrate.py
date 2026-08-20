@@ -33,6 +33,12 @@ if cur.fetchone()[0] == 0:
         )
     print("Seeded weekly_schedule (7 rows)")
 
+import sys, os
+sys.path.insert(0, os.path.dirname(__file__))
+import db as appdb
+appdb.seed_volleyball_program()
+print("Seeded Volleyball Performance v1.0 my-sets")
+
 cur.close()
 conn.close()
 print("Migration complete.")

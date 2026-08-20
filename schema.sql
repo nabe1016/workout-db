@@ -244,3 +244,76 @@ ALTER TABLE exercises ADD COLUMN IF NOT EXISTS lvup_low  BOOLEAN DEFAULT FALSE;
 
 -- セッション種目: 高/低負荷別rep数
 ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS reps_low INTEGER;
+
+-- === Volleyball Performance v1.0 Schema Extensions ===
+
+-- Exercise classification
+ALTER TABLE exercises ADD COLUMN IF NOT EXISTS exercise_type    TEXT DEFAULT 'strength';
+ALTER TABLE exercises ADD COLUMN IF NOT EXISTS measurement_type TEXT DEFAULT 'reps';
+
+-- Per-exercise session tracking
+ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS quality    SMALLINT;
+ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS pain_flag  BOOLEAN DEFAULT FALSE;
+ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS contacts   INTEGER;
+ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS throws     INTEGER;
+
+-- Session-level tracking
+ALTER TABLE workout_sessions ADD COLUMN IF NOT EXISTS session_rpe         SMALLINT;
+ALTER TABLE workout_sessions ADD COLUMN IF NOT EXISTS duration_min        INTEGER;
+ALTER TABLE workout_sessions ADD COLUMN IF NOT EXISTS session_load        INTEGER;
+ALTER TABLE workout_sessions ADD COLUMN IF NOT EXISTS session_type        TEXT;
+ALTER TABLE workout_sessions ADD COLUMN IF NOT EXISTS program_id          TEXT;
+ALTER TABLE workout_sessions ADD COLUMN IF NOT EXISTS strength_volume_kg  REAL;
+ALTER TABLE workout_sessions ADD COLUMN IF NOT EXISTS plyometric_contacts INTEGER;
+ALTER TABLE workout_sessions ADD COLUMN IF NOT EXISTS power_throws        INTEGER;
+ALTER TABLE workout_sessions ADD COLUMN IF NOT EXISTS avg_quality         REAL;
+
+-- My-set program grouping
+ALTER TABLE my_sets ADD COLUMN IF NOT EXISTS program_name TEXT;
+ALTER TABLE my_sets ADD COLUMN IF NOT EXISTS session_type TEXT;
+
+-- Set exercise_type for existing exercises
+UPDATE exercises SET exercise_type='core'         WHERE name IN ('バックエクステンション','アブアイソレーター','アブローラー','ベンチレッグレイズ','インクライントーソ');
+UPDATE exercises SET exercise_type='conditioning' WHERE name IN ('ランニング');
+UPDATE exercises SET exercise_type='accessory'    WHERE name IN ('ベンチダンベルサイドレイズ','インクラインアームカール');
+
+-- New exercises for Volleyball Performance v1.0
+INSERT INTO exercises (name, body_part, needs_bench, primary_muscle, location, exercise_type, measurement_type)
+VALUES ('アプローチジャンプ', '下肢', false, '大腿四頭筋', 'both', 'plyometric', 'contacts')
+ON CONFLICT (name) DO UPDATE SET exercise_type='plyometric', measurement_type='contacts', location='both';
+
+INSERT INTO exercises (name, body_part, needs_bench, primary_muscle, location, exercise_type, measurement_type)
+VALUES ('ポゴジャンプ', '下肢', false, 'カーフ', 'both', 'plyometric', 'contacts')
+ON CONFLICT (name) DO UPDATE SET exercise_type='plyometric', measurement_type='contacts', location='both';
+
+INSERT INTO exercises (name, body_part, needs_bench, primary_muscle, location, exercise_type, measurement_type)
+VALUES ('スクワットジャンプ', '下肢', false, '大腿四頭筋', 'both', 'plyometric', 'contacts')
+ON CONFLICT (name) DO UPDATE SET exercise_type='plyometric', measurement_type='contacts', location='both';
+
+INSERT INTO exercises (name, body_part, needs_bench, primary_muscle, location, exercise_type, measurement_type)
+VALUES ('パロフプレス', '体幹', false, '腹斜筋', 'gym', 'core', 'reps')
+ON CONFLICT (name) DO UPDATE SET exercise_type='core', measurement_type='reps';
+
+INSERT INTO exercises (name, body_part, needs_bench, primary_muscle, location, exercise_type, measurement_type)
+VALUES ('ロテーショナルMBスロー', '上肢', false, '腹斜筋', 'gym', 'power', 'throws')
+ON CONFLICT (name) DO UPDATE SET exercise_type='power', measurement_type='throws';
+
+INSERT INTO exercises (name, body_part, needs_bench, primary_muscle, location, exercise_type, measurement_type)
+VALUES ('オーバーヘッドMBスロー', '上肢', false, '三角筋前部', 'gym', 'power', 'throws')
+ON CONFLICT (name) DO UPDATE SET exercise_type='power', measurement_type='throws';
+
+INSERT INTO exercises (name, body_part, needs_bench, primary_muscle, location, exercise_type, measurement_type)
+VALUES ('フェイスプル', '上肢', false, '三角筋後部', 'gym', 'accessory', 'reps')
+ON CONFLICT (name) DO UPDATE SET exercise_type='accessory', measurement_type='reps';
+
+INSERT INTO exercises (name, body_part, needs_bench, primary_muscle, location, exercise_type, measurement_type)
+VALUES ('サイドプランクローテーション', '体幹', false, '腹斜筋', 'both', 'core', 'reps')
+ON CONFLICT (name) DO UPDATE SET exercise_type='core', measurement_type='reps';
+
+INSERT INTO exercises (name, body_part, needs_bench, primary_muscle, location, exercise_type, measurement_type)
+VALUES ('スプリットスクワット', '下肢', false, '大臀筋', 'both', 'strength', 'reps')
+ON CONFLICT (name) DO UPDATE SET exercise_type='strength', measurement_type='reps';
+
+INSERT INTO exercises (name, body_part, needs_bench, primary_muscle, location, exercise_type, measurement_type, is_time_based)
+VALUES ('ウォーククールダウン', '体幹', false, NULL, 'both', 'conditioning', 'seconds', true)
+ON CONFLICT (name) DO UPDATE SET exercise_type='conditioning', measurement_type='seconds', is_time_based=true;

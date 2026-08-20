@@ -668,6 +668,41 @@ def my_set_sync_from_latest(my_set_id):
     return jsonify({"synced": count})
 
 
+@app.route("/api/se/<int:se_id>/quality-pain", methods=["POST"])
+def api_se_quality_pain(se_id):
+    data = request.get_json(force=True) or {}
+    quality   = data.get("quality")
+    pain_flag = data.get("pain_flag")
+    contacts  = data.get("contacts")
+    throws    = data.get("throws")
+    result = db.record_se_quality_pain(
+        se_id,
+        quality=int(quality) if quality is not None else None,
+        pain_flag=bool(pain_flag) if pain_flag is not None else None,
+        contacts=int(contacts) if contacts is not None else None,
+        throws=int(throws) if throws is not None else None,
+    )
+    return jsonify(result)
+
+
+@app.route("/api/sessions/<int:session_id>/finish-rpe", methods=["POST"])
+def api_session_finish_rpe(session_id):
+    data = request.get_json(force=True) or {}
+    duration_min = _parse_int(data.get("duration_min"))
+    session_rpe  = _parse_int(data.get("session_rpe"))
+    session_type = data.get("session_type")
+    if not duration_min or not session_rpe:
+        return jsonify({"error": "duration_min and session_rpe required"}), 400
+    result = db.record_session_finish(session_id, duration_min, session_rpe, session_type)
+    return jsonify(result)
+
+
+@app.route("/api/seed-volleyball-program", methods=["POST"])
+def api_seed_volleyball():
+    created = db.seed_volleyball_program()
+    return jsonify({"created": created})
+
+
 @app.route("/api/exercise/<int:exercise_id>/clear-lvup", methods=["POST"])
 def api_clear_lvup(exercise_id):
     data = request.get_json(force=True) or {}

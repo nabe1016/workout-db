@@ -62,7 +62,9 @@ def get_session_with_exercises(session_id: int):
             SELECT se.*, ex.name AS exercise_name,
                    ex.body_part, ex.needs_bench, ex.primary_muscle,
                    ex.bodyweight_ratio, ex.is_time_based,
-                   ex.lvup_high, ex.lvup_low
+                   ex.lvup_high, ex.lvup_low,
+                   COALESCE(ex.exercise_type, 'strength') AS exercise_type,
+                   COALESCE(ex.measurement_type, 'reps')  AS measurement_type
             FROM session_exercises se
             JOIN exercises ex ON ex.id = se.exercise_id
             WHERE se.session_id = %s
@@ -654,11 +656,12 @@ def list_my_sets() -> list:
         cur = conn.cursor()
         cur.execute("""
             SELECT ms.id, ms.name, ms.description, ms.location,
+                   ms.program_name, ms.session_type,
                    COUNT(mse.id) AS exercise_count
             FROM my_sets ms
             LEFT JOIN my_set_exercises mse ON mse.my_set_id = ms.id
             GROUP BY ms.id
-            ORDER BY ms.name
+            ORDER BY ms.program_name NULLS LAST, ms.name
         """)
         return cur.fetchall()
 
@@ -1980,3 +1983,234 @@ def build_volume_metrics(session, exercises: list, body_weight: float = 65.0) ->
         "purpose":         purpose,
         "gym_eq_pct":      gym_eq_pct,
     }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Volleyball Performance v1.0
+# ─────────────────────────────────────────────────────────────────────────────
+
+def record_se_quality_pain(se_id: int, quality: int = None,
+                            pain_flag: bool = None,
+                            contacts: int = None,
+                            throws: int = None) -> dict:
+    """Record quality / pain_flag / contacts / throws for a session exercise."""
+    with _conn() as conn:
+        cur = conn.cursor()
+        sets = []
+        vals = []
+        if quality is not None:
+            sets.append("quality = %s")
+            vals.append(int(quality))
+        if pain_flag is not None:
+            sets.append("pain_flag = %s")
+            vals.append(bool(pain_flag))
+        if contacts is not None:
+            sets.append("contacts = %s")
+            vals.append(int(contacts))
+        if throws is not None:
+            sets.append("throws = %s")
+            vals.append(int(throws))
+        if not sets:
+            return {}
+        vals.append(se_id)
+        cur.execute(f"UPDATE session_exercises SET {', '.join(sets)} WHERE id = %s", vals)
+        cur.execute(
+            "SELECT quality, pain_flag, contacts, throws FROM session_exercises WHERE id = %s",
+            (se_id,)
+        )
+        row = cur.fetchone()
+    return dict(row) if row else {}
+
+
+def record_session_finish(session_id: int, duration_min: int, session_rpe: int,
+                           session_type: str = None) -> dict:
+    """Record RPE, duration, session_load; compute and store session summary metrics."""
+    session_load = duration_min * session_rpe
+    with _conn() as conn:
+        cur = conn.cursor()
+
+        # Compute Strength Volume
+        cur.execute("""
+            SELECT COALESCE(SUM(
+                CASE WHEN COALESCE(load_mode,'high') = 'low' THEN
+                    COALESCE(weight_low_load, weight_setting, 0)
+                ELSE COALESCE(weight_setting, 0)
+                END *
+                COALESCE(reps, 0) *
+                (COALESCE(set1_completed::int,0)+COALESCE(set2_completed::int,0)+
+                 COALESCE(set3_completed::int,0)+COALESCE(set4_completed::int,0)+
+                 COALESCE(set5_completed::int,0)+COALESCE(set6_completed::int,0))
+            ), 0)
+            FROM session_exercises se
+            JOIN exercises ex ON ex.id = se.exercise_id
+            WHERE se.session_id = %s
+              AND COALESCE(ex.exercise_type,'strength') = 'strength'
+        """, (session_id,))
+        strength_vol = float(cur.fetchone()[0] or 0)
+
+        # Compute plyometric contacts
+        cur.execute("""
+            SELECT COALESCE(SUM(COALESCE(se.contacts, se.reps, 0) *
+                (COALESCE(set1_completed::int,0)+COALESCE(set2_completed::int,0)+
+                 COALESCE(set3_completed::int,0)+COALESCE(set4_completed::int,0)+
+                 COALESCE(set5_completed::int,0)+COALESCE(set6_completed::int,0))), 0)
+            FROM session_exercises se
+            JOIN exercises ex ON ex.id = se.exercise_id
+            WHERE se.session_id = %s
+              AND COALESCE(ex.exercise_type,'strength') = 'plyometric'
+        """, (session_id,))
+        plyo_contacts = int(cur.fetchone()[0] or 0)
+
+        # Compute power throws
+        cur.execute("""
+            SELECT COALESCE(SUM(COALESCE(se.throws, se.reps, 0) *
+                (COALESCE(set1_completed::int,0)+COALESCE(set2_completed::int,0)+
+                 COALESCE(set3_completed::int,0)+COALESCE(set4_completed::int,0)+
+                 COALESCE(set5_completed::int,0)+COALESCE(set6_completed::int,0))), 0)
+            FROM session_exercises se
+            JOIN exercises ex ON ex.id = se.exercise_id
+            WHERE se.session_id = %s
+              AND COALESCE(ex.exercise_type,'strength') = 'power'
+        """, (session_id,))
+        power_throws = int(cur.fetchone()[0] or 0)
+
+        # Compute avg quality
+        cur.execute("""
+            SELECT AVG(se.quality)
+            FROM session_exercises se
+            JOIN exercises ex ON ex.id = se.exercise_id
+            WHERE se.session_id = %s
+              AND se.quality IS NOT NULL
+              AND COALESCE(ex.exercise_type,'strength') IN ('plyometric','power')
+        """, (session_id,))
+        avg_q_row = cur.fetchone()[0]
+        avg_quality = round(float(avg_q_row), 2) if avg_q_row else None
+
+        update_parts = [
+            "session_rpe=%s", "duration_min=%s", "session_load=%s",
+            "strength_volume_kg=%s", "plyometric_contacts=%s",
+            "power_throws=%s", "avg_quality=%s",
+        ]
+        update_vals = [
+            session_rpe, duration_min, session_load,
+            strength_vol, plyo_contacts, power_throws, avg_quality,
+        ]
+        if session_type:
+            update_parts.append("session_type=%s")
+            update_vals.append(session_type)
+        update_vals.append(session_id)
+
+        cur.execute(
+            f"UPDATE workout_sessions SET {', '.join(update_parts)} WHERE id = %s",
+            update_vals
+        )
+
+    return {
+        "session_load":        session_load,
+        "strength_volume_kg":  strength_vol,
+        "plyometric_contacts": plyo_contacts,
+        "power_throws":        power_throws,
+        "avg_quality":         avg_quality,
+    }
+
+
+# ── Volleyball Program 3プラン my-set seed ────────────────────────────────────
+
+_VOLLEYBALL_PLANS = [
+    {
+        "name":         "DAY A - FORCE",
+        "program_name": "Volleyball Performance v1.0",
+        "session_type": "DAY_A_FORCE",
+        "location":     "gym",
+        "exercises": [
+            # (exercise_name, reps, target_sets, weight_setting, muscle_groups, note)
+            ("アプローチジャンプ",       2,  3, None, "大腿四頭筋,大臀筋", None),
+            ("ブルガリアンスクワット",   5,  3, 12.0, "大臀筋,大腿四頭筋", None),
+            ("ルーマニアンデッドリフト", 5,  3, 50.0, "ハムストリングス,大臀筋", None),
+            ("インクラインダンベルプレス", 6, 2, 18.0, "大胸筋,三角筋前部,上腕三頭筋", None),
+            ("シーテッドロー",           6,  2, None, "広背筋,僧帽筋", None),
+            ("カーフ＆トゥレイズ",       8,  2, None, "カーフ", None),
+            ("パロフプレス",             8,  2, None, "腹斜筋,腹直筋", None),
+            ("アブローラー",             6,  2, None, "腹直筋,腸腰筋", None),
+        ],
+    },
+    {
+        "name":         "DAY B - POWER GYM",
+        "program_name": "Volleyball Performance v1.0",
+        "session_type": "DAY_B_POWER_GYM",
+        "location":     "gym",
+        "exercises": [
+            ("ポゴジャンプ",               8,  2, None, "カーフ,大腿四頭筋", None),
+            ("アプローチジャンプ",         2,  4, None, "大腿四頭筋,大臀筋", None),
+            ("スクワットジャンプ",         3,  3, None, "大腿四頭筋,大臀筋", None),
+            ("ロテーショナルMBスロー",     3,  3, 3.0,  "腹斜筋,三角筋", None),
+            ("オーバーヘッドMBスロー",     3,  2, 3.0,  "三角筋前部,体幹", None),
+            ("シーテッドレッグカール",     8,  2, None, "ハムストリングス", None),
+            ("フェイスプル",              10,  2, None, "三角筋後部,菱形筋", None),
+            ("サイドプランクローテーション", 6, 2, None, "腹斜筋", None),
+        ],
+    },
+    {
+        "name":         "DAY B - POWER OUTDOOR",
+        "program_name": "Volleyball Performance v1.0",
+        "session_type": "DAY_B_POWER_OUTDOOR",
+        "location":     "both",
+        "exercises": [
+            ("ポゴジャンプ",               8,  2, None, "カーフ,大腿四頭筋", None),
+            ("アプローチジャンプ",         2,  4, None, "大腿四頭筋,大臀筋", None),
+            ("スクワットジャンプ",         3,  3, None, "大腿四頭筋,大臀筋", None),
+            ("スプリットスクワット",       8,  2, None, "大臀筋,大腿四頭筋", None),
+            ("サイドプランクローテーション", 6, 2, None, "腹斜筋", None),
+            ("ウォーククールダウン",        1,  1, None, None, None),
+        ],
+    },
+]
+
+
+def seed_volleyball_program() -> int:
+    """Create Volleyball Performance v1.0 my-sets if not present. Returns number created."""
+    created = 0
+    with _conn() as conn:
+        cur = conn.cursor()
+        for plan in _VOLLEYBALL_PLANS:
+            # Skip if already exists
+            cur.execute("SELECT id FROM my_sets WHERE name = %s", (plan["name"],))
+            existing = cur.fetchone()
+            if existing:
+                # Ensure program_name / session_type are set
+                cur.execute(
+                    "UPDATE my_sets SET program_name=%s, session_type=%s WHERE id=%s",
+                    (plan["program_name"], plan["session_type"], existing["id"])
+                )
+                ms_id = existing["id"]
+            else:
+                cur.execute("""
+                    INSERT INTO my_sets (name, program_name, session_type, location)
+                    VALUES (%s, %s, %s, %s) RETURNING id
+                """, (plan["name"], plan["program_name"], plan["session_type"], plan["location"]))
+                ms_id = cur.fetchone()["id"]
+                created += 1
+
+            for i, (ex_name, reps, target_sets, weight, muscles, _note) in enumerate(plan["exercises"], 1):
+                cur.execute("SELECT id FROM exercises WHERE name = %s", (ex_name,))
+                ex_row = cur.fetchone()
+                if not ex_row:
+                    continue
+                ex_id = ex_row["id"]
+                weight_setting = weight
+                weight_low_load = round(weight * 0.30, 1) if weight else None
+                cur.execute("""
+                    INSERT INTO my_set_exercises
+                        (my_set_id, exercise_id, sort_order, reps, target_sets,
+                         weight_setting, weight_low_load, muscle_groups)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+                    ON CONFLICT (my_set_id, exercise_id) DO UPDATE
+                        SET sort_order=%s, reps=%s, target_sets=%s,
+                            weight_setting=%s, weight_low_load=%s, muscle_groups=%s
+                """, (
+                    ms_id, ex_id, i, reps, target_sets,
+                    weight_setting, weight_low_load, muscles,
+                    i, reps, target_sets,
+                    weight_setting, weight_low_load, muscles,
+                ))
+    return created
