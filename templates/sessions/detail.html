@@ -83,6 +83,60 @@
 </div>
 {% endif %}
 
+{# ── ウォームアップ導線カード（plyometric / power 種目があるセッションのみ） ── #}
+{% set has_explosive = exercises | selectattr('exercise_type', 'in', ['plyometric', 'power']) | list | length > 0 %}
+{% set has_strength_main = exercises | selectattr('exercise_type', 'equalto', 'strength') | list | length > 0 %}
+{% if has_explosive %}
+{% set warmup_day = 'A' if has_strength_main else 'B' %}
+<div class="card mb-2" id="warmup-card"
+     style="border:1px solid rgba(255,214,10,0.3);background:rgba(255,214,10,0.05);">
+  <div class="card-body py-2 px-3">
+    <div class="d-flex justify-content-between align-items-center mb-1" style="cursor:pointer;"
+         onclick="document.getElementById('warmup-body').style.display = document.getElementById('warmup-body').style.display==='none' ? '' : 'none';
+                  this.querySelector('.wu-arrow').textContent = document.getElementById('warmup-body').style.display==='none' ? '▶' : '▼';">
+      <div class="d-flex align-items-center gap-2">
+        <span style="font-size:1.1rem;">🔥</span>
+        <div>
+          <div style="font-size:0.6rem;font-weight:900;color:var(--yellow);letter-spacing:0.06em;">WARM-UP {{ warmup_day }}</div>
+          <div style="font-size:0.82rem;font-weight:700;">ウォームアップ（約6〜7分）</div>
+        </div>
+      </div>
+      <span class="wu-arrow" style="color:var(--txt-2);font-size:0.7rem;">▶</span>
+    </div>
+    <div id="warmup-body" style="display:none;">
+      <div style="font-size:0.72rem;color:var(--txt-2);margin-bottom:0.5rem;">
+        <table style="width:100%;border-collapse:collapse;">
+          <tr><td style="padding:0.15rem 0;color:rgba(255,255,255,0.6);">軽い歩行 or バイク</td><td style="text-align:right;white-space:nowrap;">1〜2分</td></tr>
+          <tr><td>Ankle Rocker</td><td style="text-align:right;">8回/側</td></tr>
+          <tr><td>Leg Swing 前後</td><td style="text-align:right;">8回/側</td></tr>
+          <tr><td>Leg Swing 左右</td><td style="text-align:right;">8回/側</td></tr>
+          <tr><td>Hip Hinge Drill</td><td style="text-align:right;">8回</td></tr>
+          <tr><td>BW Split Squat</td><td style="text-align:right;">5回/側</td></tr>
+          <tr><td>Band Pull Apart / Shoulder Circle</td><td style="text-align:right;">10回</td></tr>
+          {% if warmup_day == 'A' %}
+          <tr><td style="color:var(--yellow);font-weight:700;">＋ BW Squat</td><td style="text-align:right;color:var(--yellow);">5回</td></tr>
+          <tr><td style="color:var(--yellow);font-weight:700;">＋ Low-intensity Approach Jump</td><td style="text-align:right;color:var(--yellow);">2回（70〜80%）</td></tr>
+          {% else %}
+          <tr><td style="color:var(--yellow);font-weight:700;">＋ March/Skip</td><td style="text-align:right;color:var(--yellow);">15m or 20秒</td></tr>
+          <tr><td style="color:var(--yellow);font-weight:700;">＋ Light Pogo</td><td style="text-align:right;color:var(--yellow);">10回</td></tr>
+          <tr><td style="color:var(--yellow);font-weight:700;">＋ Low-intensity Jump</td><td style="text-align:right;color:var(--yellow);">2〜3回</td></tr>
+          <tr><td style="color:var(--yellow);font-weight:700;">＋ Low-intensity MB Throw</td><td style="text-align:right;color:var(--yellow);">1〜2回/側</td></tr>
+          {% endif %}
+        </table>
+      </div>
+      <div class="d-flex gap-2">
+        <button type="button" onclick="document.getElementById('warmup-card').style.display='none';"
+                class="btn btn-sm flex-fill fw-bold"
+                style="background:var(--yellow);color:#000;font-size:0.8rem;">✓ 完了</button>
+        <button type="button" onclick="document.getElementById('warmup-card').style.display='none';"
+                class="btn btn-sm btn-outline-secondary flex-fill"
+                style="font-size:0.8rem;">スキップ</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 {# Exercise list #}
 {% if exercises %}
 <div class="d-flex justify-content-end gap-2 mb-2">
@@ -355,7 +409,7 @@
                     <span class="text-secondary">: —</span>
                   {% endif %}
                 </span>
-                {% if not ex.one_rep_max %}
+                {% if not ex.one_rep_max and ex.exercise_type in ('strength', None, '') %}
                 <span style="font-size:0.58rem;padding:0.05rem 0.25rem;border-radius:3px;background:rgba(255,120,0,0.18);border:1px solid rgba(255,120,0,0.35);color:#ff9944;">1RM未設定</span>
                 {% endif %}
               </div>
@@ -1230,15 +1284,36 @@
           var qColor = data.quality <= 2 ? '#f44336' : (data.quality === 3 ? '#ff9800' : '#4caf50');
           qEl.innerHTML = ': <strong style="color:' + qColor + ';">Q' + data.quality + '</strong>';
         }
-        // Quality ≤ 2 warning
+        // Quality ≤ 2 stop proposal
         if (data.quality && data.quality <= 2) {
-          if (confirm('Quality ' + data.quality + ' — パフォーマンスが低下しています。この種目を終了しますか？')) {
+          var msg = data.quality === 1
+            ? '⚠️ Q1 — フォーム崩壊の危険があります。\nこの種目を即中止しますか？\n（続行する場合はキャンセル）'
+            : 'Q2 — パフォーマンスが低下しています。\nこの種目を終了しますか？\n（続行する場合はキャンセル）';
+          if (confirm(msg)) {
             fetch('/api/se/' + seId + '/complete', { method: 'POST' });
             var card = document.getElementById('ex-card-' + seId);
             if (card) {
               card.dataset.completed = 'true';
               card.classList.add('se-completed');
               setTimeout(function () { setCardCollapsed(card, true); }, 400);
+            }
+            // Q1の場合、痛みフラグも確認
+            if (data.quality === 1) {
+              setTimeout(function () {
+                if (confirm('🩹 痛みや強い違和感はありますか？\n「OK」で痛みフラグをONにします。')) {
+                  fetch('/api/se/' + seId + '/quality-pain', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ pain_flag: true })
+                  }).then(function () {
+                    var painBtn = document.querySelector('.pain-btn[data-se-id="' + seId + '"]');
+                    if (painBtn) {
+                      painBtn.classList.add('btn-danger');
+                      painBtn.classList.remove('btn-outline-secondary');
+                    }
+                  });
+                }
+              }, 300);
             }
           }
         }
