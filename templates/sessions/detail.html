@@ -1243,16 +1243,14 @@
   // ── Carousel navigation helpers ───────────────────────────────────────────
   function scrollToSlideById(slideId) {
     var slide = document.getElementById(slideId);
-    var track = document.getElementById('carousel-track');
-    if (!slide || !track) return;
-    track.scrollTo({ left: slide.offsetLeft - track.offsetLeft, behavior: 'smooth' });
+    if (!slide) return;
+    slide.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
   }
   function scrollToSlideIdx(idx) {
     var slides = getSlides();
     if (!slides.length) return;
     var target = idx < 0 ? slides[slides.length - 1] : slides[Math.min(idx, slides.length - 1)];
-    var track = document.getElementById('carousel-track');
-    if (target && track) track.scrollTo({ left: target.offsetLeft - track.offsetLeft, behavior: 'smooth' });
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
   }
 
   // ── Init: first dot active ─────────────────────────────────────────────
