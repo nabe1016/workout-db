@@ -104,6 +104,11 @@
       <span class="wu-arrow" style="color:var(--txt-2);font-size:0.7rem;">▶</span>
     </div>
     <div id="warmup-body" style="display:none;">
+      {% if warmup_day == 'A' %}
+      <img src="{{ url_for('static', filename='images/exercises/warmup_a.png') }}"
+           alt="WARM-UP A" onerror="this.style.display='none'"
+           style="width:100%;border-radius:8px;margin-bottom:0.6rem;object-fit:cover;max-height:140px;">
+      {% endif %}
       <div style="font-size:0.72rem;color:var(--txt-2);margin-bottom:0.5rem;">
         <table style="width:100%;border-collapse:collapse;">
           <tr><td style="padding:0.15rem 0;color:rgba(255,255,255,0.6);">軽い歩行 or バイク</td><td style="text-align:right;white-space:nowrap;">1〜2分</td></tr>
