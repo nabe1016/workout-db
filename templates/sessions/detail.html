@@ -147,6 +147,31 @@
 {% set skipped_exs = exercises | selectattr('skipped', 'equalto', True) | list %}
 {% set all_finished = finished_exs + skipped_exs %}
 
+{# ── カテゴリナビゲーションバー ── #}
+{% if pending_exs %}
+<div class="d-flex gap-1 flex-wrap mb-2 px-1" id="carousel-nav">
+  <button type="button" onclick="scrollToSlideIdx(0)"
+          style="font-size:0.68rem;padding:0.2rem 0.55rem;border-radius:20px;
+                 background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.18);
+                 color:var(--txt-2);white-space:nowrap;">⏮ 先頭</button>
+  {% set ns = namespace(seen=[]) %}
+  {% for ex in pending_exs %}
+  {% if ex.body_part and ex.body_part not in ns.seen %}
+  {% set ns.seen = ns.seen + [ex.body_part] %}
+  <button type="button" onclick="scrollToSlideById('slide-{{ ex.id }}')"
+          style="font-size:0.68rem;padding:0.2rem 0.55rem;border-radius:20px;
+                 background:{{ category_bg(ex.body_part) }};
+                 border:1px solid rgba(255,255,255,0.15);
+                 color:rgba(255,255,255,0.9);white-space:nowrap;">{{ ex.body_part }}</button>
+  {% endif %}
+  {% endfor %}
+  <button type="button" onclick="scrollToSlideIdx(-1)"
+          style="font-size:0.68rem;padding:0.2rem 0.55rem;border-radius:20px;
+                 background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.18);
+                 color:var(--txt-2);white-space:nowrap;">最後 ⏭</button>
+</div>
+{% endif %}
+
 {# ── CAROUSEL AREA ── #}
 <div id="carousel-area" class="mb-3">
   {# Counter + label #}
@@ -293,10 +318,14 @@
                     <span id="contacts-val-{{ ex.id }}">
                       {% if ex.contacts %}: <strong class="text-light">{{ ex.contacts }}</strong>回{% else %}<span class="text-secondary">: —</span>{% endif %}
                     </span>
-                    <input type="number" class="form-control form-control-sm contacts-input ms-1"
-                           data-se-id="{{ ex.id }}" placeholder="接地数" min="0"
-                           value="{{ ex.contacts or '' }}"
-                           style="width:4.5rem;font-size:0.75rem;padding:0.15rem 0.3rem;">
+                    <select class="form-select form-select-sm contacts-select ms-1"
+                            data-se-id="{{ ex.id }}"
+                            style="width:6rem;font-size:0.75rem;padding:0.15rem 0.3rem;">
+                      <option value="">—</option>
+                      {% for v in [10,20,30,40,50,60,80,100,120,150,200] %}
+                      <option value="{{ v }}" {% if ex.contacts == v %}selected{% endif %}>{{ v }}回</option>
+                      {% endfor %}
+                    </select>
                   </div>
                   {% elif ex.exercise_type == 'power' %}
                   <div class="d-flex align-items-center gap-1">
@@ -304,10 +333,14 @@
                     <span id="throws-val-{{ ex.id }}">
                       {% if ex.throws %}: <strong class="text-light">{{ ex.throws }}</strong>投{% else %}<span class="text-secondary">: —</span>{% endif %}
                     </span>
-                    <input type="number" class="form-control form-control-sm throws-input ms-1"
-                           data-se-id="{{ ex.id }}" placeholder="投数" min="0"
-                           value="{{ ex.throws or '' }}"
-                           style="width:4.5rem;font-size:0.75rem;padding:0.15rem 0.3rem;">
+                    <select class="form-select form-select-sm throws-select ms-1"
+                            data-se-id="{{ ex.id }}"
+                            style="width:6rem;font-size:0.75rem;padding:0.15rem 0.3rem;">
+                      <option value="">—</option>
+                      {% for v in [5,10,15,20,25,30,40,50] %}
+                      <option value="{{ v }}" {% if ex.throws == v %}selected{% endif %}>{{ v }}投</option>
+                      {% endfor %}
+                    </select>
                   </div>
                   {% endif %}
                   {% else %}
@@ -1184,13 +1217,13 @@
     });
   });
 
-  // ── Contacts / Throws inputs ──────────────────────────────────────────────
-  document.querySelectorAll('.contacts-input, .throws-input').forEach(function(input) {
-    var field = input.classList.contains('contacts-input') ? 'contacts' : 'throws';
-    input.addEventListener('blur', function() {
-      var val = parseInt(input.value);
-      if (isNaN(val) || val < 0) return;
-      var seId = input.dataset.seId;
+  // ── Contacts / Throws selects ────────────────────────────────────────────
+  document.querySelectorAll('.contacts-select, .throws-select').forEach(function(sel) {
+    var field = sel.classList.contains('contacts-select') ? 'contacts' : 'throws';
+    sel.addEventListener('change', function() {
+      var val = sel.value === '' ? null : parseInt(sel.value);
+      if (val === null) return;
+      var seId = sel.dataset.seId;
       fetch('/api/se/' + seId + '/quality-pain', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ [field]: val })
@@ -1206,6 +1239,21 @@
       .catch(function() {});
     });
   });
+
+  // ── Carousel navigation helpers ───────────────────────────────────────────
+  function scrollToSlideById(slideId) {
+    var slide = document.getElementById(slideId);
+    var track = document.getElementById('carousel-track');
+    if (!slide || !track) return;
+    track.scrollTo({ left: slide.offsetLeft - track.offsetLeft, behavior: 'smooth' });
+  }
+  function scrollToSlideIdx(idx) {
+    var slides = getSlides();
+    if (!slides.length) return;
+    var target = idx < 0 ? slides[slides.length - 1] : slides[Math.min(idx, slides.length - 1)];
+    var track = document.getElementById('carousel-track');
+    if (target && track) track.scrollTo({ left: target.offsetLeft - track.offsetLeft, behavior: 'smooth' });
+  }
 
   // ── Init: first dot active ─────────────────────────────────────────────
   activateDot(0);
