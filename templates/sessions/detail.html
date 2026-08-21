@@ -514,7 +514,7 @@
 
           {# 挿絵（カード下部・全幅） #}
           {% if img_file %}
-          <div style="margin-top:0.75rem;border-radius:8px;overflow:hidden;height:160px;">
+          <div style="margin-top:0.75rem;border-radius:8px;overflow:hidden;height:100px;">
             <img src="{{ url_for('static', filename='images/exercises/' + img_file) }}"
                  alt="{{ ex.exercise_name }}"
                  onerror="this.parentElement.style.display='none'"
