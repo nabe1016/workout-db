@@ -147,6 +147,19 @@
 {% set skipped_exs = exercises | selectattr('skipped', 'equalto', True) | list %}
 {% set all_finished = finished_exs + skipped_exs %}
 
+{# 種目名 → 挿絵ファイル名マッピング #}
+{% set exercise_images = {
+  'アプローチジャンプ':                      'approach_jump.png',
+  'ポゴジャンプ':                             'pogo_jump.png',
+  'スクワットジャンプ':                       'squat_jump.png',
+  'ブルガリアンスクワット':                   'bulgarian_split_squat.png',
+  'ルーマニアンデッドリフト':                 'romanian_deadlift.png',
+  'パロフプレス':                             'pallof_press.png',
+  'アブローラー':                             'ab_wheel.png',
+  'ローテーショナル・メディシンボールスロー': 'rotational_med_ball_throw.png',
+  'オーバーヘッド・メディシンボールスロー':   'overhead_med_ball_throw.png'
+} %}
+
 {# ── カテゴリナビゲーションバー ── #}
 {% if pending_exs %}
 <div class="d-flex gap-1 flex-wrap mb-2 px-1" id="carousel-nav">
@@ -209,6 +222,22 @@
            data-skipped="false" data-completed="false"
            style="{% if ex.body_part %}--card-bg:{{ category_bg(ex.body_part) }};{% endif %}">
         <div class="card-body py-2 px-2">
+
+          {# 挿絵 #}
+          {% set img_file = exercise_images.get(ex.exercise_name) %}
+          {% if not img_file %}
+            {% for key, val in exercise_images.items() %}
+              {% if not img_file and key in ex.exercise_name %}{% set img_file = val %}{% endif %}
+            {% endfor %}
+          {% endif %}
+          {% if img_file %}
+          <img src="{{ url_for('static', filename='images/exercises/' + img_file) }}"
+               alt="{{ ex.exercise_name }}"
+               onerror="this.style.display='none'"
+               style="float:right;width:96px;height:70px;object-fit:cover;
+                      border-radius:8px;margin:0 0 0.4rem 0.6rem;
+                      opacity:0.88;flex-shrink:0;">
+          {% endif %}
 
           {# Name row #}
           <div class="d-flex align-items-center gap-1 flex-wrap">
