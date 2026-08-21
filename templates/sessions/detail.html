@@ -41,8 +41,8 @@
       </div>
     </div>
     <div class="d-flex gap-2">
-      <button type="button" class="btn btn-success btn-sm flex-fill fw-bold"
-              id="finish-top-btn" data-session-id="{{ session.id }}">終了・アドバイス</button>
+      <button type="button" class="btn btn-success btn-sm flex-fill fw-bold finish-trigger-btn"
+              data-session-id="{{ session.id }}">終了・アドバイス</button>
       <a href="{{ url_for('session_edit', session_id=session.id) }}"
          class="btn btn-outline-secondary btn-sm">編集</a>
       <form method="post" action="{{ url_for('session_delete', session_id=session.id) }}"
@@ -83,7 +83,7 @@
 </div>
 {% endif %}
 
-{# ── ウォームアップ導線カード（plyometric / power 種目があるセッションのみ） ── #}
+{# ── ウォームアップ導線カード ── #}
 {% set has_explosive = exercises | selectattr('exercise_type', 'in', ['plyometric', 'power']) | list | length > 0 %}
 {% set has_strength_main = exercises | selectattr('exercise_type', 'equalto', 'strength') | list | length > 0 %}
 {% if has_explosive %}
@@ -137,374 +137,403 @@
 </div>
 {% endif %}
 
-{# Exercise list #}
+{# ═══════════════════════════════════════════════════════════════════
+   CAROUSEL + COMPLETED LIST
+   ═══════════════════════════════════════════════════════════════════ #}
 {% if exercises %}
-<div class="d-flex justify-content-end gap-2 mb-2">
-  <button type="button" id="collapse-all-btn"
-          class="btn btn-outline-secondary btn-sm" data-collapsed="true">⊞ 展開する</button>
-  <button type="button" id="select-mode-btn"
-          class="btn btn-outline-secondary btn-sm">選択</button>
+
+{% set pending_exs = exercises | rejectattr('completed', 'equalto', True) | rejectattr('skipped', 'equalto', True) | list %}
+{% set finished_exs = exercises | selectattr('completed', 'equalto', True) | list %}
+{% set skipped_exs = exercises | selectattr('skipped', 'equalto', True) | list %}
+{% set all_finished = finished_exs + skipped_exs %}
+
+{# ── CAROUSEL AREA ── #}
+<div id="carousel-area" class="mb-3">
+  {# Counter + label #}
+  <div class="d-flex justify-content-between align-items-center mb-1 px-1">
+    <span style="font-size:0.65rem;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:var(--txt-2);">未実施メニュー</span>
+    <span id="carousel-counter"
+          style="font-size:0.88rem;font-weight:800;color:var(--yellow);">{{ pending_exs|length }}/{{ exercises|length }}</span>
+  </div>
+
+  {# Dot indicators #}
+  <div id="carousel-dots" class="d-flex justify-content-center gap-1 mb-2"
+       style="min-height:10px;transition:opacity 0.2s;{% if pending_exs|length <= 1 %}opacity:0;{% endif %}">
+    {% for ex in pending_exs %}
+    <span class="c-dot" data-se-id="{{ ex.id }}"
+          style="height:0.45rem;border-radius:4px;flex-shrink:0;transition:all 0.25s;
+                 width:{% if loop.first %}1.5rem{% else %}0.45rem{% endif %};
+                 background:{% if loop.first %}var(--yellow){% else %}rgba(255,255,255,0.2){% endif %};"></span>
+    {% endfor %}
+  </div>
+
+  {# Track #}
+  <div id="carousel-track"
+       style="display:{% if pending_exs %}flex{% else %}none{% endif %};overflow-x:scroll;
+              scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;
+              scrollbar-width:none;gap:0.6rem;padding:0 0.75rem 0.5rem;">
+
+    {% for ex in pending_exs %}
+    {% set mode = ex.load_mode or 'high' %}
+    <div class="carousel-slide" id="slide-{{ ex.id }}" data-se-id="{{ ex.id }}"
+         style="min-width:calc(100% - 1.5rem);scroll-snap-align:start;flex-shrink:0;">
+
+      <div class="card exercise-card"
+           id="ex-card-{{ ex.id }}" data-id="{{ ex.id }}"
+           data-primary-muscle="{{ ex.primary_muscle or '' }}"
+           data-skipped="false" data-completed="false"
+           style="{% if ex.body_part %}--card-bg:{{ category_bg(ex.body_part) }};{% endif %}">
+        <div class="card-body py-2 px-2">
+
+          {# Name row #}
+          <div class="d-flex align-items-center gap-1 flex-wrap">
+            <a href="{{ url_for('exercise_progress', exercise_id=ex.exercise_id) }}"
+               class="fw-bold text-info text-decoration-none" style="font-size:0.95rem;line-height:1.3;">
+              {{ ex.exercise_name }}
+            </a>
+            {% if ex.needs_bench %}<span style="font-size:0.85rem;" title="ベンチ台必要">🪑</span>{% endif %}
+            {% if ex.body_part %}
+            <span class="badge" style="font-size:0.56rem;padding:0.12rem 0.35rem;background:{{ category_bg(ex.body_part) }};color:rgba(255,255,255,0.9);border-radius:4px;">{{ ex.body_part }}</span>
+            {% endif %}
+            {% if ex.primary_muscle %}
+            <strong style="color:var(--yellow);font-size:0.75rem;font-weight:700;">{{ ex.primary_muscle }}</strong>
+            {% endif %}
+            {% if not ex.one_rep_max and ex.exercise_type in ('strength', 'accessory') %}
+            <span style="font-size:0.58rem;padding:0.05rem 0.25rem;border-radius:3px;background:rgba(255,80,0,0.22);border:1px solid rgba(255,80,0,0.45);color:#ff7744;font-weight:700;">⚠ 1RM未設定</span>
+            {% endif %}
+            {% if ex.exercise_type and ex.exercise_type != 'strength' %}
+            {% set type_colors = {'power':'#e040fb','plyometric':'#00e5ff','core':'#69f0ae','accessory':'#78909c','conditioning':'#ffb300','warmup':'#607d8b'} %}
+            <span style="font-size:0.55rem;padding:0.05rem 0.28rem;border-radius:3px;background:rgba(0,0,0,0.3);border:1px solid {{ type_colors.get(ex.exercise_type,'#888') }};color:{{ type_colors.get(ex.exercise_type,'#888') }};font-weight:700;letter-spacing:0.04em;">{{ ex.exercise_type }}</span>
+            {% endif %}
+            {% if ex.lvup_high %}
+            <button type="button" class="lvup-badge btn btn-sm py-0 px-1"
+                    data-exercise-id="{{ ex.exercise_id }}" data-lvup-type="high"
+                    id="lvup-badge-{{ ex.exercise_id }}-high"
+                    style="background:#ffd700;color:#333;font-size:0.6rem;border:none;border-radius:3px;font-weight:800;line-height:1.6;">📈 Lvup!可</button>
+            {% endif %}
+            {% if ex.lvup_low %}
+            <button type="button" class="lvup-badge btn btn-sm py-0 px-1"
+                    data-exercise-id="{{ ex.exercise_id }}" data-lvup-type="low"
+                    id="lvup-badge-{{ ex.exercise_id }}-low"
+                    style="background:#ff9a3c;color:#fff;font-size:0.6rem;border:none;border-radius:3px;font-weight:800;line-height:1.6;">📈 Lvup!可</button>
+            {% endif %}
+            <button type="button" class="collapse-toggle-btn ms-auto btn btn-sm"
+                    data-se-id="{{ ex.id }}"
+                    style="font-size:0.7rem;padding:0.05rem 0.3rem;line-height:1.4;border-radius:4px;color:var(--txt-2);background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);flex-shrink:0;">▼</button>
+          </div>
+
+          {# Collapsed-only info (hidden by default — card starts expanded in carousel) #}
+          <div class="ex-collapsed-only" style="display:none;padding-left:0.25rem;margin-top:0.15rem;">
+            <div class="d-flex gap-2 align-items-center" style="font-size:0.72rem;color:var(--txt-2);">
+              <span id="collapsed-mode-{{ ex.id }}" style="font-weight:700;{% if mode == 'low' %}color:var(--orange){% else %}color:var(--blue){% endif %};">
+                {% if mode == 'low' %}低{% else %}高{% endif %}
+              </span>
+              <span id="collapsed-weight-{{ ex.id }}">
+                {% if mode == 'low' %}
+                  {% set wl = ex.weight_low_load or (((ex.one_rep_max or 0) * ((ex.low_load_pct or 30) / 100))|round(1) if ex.one_rep_max else none) %}
+                  {% if wl %}<strong style="color:var(--orange);">{{ wl }}kg</strong><span class="text-secondary">({{ (ex.low_load_pct or 30)|int }}%)</span>
+                  {% else %}<span class="text-secondary">重量未設定</span>{% endif %}
+                {% elif ex.weight_setting %}
+                  <strong style="color:var(--blue);">{{ ex.weight_setting }}kg</strong><span class="text-secondary">(80%)</span>
+                {% else %}
+                  <span class="text-secondary">重量未設定</span>
+                {% endif %}
+              </span>
+              <span id="collapsed-rep-{{ ex.id }}">
+                <strong class="text-light">{% if mode == 'low' %}{{ ex.reps_low or 20 }}{% else %}{{ ex.reps or 8 }}{% endif %}</strong>rep
+              </span>
+              {% set cur_reps = ex.reps or 8 %}
+              <span id="rep-progress-{{ ex.id }}" style="display:{% if mode == 'low' %}none{% else %}flex{% endif %};gap:0.25rem;align-items:center;flex-shrink:0;">
+                {% for n in [8,9,10,11,12] %}
+                <span style="width:7px;height:7px;border-radius:50%;display:inline-block;flex-shrink:0;
+                             background:{% if cur_reps >= n %}var(--blue){% else %}rgba(255,255,255,0.15){% endif %};"></span>
+                {% endfor %}
+              </span>
+              {% if ex.needs_bench %}
+              <span id="collapsed-bench-angle-{{ ex.id }}" style="flex-shrink:0;color:rgba(255,255,255,0.4);">
+                {% if ex.bench_angle is not none and ex.bench_angle != '' %}🪑{{ ex.bench_angle }}°{% endif %}
+              </span>
+              {% endif %}
+            </div>
+          </div>
+
+          {# Detail section — shown by default in carousel #}
+          <div class="ex-detail-section" style="margin-top:0.5rem;">
+            <div class="d-flex gap-2 align-items-start">
+              <div style="flex:1;min-width:0;">
+                {% if ex.exercise_type not in ('plyometric', 'power') %}
+                <div class="d-flex mb-1" style="border:1.5px solid var(--sep);border-radius:7px;overflow:hidden;">
+                  <button type="button" class="load-mode-btn btn flex-fill fw-bold"
+                          data-se-id="{{ ex.id }}" data-mode="high"
+                          style="border-radius:0;font-size:0.72rem;height:2rem;
+                                 background:{% if mode != 'low' %}var(--blue);color:#fff{% else %}rgba(255,255,255,0.04);color:var(--txt-2){% endif %};">
+                    高負荷
+                  </button>
+                  <div style="width:1.5px;background:var(--sep);flex-shrink:0;"></div>
+                  <button type="button" class="load-mode-btn btn flex-fill fw-bold"
+                          data-se-id="{{ ex.id }}" data-mode="low"
+                          style="border-radius:0;font-size:0.72rem;height:2rem;
+                                 background:{% if mode == 'low' %}var(--orange);color:#000{% else %}rgba(255,255,255,0.04);color:var(--txt-2){% endif %};">
+                    低負荷
+                  </button>
+                </div>
+                {% endif %}
+                <div style="font-size:0.76rem;line-height:1.7;margin-top:0.25rem;">
+                  {% if ex.exercise_type in ('plyometric', 'power') %}
+                  <div class="d-flex align-items-center gap-1">
+                    <span class="text-secondary" style="width:3.4em;flex-shrink:0;">Quality</span>
+                    <span id="quality-val-{{ ex.id }}">
+                      {% if ex.quality %}: <strong style="color:{% if ex.quality <= 2 %}#f44336{% elif ex.quality == 3 %}#ff9800{% else %}#4caf50{% endif %};">Q{{ ex.quality }}</strong>
+                      {% else %}<span class="text-secondary">: 未記録</span>{% endif %}
+                    </span>
+                  </div>
+                  {% if ex.exercise_type == 'plyometric' %}
+                  <div class="d-flex align-items-center gap-1">
+                    <span class="text-secondary" style="width:3.4em;flex-shrink:0;">接地</span>
+                    <span id="contacts-val-{{ ex.id }}">
+                      {% if ex.contacts %}: <strong class="text-light">{{ ex.contacts }}</strong>回{% else %}<span class="text-secondary">: —</span>{% endif %}
+                    </span>
+                    <input type="number" class="form-control form-control-sm contacts-input ms-1"
+                           data-se-id="{{ ex.id }}" placeholder="接地数" min="0"
+                           value="{{ ex.contacts or '' }}"
+                           style="width:4.5rem;font-size:0.75rem;padding:0.15rem 0.3rem;">
+                  </div>
+                  {% elif ex.exercise_type == 'power' %}
+                  <div class="d-flex align-items-center gap-1">
+                    <span class="text-secondary" style="width:3.4em;flex-shrink:0;">投数</span>
+                    <span id="throws-val-{{ ex.id }}">
+                      {% if ex.throws %}: <strong class="text-light">{{ ex.throws }}</strong>投{% else %}<span class="text-secondary">: —</span>{% endif %}
+                    </span>
+                    <input type="number" class="form-control form-control-sm throws-input ms-1"
+                           data-se-id="{{ ex.id }}" placeholder="投数" min="0"
+                           value="{{ ex.throws or '' }}"
+                           style="width:4.5rem;font-size:0.75rem;padding:0.15rem 0.3rem;">
+                  </div>
+                  {% endif %}
+                  {% else %}
+                  {% if ex.one_rep_max %}
+                  <div class="d-flex">
+                    <span class="text-secondary" style="width:2.8em;flex-shrink:0;">1RM</span>
+                    <span>: <strong class="text-light">{{ ex.one_rep_max }}kg</strong></span>
+                  </div>
+                  {% endif %}
+                  {% if ex.needs_bench %}
+                  <div class="d-flex">
+                    <span class="text-secondary" style="width:2.8em;flex-shrink:0;">角度</span>
+                    <span id="bench-angle-val-{{ ex.id }}">
+                      {% if ex.bench_angle is not none and ex.bench_angle != '' %}
+                      : <strong class="text-light">{{ ex.bench_angle }}°</strong>
+                      {% else %}<span class="text-secondary">: —</span>{% endif %}
+                    </span>
+                  </div>
+                  {% endif %}
+                  <div class="d-flex align-items-center gap-1">
+                    <span class="text-secondary" style="width:2.8em;flex-shrink:0;">重量</span>
+                    <span id="weight-val-{{ ex.id }}">
+                      {% if mode == 'low' %}
+                        {% set wl = ex.weight_low_load or (((ex.one_rep_max or 0) * ((ex.low_load_pct or 30) / 100))|round(1) if ex.one_rep_max else none) %}
+                        {% if wl %}: <strong style="color:var(--orange);">{{ wl }}kg</strong><span class="text-secondary" style="font-size:0.65rem;"> ({{ (ex.low_load_pct or 30)|int }}%)</span>
+                        {% else %}<span class="text-secondary">: —</span>{% endif %}
+                      {% elif ex.weight_setting %}
+                        : <strong style="color:var(--blue);">{{ ex.weight_setting }}kg</strong><span class="text-secondary" style="font-size:0.65rem;"> (80%)</span>
+                      {% else %}<span class="text-secondary">: —</span>{% endif %}
+                    </span>
+                    {% if not ex.one_rep_max and ex.exercise_type in ('strength', None, '') %}
+                    <span style="font-size:0.58rem;padding:0.05rem 0.25rem;border-radius:3px;background:rgba(255,120,0,0.18);border:1px solid rgba(255,120,0,0.35);color:#ff9944;">1RM未設定</span>
+                    {% endif %}
+                  </div>
+                  <div class="d-flex">
+                    <span class="text-secondary" style="width:2.8em;flex-shrink:0;">rep</span>
+                    <span id="rep-val-{{ ex.id }}">: <strong class="text-light">{% if mode == 'low' %}{{ ex.reps_low or 20 }}{% else %}{{ ex.reps or 8 }}{% endif %}</strong></span>
+                  </div>
+                  {% endif %}
+                </div>
+                <div class="d-flex align-items-center gap-2 mt-1">
+                  <button type="button" class="adjust-toggle-btn btn btn-sm btn-outline-secondary"
+                          data-se-id="{{ ex.id }}"
+                          style="font-size:0.6rem;padding:0.08rem 0.35rem;line-height:1.4;border-radius:4px;">⚙</button>
+                  <span class="badge bg-warning text-dark exp-badge-{{ ex.id }}" style="font-size:0.62rem;">
+                    {{ "{:,}".format(ex.exp_earned) }} EXP
+                  </span>
+                  <a href="{{ url_for('exercise_edit', session_id=session.id, se_id=ex.id) }}"
+                     class="btn btn-outline-secondary btn-sm"
+                     style="font-size:0.68rem;padding:0.1rem 0.45rem;line-height:1.5;border-radius:4px;text-decoration:none;">📝 編集</a>
+                  <form method="post"
+                        action="{{ url_for('exercise_delete', session_id=session.id, se_id=ex.id) }}"
+                        onsubmit="return confirm('削除しますか？')" class="d-inline">
+                    <button class="btn btn-outline-danger btn-sm"
+                            style="font-size:0.68rem;padding:0.1rem 0.4rem;line-height:1.5;border-radius:4px;">🗑️</button>
+                  </form>
+                </div>
+                {# Inline adjust panel #}
+                <div class="adjust-panel mt-1 p-2" id="adjust-{{ ex.id }}"
+                     style="display:none;background:rgba(255,255,255,0.05);border-radius:7px;">
+                  <div class="d-flex gap-2 align-items-end flex-wrap">
+                    <div>
+                      <div class="section-label" style="margin-bottom:0.15rem;font-size:0.6rem;">1RM kg</div>
+                      <input type="number" class="form-control form-control-sm adjust-input"
+                             data-se-id="{{ ex.id }}" data-field="one_rep_max"
+                             value="{{ ex.one_rep_max or '' }}" step="0.5" min="0"
+                             style="width:5rem;font-size:0.8rem;padding:0.25rem 0.4rem;">
+                    </div>
+                    <div>
+                      <div class="section-label" style="margin-bottom:0.15rem;font-size:0.6rem;">Reps</div>
+                      <input type="number" class="form-control form-control-sm adjust-input"
+                             data-se-id="{{ ex.id }}" data-field="reps"
+                             value="{{ (ex.reps_low if mode == 'low' else ex.reps) or '' }}" step="1" min="1"
+                             style="width:3.6rem;font-size:0.8rem;padding:0.25rem 0.4rem;">
+                    </div>
+                    <div>
+                      <div class="section-label" id="pct-label-{{ ex.id }}"
+                           style="margin-bottom:0.15rem;font-size:0.6rem;">{% if mode == 'high' %}高%{% else %}低%{% endif %}</div>
+                      <input type="number" class="form-control form-control-sm adjust-input"
+                             data-se-id="{{ ex.id }}" data-field="low_load_pct"
+                             value="{{ 80 if mode == 'high' else (ex.low_load_pct or 50)|int }}"
+                             step="5" min="10" max="80"
+                             {% if mode == 'high' %}readonly{% endif %}
+                             style="width:3.6rem;font-size:0.8rem;padding:0.25rem 0.4rem;{% if mode == 'high' %}opacity:0.5;{% endif %}">
+                    </div>
+                    {% if ex.needs_bench %}
+                    <div>
+                      <div class="section-label" style="margin-bottom:0.15rem;font-size:0.6rem;">角度°</div>
+                      <select class="form-select form-select-sm adjust-select"
+                              data-se-id="{{ ex.id }}" data-field="bench_angle"
+                              style="width:5.5rem;font-size:0.78rem;padding:0.25rem 0.35rem;">
+                        <option value="">— なし</option>
+                        <option value="-60" {% if ex.bench_angle == -60 %}selected{% endif %}>-60°</option>
+                        <option value="-15" {% if ex.bench_angle == -15 %}selected{% endif %}>-15° デクライン</option>
+                        <option value="0"   {% if ex.bench_angle is not none and ex.bench_angle|int == 0 %}selected{% endif %}>0° フラット</option>
+                        <option value="15"  {% if ex.bench_angle == 15 %}selected{% endif %}>15°</option>
+                        <option value="30"  {% if ex.bench_angle == 30 %}selected{% endif %}>30° インクライン</option>
+                        <option value="45"  {% if ex.bench_angle == 45 %}selected{% endif %}>45°</option>
+                        <option value="60"  {% if ex.bench_angle == 60 %}selected{% endif %}>60°</option>
+                      </select>
+                    </div>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {# Set buttons + quality + complete #}
+          <div class="d-flex align-items-center gap-1 mt-2">
+            {% for i in [1,2,3,4,5,6] %}
+            {% set c = ex.get("set%d_completed" % i) %}
+            {% if i >= 4 %}{% set pc = ex.get("set%d_completed" % (i-1)) %}{% endif %}
+            <button type="button"
+                    class="set-toggle-btn btn btn-sm fw-bold {% if c %}btn-success{% else %}btn-outline-secondary{% endif %}{% if i >= 4 and not pc and not c %} d-none{% endif %}"
+                    data-se-id="{{ ex.id }}" data-set-num="{{ i }}"
+                    data-completed="{{ 'true' if c else 'false' }}"
+                    style="width:2rem;height:2rem;font-size:0.85rem;padding:0;border-radius:6px;">
+              {{ ['①','②','③','④','⑤','⑥'][i-1] }}
+            </button>
+            {% endfor %}
+            {# Quality selector (plyometric / power のみ) #}
+            {% if ex.exercise_type in ('plyometric', 'power') %}
+            <div class="quality-selector d-flex gap-0 ms-1" data-se-id="{{ ex.id }}">
+              {% for q in [1,2,3,4,5] %}
+              <button type="button" class="quality-btn btn btn-sm"
+                      data-se-id="{{ ex.id }}" data-quality="{{ q }}"
+                      style="width:1.5rem;height:2rem;font-size:0.68rem;padding:0;border-radius:{% if loop.first %}4px 0 0 4px{% elif loop.last %}0 4px 4px 0{% else %}0{% endif %};
+                             border:1px solid rgba(255,255,255,0.2);{% if ex.quality == q %}background:{% if q <= 2 %}#f44336{% elif q == 3 %}#ff9800{% else %}#4caf50{% endif %};color:#fff;{% else %}background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.4);{% endif %}">Q{{ q }}</button>
+              {% endfor %}
+            </div>
+            {% endif %}
+            {# Complete (no skip) #}
+            <div class="ms-auto d-flex gap-1 flex-shrink-0">
+              <button type="button"
+                      class="pain-btn btn {% if ex.pain_flag %}btn-danger{% else %}btn-outline-secondary{% endif %}"
+                      data-se-id="{{ ex.id }}" title="痛みあり"
+                      style="width:2.1rem;height:2rem;font-size:0.85rem;padding:0;border-radius:6px;">🩹</button>
+              <button type="button"
+                      class="complete-btn btn {% if ex.completed %}btn-success{% else %}btn-outline-secondary{% endif %}"
+                      data-se-id="{{ ex.id }}" title="完了"
+                      style="height:2rem;font-size:0.85rem;padding:0 0.6rem;border-radius:6px;font-weight:700;">✓ 完了</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+
+    {# Trailing spacer for peek effect #}
+    <div style="min-width:0.75rem;flex-shrink:0;"></div>
+  </div>
+
+  {# All-complete message #}
+  <div id="all-complete-msg"
+       style="display:{% if not pending_exs %}flex{% else %}none{% endif %};flex-direction:column;
+              align-items:center;justify-content:center;padding:3rem 1rem;text-align:center;">
+    <div style="font-size:2.5rem;margin-bottom:1rem;">🎉</div>
+    <div style="font-weight:800;font-size:1.1rem;margin-bottom:0.4rem;color:var(--yellow);">すべて完了しました！</div>
+    <div style="font-size:0.82rem;color:var(--txt-2);">お疲れ様でした</div>
+  </div>
 </div>
 
-<form id="bulk-delete-form" method="post"
-      action="{{ url_for('session_exercises_bulk_delete', session_id=session.id) }}">
-<div class="d-flex flex-column gap-2 mb-3" id="session-sortable">
-  {% for ex in exercises %}
-  {% set mode = ex.load_mode or 'high' %}
-  <div class="card exercise-card{% if ex.skipped %} se-skipped{% elif ex.completed %} se-completed{% endif %}"
-       id="ex-card-{{ ex.id }}" data-id="{{ ex.id }}"
-       data-primary-muscle="{{ ex.primary_muscle or '' }}"
-       data-skipped="{{ 'true' if ex.skipped else 'false' }}"
-       data-completed="{{ 'true' if ex.completed else 'false' }}"
-       style="{% if ex.body_part %}--card-bg:{{ category_bg(ex.body_part) }};{% endif %}">
+{# ── Hidden templates for completed cards (pending exercises) ── #}
+{% for ex in pending_exs %}
+<template id="completed-tpl-{{ ex.id }}">
+  <div class="card exercise-card se-completed" id="done-card-{{ ex.id }}"
+       style="opacity:0.72;{% if ex.body_part %}--card-bg:{{ category_bg(ex.body_part) }};{% endif %}">
     <div class="card-body py-2 px-2">
-
-      {# ── 常時表示: 名前行 ── #}
-      <div class="d-flex align-items-center gap-1 flex-wrap">
-        <span class="drag-handle text-secondary"
-              style="font-size:1.6rem;cursor:grab;touch-action:none;user-select:none;opacity:0.55;flex-shrink:0;padding:0.1rem 0.35rem;line-height:1;">≡</span>
-        <div class="ex-checkbox-wrap" style="display:none;flex-shrink:0;">
-          <input type="checkbox" class="form-check-input ex-checkbox"
-                 name="se_ids" value="{{ ex.id }}"
-                 style="width:1.3rem;height:1.3rem;cursor:pointer;">
-        </div>
+      <div class="d-flex align-items-center gap-2">
+        <span style="color:#4caf50;font-size:1rem;flex-shrink:0;line-height:1;">✓</span>
         <a href="{{ url_for('exercise_progress', exercise_id=ex.exercise_id) }}"
-           class="fw-bold text-info text-decoration-none" style="font-size:0.92rem;line-height:1.3;">
+           class="fw-bold text-secondary text-decoration-none" style="font-size:0.88rem;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
           {{ ex.exercise_name }}
         </a>
-        {% if ex.needs_bench %}<span style="font-size:0.85rem;" title="ベンチ台必要">🪑</span>{% endif %}
         {% if ex.body_part %}
-        <span class="badge" style="font-size:0.56rem;padding:0.12rem 0.35rem;background:{{ category_bg(ex.body_part) }};color:rgba(255,255,255,0.9);border-radius:4px;">{{ ex.body_part }}</span>
+        <span class="badge" style="font-size:0.52rem;padding:0.1rem 0.3rem;background:{{ category_bg(ex.body_part) }};color:rgba(255,255,255,0.8);border-radius:3px;flex-shrink:0;">{{ ex.body_part }}</span>
         {% endif %}
-        {% if ex.primary_muscle %}
-        <strong style="color:var(--yellow);font-size:0.75rem;font-weight:700;">{{ ex.primary_muscle }}</strong>
-        {% endif %}
-        {% if not ex.one_rep_max and ex.exercise_type in ('strength', 'accessory') %}
-        <span style="font-size:0.58rem;padding:0.05rem 0.25rem;border-radius:3px;background:rgba(255,80,0,0.22);border:1px solid rgba(255,80,0,0.45);color:#ff7744;font-weight:700;">⚠ 1RM未設定</span>
-        {% endif %}
-        {% if ex.exercise_type and ex.exercise_type != 'strength' %}
-        {% set type_colors = {'power':'#e040fb','plyometric':'#00e5ff','core':'#69f0ae','accessory':'#78909c','conditioning':'#ffb300','warmup':'#607d8b'} %}
-        <span style="font-size:0.55rem;padding:0.05rem 0.28rem;border-radius:3px;background:rgba(0,0,0,0.3);border:1px solid {{ type_colors.get(ex.exercise_type,'#888') }};color:{{ type_colors.get(ex.exercise_type,'#888') }};font-weight:700;letter-spacing:0.04em;">{{ ex.exercise_type }}</span>
-        {% endif %}
-        {% if ex.lvup_high %}
-        <button type="button" class="lvup-badge btn btn-sm py-0 px-1"
-                data-exercise-id="{{ ex.exercise_id }}"
-                data-lvup-type="high"
-                id="lvup-badge-{{ ex.exercise_id }}-high"
-                style="background:#ffd700;color:#333;font-size:0.6rem;border:none;border-radius:3px;font-weight:800;line-height:1.6;"
-                title="高負荷 12rep×3set 達成！タップで解除">📈 Lvup!可</button>
-        {% endif %}
-        {% if ex.lvup_low %}
-        <button type="button" class="lvup-badge btn btn-sm py-0 px-1"
-                data-exercise-id="{{ ex.exercise_id }}"
-                data-lvup-type="low"
-                id="lvup-badge-{{ ex.exercise_id }}-low"
-                style="background:#ff9a3c;color:#fff;font-size:0.6rem;border:none;border-radius:3px;font-weight:800;line-height:1.6;"
-                title="低負荷 40rep×3set 達成！タップで解除">📈 Lvup!可</button>
-        {% endif %}
-        {# 折りたたみトグル #}
-        <button type="button" class="collapse-toggle-btn ms-auto btn btn-sm"
-                data-se-id="{{ ex.id }}"
-                style="font-size:0.7rem;padding:0.05rem 0.3rem;line-height:1.4;border-radius:4px;color:var(--txt-2);background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);flex-shrink:0;">▶</button>
+        <span class="badge bg-warning text-dark exp-badge-{{ ex.id }}" style="font-size:0.58rem;flex-shrink:0;">
+          {{ "{:,}".format(ex.exp_earned) }} EXP
+        </span>
       </div>
-
-      {# 折りたたみ時のみ表示: 負荷情報行（角度もここにインライン） #}
-      <div class="ex-collapsed-only" style="display:none;padding-left:1.8rem;margin-top:0.15rem;">
-        <div class="d-flex gap-2 align-items-center" style="font-size:0.72rem;color:var(--txt-2);">
-          <span id="collapsed-mode-{{ ex.id }}" style="font-weight:700;{% if mode == 'low' %}color:var(--orange){% else %}color:var(--blue){% endif %};">
-            {% if mode == 'low' %}低{% else %}高{% endif %}
-          </span>
-          <span id="collapsed-1rm-{{ ex.id }}" style="display:none;">
-            1RM:<strong class="text-light">{{ ex.one_rep_max }}kg</strong>
-          </span>
-          <span id="collapsed-weight-{{ ex.id }}">
-            {% if mode == 'low' %}
-              {% set wl = ex.weight_low_load or (((ex.one_rep_max or 0) * ((ex.low_load_pct or 30) / 100))|round(1) if ex.one_rep_max else none) %}
-              {% if wl %}
-                <strong style="color:var(--orange);">{{ wl }}kg</strong><span class="text-secondary">({{ (ex.low_load_pct or 30)|int }}%)</span>
-              {% else %}
-                <span class="text-secondary">重量未設定</span>
-              {% endif %}
-            {% elif ex.weight_setting %}
-              <strong style="color:var(--blue);">{{ ex.weight_setting }}kg</strong><span class="text-secondary">(80%)</span>
-            {% else %}
-              <span class="text-secondary">重量未設定</span>
-            {% endif %}
-          </span>
-          <span id="collapsed-rep-{{ ex.id }}">
-            <strong class="text-light">{% if mode == 'low' %}{{ ex.reps_low or 20 }}{% else %}{{ ex.reps or 8 }}{% endif %}</strong>rep
-          </span>
-          {# 8→12 rep progress dots (hidden in low mode) #}
-          {% set cur_reps = ex.reps or 8 %}
-          <span id="rep-progress-{{ ex.id }}" style="display:{% if mode == 'low' %}none{% else %}flex{% endif %};gap:0.25rem;align-items:center;flex-shrink:0;">
-            {% for n in [8,9,10,11,12] %}
-            <span style="width:7px;height:7px;border-radius:50%;display:inline-block;flex-shrink:0;
-                         background:{% if cur_reps >= n %}var(--blue){% else %}rgba(255,255,255,0.15){% endif %};"></span>
-            {% endfor %}
-          </span>
-          {# ベンチ角度インライン表示 #}
-          {% if ex.needs_bench %}
-          <span id="collapsed-bench-angle-{{ ex.id }}" style="flex-shrink:0;color:rgba(255,255,255,0.4);">
-            {% if ex.bench_angle is not none and ex.bench_angle != '' %}🪑{{ ex.bench_angle }}°{% endif %}
-          </span>
-          {% endif %}
-        </div>
-        {# 前回の実績（前回セッション自身のモードに基づいて表示） #}
-        <div id="prev-row-{{ ex.id }}"
-             class="gap-2 align-items-center mt-0"
-             style="display:{% if ex.prev_weight or ex.prev_reps %}flex{% else %}none{% endif %};font-size:0.65rem;color:rgba(255,255,255,0.38);"
-             data-prev-high-weight="{{ ex.prev_high_weight or '' }}"
-             data-prev-high-reps="{{ ex.prev_high_reps or '' }}"
-             data-prev-low-weight="{{ ex.prev_low_weight or '' }}"
-             data-prev-low-reps="{{ ex.prev_low_reps or '' }}"
-             data-prev-sets="{{ ex.prev_sets or '' }}"
-             data-prev-mode="{{ ex.prev_mode or 'high' }}">
-          <span>前回</span>
-          {% if ex.prev_mode %}
-          <span style="font-size:0.58rem;font-weight:800;
-                       color:{% if ex.prev_mode == 'low' %}var(--orange){% else %}var(--blue){% endif %};">
-            {% if ex.prev_mode == 'low' %}低{% else %}高{% endif %}
-          </span>
-          {% endif %}
-          <span style="color:rgba(255,255,255,0.25);">:</span>
-          <span id="prev-weight-{{ ex.id }}">{% if ex.prev_weight %}{{ ex.prev_weight }}kg{% endif %}</span>
-          <span id="prev-reps-{{ ex.id }}">{% if ex.prev_reps %}×<strong style="color:rgba(255,255,255,0.5);">{{ ex.prev_reps }}</strong>rep{% endif %}</span>
-          <span id="prev-sets-{{ ex.id }}">{% if ex.prev_sets %}/ {{ ex.prev_sets }}set{% endif %}</span>
-        </div>
-      </div>
-
-      {# ── 常時表示: セットボタン + 完了・スキップ ── #}
-      <div class="d-flex align-items-center gap-1 mt-1">
-        {# ①〜⑥ 横並び #}
-        {% for i in [1,2,3,4,5,6] %}
-        {% set c = ex.get("set%d_completed" % i) %}
-        {% if i >= 4 %}{% set pc = ex.get("set%d_completed" % (i-1)) %}{% endif %}
-        <button type="button"
-                class="set-toggle-btn btn btn-sm fw-bold {% if c %}btn-success{% else %}btn-outline-secondary{% endif %}{% if i >= 4 and not pc and not c %} d-none{% endif %}"
-                data-se-id="{{ ex.id }}" data-set-num="{{ i }}"
-                data-completed="{{ 'true' if c else 'false' }}"
-                style="width:2rem;height:2rem;font-size:0.85rem;padding:0;border-radius:6px;">
-          {{ ['①','②','③','④','⑤','⑥'][i-1] }}
-        </button>
-        {% endfor %}
-        {# Quality selector (plyometric / power のみ) #}
-        {% if ex.exercise_type in ('plyometric', 'power') %}
-        <div class="quality-selector d-flex gap-0 ms-1" data-se-id="{{ ex.id }}">
-          {% for q in [1,2,3,4,5] %}
-          <button type="button" class="quality-btn btn btn-sm"
-                  data-se-id="{{ ex.id }}" data-quality="{{ q }}"
-                  style="width:1.5rem;height:2rem;font-size:0.68rem;padding:0;border-radius:{% if loop.first %}4px 0 0 4px{% elif loop.last %}0 4px 4px 0{% else %}0{% endif %};
-                         border:1px solid rgba(255,255,255,0.2);{% if ex.quality == q %}background:{% if q <= 2 %}#f44336{% elif q == 3 %}#ff9800{% else %}#4caf50{% endif %};color:#fff;{% else %}background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.4);{% endif %}">Q{{ q }}</button>
-          {% endfor %}
-        </div>
-        {% endif %}
-        {# 完了・スキップ #}
-        <div class="ms-auto d-flex gap-1 flex-shrink-0">
-          {# 痛みフラグ (全種目) #}
-          <button type="button"
-                  class="pain-btn btn {% if ex.pain_flag %}btn-danger{% else %}btn-outline-secondary{% endif %}"
-                  data-se-id="{{ ex.id }}" title="痛みあり"
-                  style="width:2.1rem;height:2rem;font-size:0.85rem;padding:0;border-radius:6px;">🩹</button>
-          <button type="button"
-                  class="complete-btn btn {% if ex.completed %}btn-success{% else %}btn-outline-secondary{% endif %}"
-                  data-se-id="{{ ex.id }}" title="完了"
-                  style="width:2.1rem;height:2rem;font-size:0.95rem;padding:0;border-radius:6px;">✓</button>
-          <button type="button"
-                  class="skip-btn btn {% if ex.skipped %}btn-warning{% else %}btn-outline-secondary{% endif %}"
-                  data-se-id="{{ ex.id }}" title="スキップ"
-                  style="width:2.1rem;height:2rem;font-size:0.85rem;padding:0;border-radius:6px;">⏭</button>
-        </div>
-      </div>
-
-      {# ── 折りたたみ部分（デフォルト非表示）── #}
-      <div class="ex-detail-section" style="display:none;margin-top:0.5rem;">
-        <div class="d-flex gap-2 align-items-start">
-          {# 左: 情報ブロック #}
-          <div style="flex:1;min-width:0;">
-            {% if ex.exercise_type not in ('plyometric', 'power') %}
-            {# 高/低トグル (strength / core / accessory 等のみ) #}
-            <div class="d-flex mb-1" style="border:1.5px solid var(--sep);border-radius:7px;overflow:hidden;">
-              <button type="button" class="load-mode-btn btn flex-fill fw-bold"
-                      data-se-id="{{ ex.id }}" data-mode="high"
-                      style="border-radius:0;font-size:0.72rem;height:2rem;
-                             background:{% if mode != 'low' %}var(--blue);color:#fff{% else %}rgba(255,255,255,0.04);color:var(--txt-2){% endif %};">
-                高負荷
-              </button>
-              <div style="width:1.5px;background:var(--sep);flex-shrink:0;"></div>
-              <button type="button" class="load-mode-btn btn flex-fill fw-bold"
-                      data-se-id="{{ ex.id }}" data-mode="low"
-                      style="border-radius:0;font-size:0.72rem;height:2rem;
-                             background:{% if mode == 'low' %}var(--orange);color:#000{% else %}rgba(255,255,255,0.04);color:var(--txt-2){% endif %};">
-                低負荷
-              </button>
-            </div>
-            {% endif %}
-            <div style="font-size:0.76rem;line-height:1.7;margin-top:0.25rem;">
-              {% if ex.exercise_type in ('plyometric', 'power') %}
-              {# Quality スコア表示 #}
-              <div class="d-flex align-items-center gap-1">
-                <span class="text-secondary" style="width:3.4em;flex-shrink:0;">Quality</span>
-                <span id="quality-val-{{ ex.id }}">
-                  {% if ex.quality %}
-                  : <strong style="color:{% if ex.quality <= 2 %}#f44336{% elif ex.quality == 3 %}#ff9800{% else %}#4caf50{% endif %};">Q{{ ex.quality }}</strong>
-                  {% else %}<span class="text-secondary">: 未記録</span>{% endif %}
-                </span>
-              </div>
-              {# contacts or throws #}
-              {% if ex.exercise_type == 'plyometric' %}
-              <div class="d-flex align-items-center gap-1">
-                <span class="text-secondary" style="width:3.4em;flex-shrink:0;">接地</span>
-                <span id="contacts-val-{{ ex.id }}">
-                  {% if ex.contacts %}: <strong class="text-light">{{ ex.contacts }}</strong>回{% else %}<span class="text-secondary">: —</span>{% endif %}
-                </span>
-                <input type="number" class="form-control form-control-sm contacts-input ms-1"
-                       data-se-id="{{ ex.id }}" placeholder="接地数" min="0"
-                       value="{{ ex.contacts or '' }}"
-                       style="width:4.5rem;font-size:0.75rem;padding:0.15rem 0.3rem;">
-              </div>
-              {% elif ex.exercise_type == 'power' %}
-              <div class="d-flex align-items-center gap-1">
-                <span class="text-secondary" style="width:3.4em;flex-shrink:0;">投数</span>
-                <span id="throws-val-{{ ex.id }}">
-                  {% if ex.throws %}: <strong class="text-light">{{ ex.throws }}</strong>投{% else %}<span class="text-secondary">: —</span>{% endif %}
-                </span>
-                <input type="number" class="form-control form-control-sm throws-input ms-1"
-                       data-se-id="{{ ex.id }}" placeholder="投数" min="0"
-                       value="{{ ex.throws or '' }}"
-                       style="width:4.5rem;font-size:0.75rem;padding:0.15rem 0.3rem;">
-              </div>
-              {% endif %}
-              {% else %}
-              {% if ex.one_rep_max %}
-              <div class="d-flex">
-                <span class="text-secondary" style="width:2.8em;flex-shrink:0;">1RM</span>
-                <span>: <strong class="text-light">{{ ex.one_rep_max }}kg</strong></span>
-              </div>
-              {% endif %}
-              {% if ex.needs_bench %}
-              <div class="d-flex">
-                <span class="text-secondary" style="width:2.8em;flex-shrink:0;">角度</span>
-                <span id="bench-angle-val-{{ ex.id }}">
-                  {% if ex.bench_angle is not none and ex.bench_angle != '' %}
-                  : <strong class="text-light">{{ ex.bench_angle }}°</strong>
-                  {% else %}
-                  <span class="text-secondary">: —</span>
-                  {% endif %}
-                </span>
-              </div>
-              {% endif %}
-              <div class="d-flex align-items-center gap-1">
-                <span class="text-secondary" style="width:2.8em;flex-shrink:0;">重量</span>
-                <span id="weight-val-{{ ex.id }}">
-                  {% if mode == 'low' %}
-                    {% set wl = ex.weight_low_load or (((ex.one_rep_max or 0) * ((ex.low_load_pct or 30) / 100))|round(1) if ex.one_rep_max else none) %}
-                    {% if wl %}
-                      : <strong style="color:var(--orange);">{{ wl }}kg</strong><span class="text-secondary" style="font-size:0.65rem;"> ({{ (ex.low_load_pct or 30)|int }}%)</span>
-                    {% else %}
-                      <span class="text-secondary">: —</span>
-                    {% endif %}
-                  {% elif ex.weight_setting %}
-                    : <strong style="color:var(--blue);">{{ ex.weight_setting }}kg</strong><span class="text-secondary" style="font-size:0.65rem;"> (80%)</span>
-                  {% else %}
-                    <span class="text-secondary">: —</span>
-                  {% endif %}
-                </span>
-                {% if not ex.one_rep_max and ex.exercise_type in ('strength', None, '') %}
-                <span style="font-size:0.58rem;padding:0.05rem 0.25rem;border-radius:3px;background:rgba(255,120,0,0.18);border:1px solid rgba(255,120,0,0.35);color:#ff9944;">1RM未設定</span>
-                {% endif %}
-              </div>
-              <div class="d-flex">
-                <span class="text-secondary" style="width:2.8em;flex-shrink:0;">rep</span>
-                <span id="rep-val-{{ ex.id }}">: <strong class="text-light">{% if mode == 'low' %}{{ ex.reps_low or 20 }}{% else %}{{ ex.reps or 8 }}{% endif %}</strong></span>
-              </div>
-              {% endif %}
-            </div>
-            <div class="d-flex align-items-center gap-2 mt-1">
-              <button type="button" class="adjust-toggle-btn btn btn-sm btn-outline-secondary"
-                      data-se-id="{{ ex.id }}"
-                      style="font-size:0.6rem;padding:0.08rem 0.35rem;line-height:1.4;border-radius:4px;">⚙</button>
-              <span class="badge bg-warning text-dark exp-badge-{{ ex.id }}" style="font-size:0.62rem;">
-                {{ "{:,}".format(ex.exp_earned) }} EXP
-              </span>
-            </div>
-            {# Inline adjust panel #}
-            <div class="adjust-panel mt-1 p-2" id="adjust-{{ ex.id }}"
-                 style="display:none;background:rgba(255,255,255,0.05);border-radius:7px;">
-              <div class="d-flex gap-2 align-items-end flex-wrap">
-                <div>
-                  <div class="section-label" style="margin-bottom:0.15rem;font-size:0.6rem;">1RM kg</div>
-                  <input type="number" class="form-control form-control-sm adjust-input"
-                         data-se-id="{{ ex.id }}" data-field="one_rep_max"
-                         value="{{ ex.one_rep_max or '' }}" step="0.5" min="0"
-                         style="width:5rem;font-size:0.8rem;padding:0.25rem 0.4rem;">
-                </div>
-                <div>
-                  <div class="section-label" style="margin-bottom:0.15rem;font-size:0.6rem;">Reps</div>
-                  <input type="number" class="form-control form-control-sm adjust-input"
-                         data-se-id="{{ ex.id }}" data-field="reps"
-                         value="{{ (ex.reps_low if mode == 'low' else ex.reps) or '' }}" step="1" min="1"
-                         style="width:3.6rem;font-size:0.8rem;padding:0.25rem 0.4rem;">
-                </div>
-                <div>
-                  <div class="section-label" id="pct-label-{{ ex.id }}"
-                       style="margin-bottom:0.15rem;font-size:0.6rem;">{% if mode == 'high' %}高%{% else %}低%{% endif %}</div>
-                  <input type="number" class="form-control form-control-sm adjust-input"
-                         data-se-id="{{ ex.id }}" data-field="low_load_pct"
-                         value="{{ 80 if mode == 'high' else (ex.low_load_pct or 50)|int }}"
-                         step="5" min="10" max="80"
-                         {% if mode == 'high' %}readonly{% endif %}
-                         style="width:3.6rem;font-size:0.8rem;padding:0.25rem 0.4rem;{% if mode == 'high' %}opacity:0.5;{% endif %}">
-                </div>
-                {% if ex.needs_bench %}
-                <div>
-                  <div class="section-label" style="margin-bottom:0.15rem;font-size:0.6rem;">角度°</div>
-                  <select class="form-select form-select-sm adjust-select"
-                          data-se-id="{{ ex.id }}" data-field="bench_angle"
-                          style="width:5.5rem;font-size:0.78rem;padding:0.25rem 0.35rem;">
-                    <option value="">— なし</option>
-                    <option value="-60" {% if ex.bench_angle == -60 %}selected{% endif %}>-60°</option>
-                    <option value="-15" {% if ex.bench_angle == -15 %}selected{% endif %}>-15° デクライン</option>
-                    <option value="0"   {% if ex.bench_angle is not none and ex.bench_angle|int == 0 %}selected{% endif %}>0° フラット</option>
-                    <option value="15"  {% if ex.bench_angle == 15 %}selected{% endif %}>15°</option>
-                    <option value="30"  {% if ex.bench_angle == 30 %}selected{% endif %}>30° インクライン</option>
-                    <option value="45"  {% if ex.bench_angle == 45 %}selected{% endif %}>45°</option>
-                    <option value="60"  {% if ex.bench_angle == 60 %}selected{% endif %}>60°</option>
-                  </select>
-                </div>
-                {% endif %}
-              </div>
-            </div>
-          </div>
-
-          {# 右: 編集・削除 #}
-          <div class="d-flex flex-column gap-1" style="flex-shrink:0;">
-            <a href="{{ url_for('exercise_edit', session_id=session.id, se_id=ex.id) }}"
-               class="btn btn-outline-secondary" title="編集"
-               style="width:2.5rem;height:2rem;font-size:0.78rem;padding:0;display:flex;align-items:center;justify-content:center;border-radius:5px;text-decoration:none;">📝</a>
-            <form method="post"
-                  action="{{ url_for('exercise_delete', session_id=session.id, se_id=ex.id) }}"
-                  onsubmit="return confirm('削除しますか？')" style="width:2.5rem;">
-              <button class="btn btn-outline-danger" title="削除"
-                      style="width:2.5rem;height:2rem;font-size:0.78rem;padding:0;border-radius:5px;">🗑️</button>
-            </form>
-          </div>
-        </div>
-      </div>
-
     </div>
   </div>
-  {% endfor %}
-</div>
-</form>
+</template>
+{% endfor %}
 
-{# Entry shortcuts (compact) when exercises exist #}
+{# ── COMPLETED SECTION ── #}
+<div id="completed-section" class="mb-3" style="display:{% if all_finished %}block{% else %}none{% endif %};">
+  <div class="d-flex align-items-center gap-2 mb-2 px-1">
+    <span style="font-size:0.65rem;font-weight:700;letter-spacing:0.08em;color:var(--txt-2);">✅ 完了済み</span>
+    <div style="flex:1;height:1px;background:var(--sep);"></div>
+    <span id="done-count-label" style="font-size:0.65rem;color:var(--txt-2);">{{ all_finished|length }}件</span>
+  </div>
+  <div id="completed-list" class="d-flex flex-column gap-2">
+    {% for ex in all_finished %}
+    <div class="card exercise-card {% if ex.completed %}se-completed{% elif ex.skipped %}se-skipped{% endif %}"
+         style="opacity:0.72;{% if ex.body_part %}--card-bg:{{ category_bg(ex.body_part) }};{% endif %}">
+      <div class="card-body py-2 px-2">
+        <div class="d-flex align-items-center gap-2">
+          <span style="color:{% if ex.completed %}#4caf50{% else %}#ff9800{% endif %};font-size:1rem;flex-shrink:0;line-height:1;">{% if ex.completed %}✓{% else %}⏭{% endif %}</span>
+          <a href="{{ url_for('exercise_progress', exercise_id=ex.exercise_id) }}"
+             class="fw-bold text-secondary text-decoration-none" style="font-size:0.88rem;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+            {{ ex.exercise_name }}
+          </a>
+          {% if ex.body_part %}
+          <span class="badge" style="font-size:0.52rem;padding:0.1rem 0.3rem;background:{{ category_bg(ex.body_part) }};color:rgba(255,255,255,0.8);border-radius:3px;flex-shrink:0;">{{ ex.body_part }}</span>
+          {% endif %}
+          <span class="badge bg-warning text-dark exp-badge-{{ ex.id }}" style="font-size:0.58rem;flex-shrink:0;">
+            {{ "{:,}".format(ex.exp_earned) }} EXP
+          </span>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+{# Entry shortcuts #}
 <div class="d-flex gap-2 mb-2">
   <a href="{{ url_for('session_apply_my_set', session_id=session.id) }}"
      class="btn btn-outline-warning btn-sm flex-fill">マイセット</a>
   <a href="{{ url_for('session_copy_from', session_id=session.id) }}"
      class="btn btn-outline-info btn-sm flex-fill">直近からコピー</a>
 </div>
-{# スティッキーバー分のスペーサー（1.1倍） #}
 <div style="height:4rem;"></div>
 
 {% else %}
@@ -525,7 +554,7 @@
 </div>
 {% endif %}
 
-{# 終了スティッキーバー（常時表示、セレクトモード時は非表示） #}
+{# Sticky finish bar #}
 {% if exercises %}
 <div class="sticky-action-bar" id="finish-bar">
   <button type="button" class="btn btn-success btn-lg w-100 fw-bold finish-trigger-btn"
@@ -535,7 +564,7 @@
 </div>
 {% endif %}
 
-{# ── セッション終了 RPE モーダル ── #}
+{# ── RPE Modal ── #}
 <div id="finish-modal-overlay"
      style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.72);z-index:9999;
             align-items:flex-end;justify-content:center;">
@@ -547,8 +576,6 @@
     <div style="font-size:1.1rem;font-weight:800;margin-bottom:1.2rem;text-align:center;">
       🏁 セッション終了
     </div>
-
-    {# 時間入力 #}
     <div style="margin-bottom:1.1rem;">
       <div style="font-size:0.7rem;color:var(--txt-2);font-weight:700;letter-spacing:0.06em;
                   text-transform:uppercase;margin-bottom:0.5rem;">トレーニング時間（分）</div>
@@ -564,15 +591,12 @@
                 data-delta="5" style="width:2.4rem;height:2.4rem;font-size:1rem;padding:0;border-radius:8px;">＋</button>
       </div>
     </div>
-
-    {# RPE 選択 #}
     <div style="margin-bottom:1.4rem;">
       <div style="font-size:0.7rem;color:var(--txt-2);font-weight:700;letter-spacing:0.06em;
                   text-transform:uppercase;margin-bottom:0.5rem;">Session RPE（全体的なきつさ）</div>
       <div class="d-flex gap-1 justify-content-center flex-wrap" id="rpe-buttons">
         {% for r in range(1, 11) %}
-        <button type="button" class="rpe-btn btn"
-                data-rpe="{{ r }}"
+        <button type="button" class="rpe-btn btn" data-rpe="{{ r }}"
                 style="width:2.6rem;height:2.6rem;font-size:0.85rem;font-weight:800;padding:0;
                        border-radius:8px;border:1.5px solid rgba(255,255,255,0.18);
                        background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.6);">{{ r }}</button>
@@ -581,8 +605,6 @@
       <div id="rpe-label" style="text-align:center;font-size:0.72rem;color:var(--txt-2);
                                   margin-top:0.5rem;min-height:1.1em;"></div>
     </div>
-
-    {# ボタン #}
     <div class="d-flex gap-2">
       <button type="button" id="finish-modal-cancel"
               class="btn btn-outline-secondary flex-fill" style="height:3rem;font-size:0.9rem;">
@@ -599,50 +621,88 @@
   </div>
 </div>
 
-{# 一括削除バー（セレクトモード時のみ表示） #}
-<div class="sticky-action-bar" id="bulk-delete-bar" style="display:none;">
-  <button id="bulk-delete-btn" type="submit" form="bulk-delete-form"
-          class="btn btn-danger btn-lg w-100" disabled>選択してください</button>
-</div>
-
-{% if exercises %}
-<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
-{% endif %}
 <script>
 (function () {
-  // ── Sortable ──────────────────────────────────────────────────────────────
-  var sortableEl = document.getElementById('session-sortable');
-  if (sortableEl && typeof Sortable !== 'undefined') {
-    Sortable.create(sortableEl, {
-      handle: '.drag-handle',
-      animation: 150,
-      delay: 150,
-      delayOnTouchOnly: true,
-      ghostClass: 'sortable-ghost',
-      chosenClass: 'sortable-chosen',
-      scroll: true,
-      scrollSensitivity: 80,
-      scrollSpeed: 25,
-      bubbleScroll: true,
-      onEnd: function () {
-        var ids = Array.from(document.querySelectorAll('#session-sortable [data-id]'))
-                       .map(function (el) { return el.dataset.id; });
-        fetch('{{ url_for("session_exercises_reorder", session_id=session.id) }}', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ids: ids })
-        });
-        checkMuscleConflicts();
+  var TOTAL_EXERCISES = {{ exercises|length }};
+
+  // ── Carousel ──────────────────────────────────────────────────────────────
+  var carouselTrack = document.getElementById('carousel-track');
+
+  function getSlides() {
+    return Array.from(document.querySelectorAll('.carousel-slide'));
+  }
+
+  function activateDot(idx) {
+    var dots = document.querySelectorAll('#carousel-dots .c-dot');
+    dots.forEach(function(dot, i) {
+      if (i === idx) {
+        dot.style.width = '1.5rem';
+        dot.style.background = 'var(--yellow)';
+      } else {
+        dot.style.width = '0.45rem';
+        dot.style.background = 'rgba(255,255,255,0.2)';
       }
     });
   }
 
+  function updateCarousel() {
+    var slides = getSlides();
+    var pending = slides.length;
+    var counter = document.getElementById('carousel-counter');
+    if (counter) counter.textContent = pending + '/' + TOTAL_EXERCISES;
+
+    var dotsContainer = document.getElementById('carousel-dots');
+    if (dotsContainer) {
+      dotsContainer.innerHTML = '';
+      slides.forEach(function(slide, i) {
+        var dot = document.createElement('span');
+        dot.className = 'c-dot';
+        dot.dataset.seId = slide.dataset.seId;
+        dot.style.cssText = 'height:0.45rem;border-radius:4px;flex-shrink:0;transition:all 0.25s;width:0.45rem;background:rgba(255,255,255,0.2);';
+        dotsContainer.appendChild(dot);
+      });
+      dotsContainer.style.opacity = pending <= 1 ? '0' : '1';
+      if (pending > 0) activateDot(0);
+    }
+
+    var track = document.getElementById('carousel-track');
+    var allDoneMsg = document.getElementById('all-complete-msg');
+    if (pending === 0) {
+      if (track) track.style.display = 'none';
+      if (allDoneMsg) allDoneMsg.style.display = 'flex';
+    } else {
+      if (track) track.style.display = 'flex';
+      if (allDoneMsg) allDoneMsg.style.display = 'none';
+    }
+
+    updateDoneCount();
+  }
+
+  // Track scroll → update active dot
+  if (carouselTrack) {
+    var scrollTimer = null;
+    carouselTrack.addEventListener('scroll', function() {
+      if (scrollTimer) clearTimeout(scrollTimer);
+      scrollTimer = setTimeout(function() {
+        var slides = getSlides();
+        if (!slides.length) return;
+        var trackLeft = carouselTrack.getBoundingClientRect().left;
+        var closest = 0, minDist = Infinity;
+        slides.forEach(function(slide, i) {
+          var dist = Math.abs(slide.getBoundingClientRect().left - trackLeft);
+          if (dist < minDist) { minDist = dist; closest = i; }
+        });
+        activateDot(closest);
+      }, 80);
+    }, { passive: true });
+  }
+
   // ── アコーディオン（折りたたみ）─────────────────────────────────────────────
   function setCardCollapsed(card, collapsed) {
-    card.querySelectorAll('.ex-detail-section').forEach(function (el) {
+    card.querySelectorAll('.ex-detail-section').forEach(function(el) {
       el.style.display = collapsed ? 'none' : '';
     });
-    card.querySelectorAll('.ex-collapsed-only').forEach(function (el) {
+    card.querySelectorAll('.ex-collapsed-only').forEach(function(el) {
       el.style.display = collapsed ? '' : 'none';
     });
     var toggleBtn = card.querySelector('.collapse-toggle-btn');
@@ -650,8 +710,8 @@
     card.dataset.cardCollapsed = collapsed ? 'true' : 'false';
   }
 
-  document.querySelectorAll('.collapse-toggle-btn').forEach(function (btn) {
-    btn.addEventListener('click', function (e) {
+  document.querySelectorAll('.collapse-toggle-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
       e.stopPropagation();
       var card = document.getElementById('ex-card-' + btn.dataset.seId);
       if (!card) return;
@@ -660,32 +720,9 @@
     });
   });
 
-  // 折りたたみ状態のカードをタップで展開
-  document.querySelectorAll('.exercise-card').forEach(function (card) {
-    card.addEventListener('click', function (e) {
-      if (card.dataset.cardCollapsed !== 'true') return;
-      // ボタンやリンクのクリックは除外
-      if (e.target.closest('button, a, input, select')) return;
-      setCardCollapsed(card, false);
-    });
-  });
-
-  // 全折りたたみ / 全展開
-  var collapseAllBtn = document.getElementById('collapse-all-btn');
-  if (collapseAllBtn) {
-    collapseAllBtn.addEventListener('click', function () {
-      var allCollapsed = collapseAllBtn.dataset.collapsed === 'true';
-      document.querySelectorAll('.exercise-card').forEach(function (card) {
-        setCardCollapsed(card, !allCollapsed);
-      });
-      collapseAllBtn.dataset.collapsed = allCollapsed ? 'false' : 'true';
-      collapseAllBtn.textContent = allCollapsed ? '⊟ 折りたたむ' : '⊞ 展開する';
-    });
-  }
-
   // ── Set reveal: show ④⑤⑥ when previous set is completed ─────────────────
   function updateSetReveal(seId) {
-    [4, 5, 6].forEach(function (i) {
+    [4, 5, 6].forEach(function(i) {
       var prevBtn = document.querySelector('.set-toggle-btn[data-se-id="' + seId + '"][data-set-num="' + (i - 1) + '"]');
       var btn     = document.querySelector('.set-toggle-btn[data-se-id="' + seId + '"][data-set-num="' + i + '"]');
       if (!btn) return;
@@ -695,75 +732,68 @@
   }
 
   // ── Set toggle ────────────────────────────────────────────────────────────
-  document.querySelectorAll('.set-toggle-btn').forEach(function (btn) {
-    btn.addEventListener('click', function () {
+  document.querySelectorAll('.set-toggle-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
       var seId   = btn.dataset.seId;
       var setNum = btn.dataset.setNum;
       btn.disabled = true;
 
       fetch('/api/se/' + seId + '/toggle/' + setNum, { method: 'POST' })
-        .then(function (r) { return r.json(); })
-        .then(function (data) {
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
           btn.dataset.completed = data.completed ? 'true' : 'false';
           btn.classList.toggle('btn-success', data.completed);
           btn.classList.toggle('btn-outline-secondary', !data.completed);
-
           updateSetReveal(seId);
 
           var expEl = document.querySelector('.exp-badge-' + seId);
           if (expEl) expEl.textContent = data.exp_earned.toLocaleString() + ' EXP';
-
           var totalEl = document.getElementById('total-exp');
           if (totalEl) totalEl.textContent = data.session_total_exp.toLocaleString();
 
           if (data.category_exp) {
-            Object.keys(data.category_exp).forEach(function (cat) {
+            Object.keys(data.category_exp).forEach(function(cat) {
               var el = document.getElementById('cat-exp-' + cat);
               if (el) el.textContent = data.category_exp[cat].toLocaleString();
             });
           }
 
-          // Lvup badge: show dynamically when criteria just achieved
           if (data.exercise_id) {
             if (data.lvup_high) {
               var bid = 'lvup-badge-' + data.exercise_id + '-high';
               if (!document.getElementById(bid)) {
                 var nb = document.createElement('button');
-                nb.type = 'button';
-                nb.className = 'lvup-badge btn btn-sm py-0 px-1';
-                nb.id = bid;
-                nb.dataset.exerciseId = data.exercise_id;
-                nb.dataset.lvupType = 'high';
+                nb.type = 'button'; nb.className = 'lvup-badge btn btn-sm py-0 px-1';
+                nb.id = bid; nb.dataset.exerciseId = data.exercise_id; nb.dataset.lvupType = 'high';
                 nb.title = '高負荷 12rep×3set 達成！タップで解除';
                 nb.style.cssText = 'background:#ffd700;color:#333;font-size:0.6rem;border:none;border-radius:3px;font-weight:800;line-height:1.6;';
                 nb.textContent = '📈 Lvup!可';
-                btn.closest('.d-flex').insertBefore(nb, btn.closest('.d-flex').querySelector('.collapse-toggle-btn'));
+                var nameRow = btn.closest('.card-body').querySelector('.d-flex.align-items-center.gap-1.flex-wrap');
+                if (nameRow) nameRow.insertBefore(nb, nameRow.querySelector('.collapse-toggle-btn'));
               }
             }
             if (data.lvup_low) {
               var bid2 = 'lvup-badge-' + data.exercise_id + '-low';
               if (!document.getElementById(bid2)) {
                 var nb2 = document.createElement('button');
-                nb2.type = 'button';
-                nb2.className = 'lvup-badge btn btn-sm py-0 px-1';
-                nb2.id = bid2;
-                nb2.dataset.exerciseId = data.exercise_id;
-                nb2.dataset.lvupType = 'low';
+                nb2.type = 'button'; nb2.className = 'lvup-badge btn btn-sm py-0 px-1';
+                nb2.id = bid2; nb2.dataset.exerciseId = data.exercise_id; nb2.dataset.lvupType = 'low';
                 nb2.title = '低負荷 40rep×3set 達成！タップで解除';
                 nb2.style.cssText = 'background:#ff9a3c;color:#fff;font-size:0.6rem;border:none;border-radius:3px;font-weight:800;line-height:1.6;';
                 nb2.textContent = '📈 Lvup!可';
-                btn.closest('.d-flex').insertBefore(nb2, btn.closest('.d-flex').querySelector('.collapse-toggle-btn'));
+                var nameRow2 = btn.closest('.card-body').querySelector('.d-flex.align-items-center.gap-1.flex-wrap');
+                if (nameRow2) nameRow2.insertBefore(nb2, nameRow2.querySelector('.collapse-toggle-btn'));
               }
             }
           }
         })
-        .catch(function () {})
-        .finally(function () { btn.disabled = false; });
+        .catch(function() {})
+        .finally(function() { btn.disabled = false; });
     });
   });
 
   // ── Lvup badge dismiss ────────────────────────────────────────────────────
-  document.addEventListener('click', function (e) {
+  document.addEventListener('click', function(e) {
     var badge = e.target.closest('.lvup-badge');
     if (!badge) return;
     var exId = badge.dataset.exerciseId;
@@ -773,196 +803,84 @@
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: type })
-    }).then(function (r) { return r.json(); }).then(function () {
+    }).then(function(r) { return r.json(); }).then(function() {
       badge.remove();
-    }).catch(function () { badge.disabled = false; });
-  });
-
-  // ── Skip toggle ───────────────────────────────────────────────────────────
-  document.querySelectorAll('.skip-btn').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      var seId = btn.dataset.seId;
-      btn.disabled = true;
-      fetch('/api/se/' + seId + '/skip', { method: 'POST' })
-        .then(function (r) { return r.json(); })
-        .then(function (data) {
-          var card = document.getElementById('ex-card-' + seId);
-          if (card) {
-            card.dataset.skipped = data.skipped ? 'true' : 'false';
-            card.classList.toggle('se-skipped', data.skipped);
-          }
-          btn.classList.toggle('btn-warning', data.skipped);
-          btn.classList.toggle('btn-outline-secondary', !data.skipped);
-          checkMuscleConflicts();
-        })
-        .catch(function () {})
-        .finally(function () { btn.disabled = false; });
-    });
+    }).catch(function() { badge.disabled = false; });
   });
 
   // ── Complete toggle ───────────────────────────────────────────────────────
-  function moveToBottom(card) {
-    var list = document.getElementById('session-sortable');
-    list.appendChild(card);
-  }
-  function moveToTop(card) {
-    var list = document.getElementById('session-sortable');
-    var first = list.querySelector('[data-completed="false"][data-skipped="false"]');
-    list.insertBefore(card, first || list.firstChild);
-  }
-
-  document.querySelectorAll('.complete-btn').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      var seId = btn.dataset.seId;
-      btn.disabled = true;
-      fetch('/api/se/' + seId + '/complete', { method: 'POST' })
-        .then(function (r) { return r.json(); })
-        .then(function (data) {
-          var card = document.getElementById('ex-card-' + seId);
-          if (card) {
-            card.dataset.completed = data.completed ? 'true' : 'false';
-            card.classList.toggle('se-completed', data.completed);
-            if (data.completed) {
-              card.classList.remove('se-skipped');
-              card.dataset.skipped = 'false';
-              moveToBottom(card);
-            } else {
-              moveToTop(card);
-            }
-          }
-          btn.classList.toggle('btn-success', data.completed);
-          btn.classList.toggle('btn-outline-secondary', !data.completed);
-          checkMuscleConflicts();
-          updateDoneCount();
-          // 完了時にカードを折りたたむ
-          if (data.completed) {
-            setTimeout(function () {
-              if (card) setCardCollapsed(card, true);
-            }, 600);
-          }
-        })
-        .catch(function () {})
-        .finally(function () { btn.disabled = false; });
-    });
-  });
-
   function updateDoneCount() {
     var doneEl = document.getElementById('ex-done-count');
     if (!doneEl) return;
-    var done = document.querySelectorAll('#session-sortable [data-completed="true"]').length;
-    doneEl.textContent = done;
+    var completedItems = document.querySelectorAll('#completed-list .card').length;
+    doneEl.textContent = completedItems;
   }
 
-  // ── Select mode ──────────────────────────────────────────────────────────
-  var selectMode = false;
-  var selectBtn = document.getElementById('select-mode-btn');
-  if (selectBtn) {
-    selectBtn.addEventListener('click', function () {
-      selectMode = !selectMode;
-      selectBtn.textContent = selectMode ? 'キャンセル' : '選択';
-      selectBtn.classList.toggle('btn-outline-secondary', !selectMode);
-      selectBtn.classList.toggle('btn-warning', selectMode);
-
-      document.querySelectorAll('.ex-checkbox-wrap').forEach(function (el) {
-        el.style.display = selectMode ? 'flex' : 'none';
-      });
-      document.querySelectorAll('.drag-handle').forEach(function (el) {
-        el.style.display = selectMode ? 'none' : '';
-      });
-      document.querySelectorAll('.skip-btn, .complete-btn').forEach(function (el) {
-        el.style.display = selectMode ? 'none' : '';
-      });
-      var finishBar = document.getElementById('finish-bar');
-      if (finishBar) finishBar.style.display = selectMode ? 'none' : '';
-
-      if (!selectMode) {
-        document.querySelectorAll('.ex-checkbox').forEach(function (cb) { cb.checked = false; });
-      }
-      updateBulkBar();
-    });
-  }
-
-  function updateBulkBar() {
-    var count = document.querySelectorAll('.ex-checkbox:checked').length;
-    var bulkBar = document.getElementById('bulk-delete-bar');
-    var deleteBtn = document.getElementById('bulk-delete-btn');
-    if (bulkBar) bulkBar.style.display = selectMode ? '' : 'none';
-    if (deleteBtn) {
-      deleteBtn.textContent = count > 0 ? count + '件を削除' : '選択してください';
-      deleteBtn.disabled = count === 0;
+  function addToCompletedList(seId) {
+    var tpl = document.getElementById('completed-tpl-' + seId);
+    var completedList = document.getElementById('completed-list');
+    if (tpl && completedList) {
+      var node = tpl.content.cloneNode(true);
+      completedList.appendChild(node);
+    }
+    var section = document.getElementById('completed-section');
+    if (section) section.style.display = '';
+    var doneLabel = document.getElementById('done-count-label');
+    if (doneLabel) {
+      var cnt = document.querySelectorAll('#completed-list .card').length;
+      doneLabel.textContent = cnt + '件';
     }
   }
 
-  document.querySelectorAll('.ex-checkbox').forEach(function (cb) {
-    cb.addEventListener('change', updateBulkBar);
-  });
-
-  document.getElementById('bulk-delete-form') && document.getElementById('bulk-delete-form')
-    .addEventListener('submit', function (e) {
-      var count = document.querySelectorAll('.ex-checkbox:checked').length;
-      if (!confirm(count + '件を削除しますか？')) e.preventDefault();
+  document.querySelectorAll('.complete-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var seId = btn.dataset.seId;
+      btn.disabled = true;
+      fetch('/api/se/' + seId + '/complete', { method: 'POST' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.completed) {
+            // Remove from carousel
+            var slide = document.getElementById('slide-' + seId);
+            if (slide) slide.remove();
+            updateCarousel();
+            // Add to completed list
+            addToCompletedList(seId);
+            updateDoneCount();
+          } else {
+            // Un-complete: reload to restore to carousel
+            window.location.reload();
+          }
+        })
+        .catch(function() { btn.disabled = false; });
     });
-
-  // ── Muscle conflict detection ─────────────────────────────────────────────
-  function checkMuscleConflicts() {
-    document.querySelectorAll('.muscle-conflict-badge').forEach(function (el) { el.remove(); });
-    var cards  = Array.from(document.querySelectorAll('#session-sortable [data-id]'));
-    var active = cards.filter(function (c) { return c.dataset.skipped !== 'true'; });
-    for (var i = 1; i < active.length; i++) {
-      var prev = active[i - 1].dataset.primaryMuscle;
-      var curr = active[i].dataset.primaryMuscle;
-      if (prev && curr && prev === curr) {
-        var nameRow = active[i].querySelector('.d-flex.align-items-center.gap-1');
-        if (nameRow) {
-          var badge = document.createElement('span');
-          badge.className = 'badge bg-warning text-dark muscle-conflict-badge';
-          badge.textContent = '⚠️ 連続';
-          nameRow.appendChild(badge);
-        }
-      }
-    }
-  }
-
-  // デフォルト: 全カード折りたたみ
-  document.querySelectorAll('.exercise-card').forEach(function (card) {
-    setCardCollapsed(card, true);
   });
-
-  checkMuscleConflicts();
 
   // ── EXP 再計算 ────────────────────────────────────────────────────────────
   var recalcBtn = document.getElementById('recalc-btn');
   if (recalcBtn) {
-    recalcBtn.addEventListener('click', function () {
+    recalcBtn.addEventListener('click', function() {
       recalcBtn.disabled = true;
       recalcBtn.textContent = '…';
       fetch('/api/sessions/{{ session.id }}/recalculate-exp', { method: 'POST' })
-        .then(function (r) { return r.json(); })
-        .then(function (data) {
-          Object.keys(data.exercise_exp).forEach(function (seId) {
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          Object.keys(data.exercise_exp).forEach(function(seId) {
             var expEl = document.querySelector('.exp-badge-' + seId);
             if (expEl) expEl.textContent = data.exercise_exp[seId].toLocaleString() + ' EXP';
           });
           var totalEl = document.getElementById('total-exp');
-          if (totalEl && data.session_total_exp !== undefined) {
-            totalEl.textContent = data.session_total_exp.toLocaleString();
-          }
+          if (totalEl && data.session_total_exp !== undefined) totalEl.textContent = data.session_total_exp.toLocaleString();
           if (data.category_exp) {
-            Object.keys(data.category_exp).forEach(function (cat) {
+            Object.keys(data.category_exp).forEach(function(cat) {
               var el = document.getElementById('cat-exp-' + cat);
               if (el) el.textContent = data.category_exp[cat].toLocaleString();
             });
           }
           recalcBtn.textContent = '✓';
-          setTimeout(function () {
-            recalcBtn.textContent = '再計算';
-            recalcBtn.disabled = false;
-          }, 1500);
+          setTimeout(function() { recalcBtn.textContent = '再計算'; recalcBtn.disabled = false; }, 1500);
         })
-        .catch(function () {
-          recalcBtn.textContent = '再計算';
-          recalcBtn.disabled = false;
-        });
+        .catch(function() { recalcBtn.textContent = '再計算'; recalcBtn.disabled = false; });
     });
   }
 
@@ -972,13 +890,11 @@
     var card  = document.getElementById('ex-card-' + seId);
     if (!card) return;
 
-    // 高/低 toggle pill styles
     var highBtn = card.querySelector('.load-mode-btn[data-mode="high"]');
     var lowBtn  = card.querySelector('.load-mode-btn[data-mode="low"]');
     if (highBtn) { highBtn.style.background = isLow ? 'transparent' : 'var(--blue)'; highBtn.style.color = isLow ? 'var(--txt-2)' : '#fff'; }
     if (lowBtn)  { lowBtn.style.background  = isLow ? 'var(--orange)' : 'transparent'; lowBtn.style.color = isLow ? '#000' : 'var(--txt-2)'; }
 
-    // Weight value span
     var wEl = document.getElementById('weight-val-' + seId);
     if (wEl) {
       if (isLow && data.weight_low_load) {
@@ -991,7 +907,6 @@
       }
     }
 
-    // Bench angle display
     if (data.bench_angle !== undefined) {
       var baEl = document.getElementById('bench-angle-val-' + seId);
       if (baEl) {
@@ -1006,48 +921,33 @@
       }
     }
 
-    // Rep value span
     var rEl = document.getElementById('rep-val-' + seId);
     if (rEl) {
       var repVal = data.reps != null ? data.reps : (isLow ? 20 : 8);
       rEl.innerHTML = ': <strong class="text-light">' + repVal + '</strong>';
     }
 
-    // Collapsed info line
     var cmEl = document.getElementById('collapsed-mode-' + seId);
-    if (cmEl) {
-      cmEl.textContent = isLow ? '低' : '高';
-      cmEl.style.color = isLow ? 'var(--orange)' : 'var(--blue)';
-    }
-    var c1rmEl = document.getElementById('collapsed-1rm-' + seId);
-    if (c1rmEl) {
-      if (data.one_rep_max) {
-        c1rmEl.innerHTML = '1RM:<strong class="text-light">' + data.one_rep_max + 'kg</strong>';
-      } else {
-        c1rmEl.innerHTML = '';
-      }
-      c1rmEl.style.display = 'none';
-    }
+    if (cmEl) { cmEl.textContent = isLow ? '低' : '高'; cmEl.style.color = isLow ? 'var(--orange)' : 'var(--blue)'; }
+
     var cwEl = document.getElementById('collapsed-weight-' + seId);
     if (cwEl) {
       if (isLow && data.weight_low_load) {
         var cpct = Math.round(data.low_load_pct || 50);
-        cwEl.innerHTML = '<strong style="color:var(--orange);">' + data.weight_low_load + 'kg</strong>'
-                       + '<span class="text-secondary">(' + cpct + '%)</span>';
+        cwEl.innerHTML = '<strong style="color:var(--orange);">' + data.weight_low_load + 'kg</strong><span class="text-secondary">(' + cpct + '%)</span>';
       } else if (data.weight_setting) {
-        cwEl.innerHTML = '<strong style="color:var(--blue);">' + data.weight_setting + 'kg</strong>'
-                       + '<span class="text-secondary">(80%)</span>';
+        cwEl.innerHTML = '<strong style="color:var(--blue);">' + data.weight_setting + 'kg</strong><span class="text-secondary">(80%)</span>';
       } else {
         cwEl.innerHTML = '<span class="text-secondary">重量未設定</span>';
       }
     }
+
     var crEl = document.getElementById('collapsed-rep-' + seId);
     if (crEl) {
       var crepVal = data.reps != null ? data.reps : (isLow ? 20 : 8);
       crEl.innerHTML = '<strong class="text-light">' + crepVal + '</strong>rep';
     }
 
-    // Rep progress dots (high mode: 8→12)
     var rpEl = document.getElementById('rep-progress-' + seId);
     if (rpEl) {
       rpEl.style.display = isLow ? 'none' : 'flex';
@@ -1059,63 +959,40 @@
       }
     }
 
-    // Prev row: update on mode switch or reps change
-    var prevRow = document.getElementById('prev-row-' + seId);
-    if (prevRow) {
-      var pw = isLow ? (prevRow.dataset.prevLowWeight || '') : (prevRow.dataset.prevHighWeight || '');
-      var pr = isLow ? (prevRow.dataset.prevLowReps   || '') : (prevRow.dataset.prevHighReps  || '');
-      prevRow.style.display = (pw || pr) ? 'flex' : 'none';
-      var pwEl = document.getElementById('prev-weight-' + seId);
-      var prEl = document.getElementById('prev-reps-' + seId);
-      if (pwEl) pwEl.textContent = pw ? pw + 'kg' : '';
-      if (prEl) prEl.innerHTML   = pr ? '×<strong style="color:rgba(255,255,255,0.5);">' + pr + '</strong>rep' : '';
-    }
-
-    // EXP badge & session total
     var expEl = document.querySelector('.exp-badge-' + seId);
     if (expEl) expEl.textContent = (data.exp_earned || 0).toLocaleString() + ' EXP';
     var totalEl = document.getElementById('total-exp');
     if (totalEl && data.session_total_exp !== undefined) totalEl.textContent = data.session_total_exp.toLocaleString();
 
-    // Sync adjust input values
     if (data.one_rep_max != null) { var oi = card.querySelector('[data-field="one_rep_max"]'); if (oi) oi.value = data.one_rep_max; }
     if (data.reps       != null) { var ri = card.querySelector('[data-field="reps"]');        if (ri) ri.value = data.reps; }
-    // Pct label + input: 高→ "高%(80, readonly)"  低→ "低%(low_load_pct, editable)"
     var pctLblEl = document.getElementById('pct-label-' + seId);
     var pi = card.querySelector('[data-field="low_load_pct"]');
     if (pctLblEl) pctLblEl.textContent = isLow ? '低%' : '高%';
     if (pi) {
-      if (isLow) {
-        pi.value    = data.low_load_pct != null ? Math.round(data.low_load_pct) : 50;
-        pi.readOnly = false;
-        pi.style.opacity = '';
-      } else {
-        pi.value    = 80;
-        pi.readOnly = true;
-        pi.style.opacity = '0.5';
-      }
+      if (isLow) { pi.value = data.low_load_pct != null ? Math.round(data.low_load_pct) : 50; pi.readOnly = false; pi.style.opacity = ''; }
+      else { pi.value = 80; pi.readOnly = true; pi.style.opacity = '0.5'; }
     }
   }
 
-  document.querySelectorAll('.load-mode-btn').forEach(function (btn) {
-    btn.addEventListener('click', function () {
+  document.querySelectorAll('.load-mode-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
       var seId = btn.dataset.seId;
       btn.disabled = true;
       fetch('/api/se/' + seId + '/quick-edit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ load_mode: btn.dataset.mode })
       })
-      .then(function (r) { return r.json(); })
-      .then(function (data) { applyQuickEdit(seId, data); })
-      .catch(function () {})
-      .finally(function () { btn.disabled = false; });
+      .then(function(r) { return r.json(); })
+      .then(function(data) { applyQuickEdit(seId, data); })
+      .catch(function() {})
+      .finally(function() { btn.disabled = false; });
     });
   });
 
   // ── Adjust panel toggle ────────────────────────────────────────────────────
-  document.querySelectorAll('.adjust-toggle-btn').forEach(function (btn) {
-    btn.addEventListener('click', function () {
+  document.querySelectorAll('.adjust-toggle-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
       var panel = document.getElementById('adjust-' + btn.dataset.seId);
       if (!panel) return;
       var open = panel.style.display !== 'none';
@@ -1125,35 +1002,33 @@
   });
 
   // ── Adjust inputs (save on blur) ──────────────────────────────────────────
-  document.querySelectorAll('.adjust-input').forEach(function (input) {
-    input.addEventListener('blur', function () {
+  document.querySelectorAll('.adjust-input').forEach(function(input) {
+    input.addEventListener('blur', function() {
       var val = parseFloat(input.value);
       if (isNaN(val) || val <= 0) return;
       var payload = {};
       payload[input.dataset.field] = val;
       fetch('/api/se/' + input.dataset.seId + '/quick-edit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       })
-      .then(function (r) { return r.json(); })
-      .then(function (data) { applyQuickEdit(input.dataset.seId, data); })
-      .catch(function () {});
+      .then(function(r) { return r.json(); })
+      .then(function(data) { applyQuickEdit(input.dataset.seId, data); })
+      .catch(function() {});
     });
   });
 
   // ── Bench angle select ────────────────────────────────────────────────────
-  document.querySelectorAll('.adjust-select[data-field="bench_angle"]').forEach(function (sel) {
-    sel.addEventListener('change', function () {
+  document.querySelectorAll('.adjust-select[data-field="bench_angle"]').forEach(function(sel) {
+    sel.addEventListener('change', function() {
       var val = sel.value === '' ? null : parseInt(sel.value);
       fetch('/api/se/' + sel.dataset.seId + '/quick-edit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ bench_angle: val })
       })
-      .then(function (r) { return r.json(); })
-      .then(function (data) { applyQuickEdit(sel.dataset.seId, data); })
-      .catch(function () {});
+      .then(function(r) { return r.json(); })
+      .then(function(data) { applyQuickEdit(sel.dataset.seId, data); })
+      .catch(function() {});
     });
   });
 
@@ -1172,145 +1047,111 @@
 
   function openFinishModal() {
     selectedRpe = null;
-    document.querySelectorAll('.rpe-btn').forEach(function (b) {
+    document.querySelectorAll('.rpe-btn').forEach(function(b) {
       b.style.background = 'rgba(255,255,255,0.05)';
       b.style.color = 'rgba(255,255,255,0.6)';
       b.style.borderColor = 'rgba(255,255,255,0.18)';
     });
     document.getElementById('rpe-label').textContent = '';
     if (finishSubmitBtn) finishSubmitBtn.disabled = true;
-    if (modalOverlay) {
-      modalOverlay.style.display = 'flex';
-      document.body.style.overflow = 'hidden';
-    }
+    if (modalOverlay) { modalOverlay.style.display = 'flex'; document.body.style.overflow = 'hidden'; }
   }
-
   function closeFinishModal() {
     if (modalOverlay) modalOverlay.style.display = 'none';
     document.body.style.overflow = '';
   }
 
-  // Open triggers
-  document.querySelectorAll('.finish-trigger-btn').forEach(function (btn) {
+  document.querySelectorAll('.finish-trigger-btn').forEach(function(btn) {
     btn.addEventListener('click', openFinishModal);
   });
-  var topFinishBtn = document.getElementById('finish-top-btn');
-  if (topFinishBtn) topFinishBtn.addEventListener('click', openFinishModal);
-
-  // Close on overlay background click
   if (modalOverlay) {
-    modalOverlay.addEventListener('click', function (e) {
-      if (e.target === modalOverlay) closeFinishModal();
-    });
+    modalOverlay.addEventListener('click', function(e) { if (e.target === modalOverlay) closeFinishModal(); });
   }
   var cancelBtn = document.getElementById('finish-modal-cancel');
   if (cancelBtn) cancelBtn.addEventListener('click', closeFinishModal);
 
-  // Duration step buttons
-  document.querySelectorAll('.duration-step').forEach(function (btn) {
-    btn.addEventListener('click', function () {
+  document.querySelectorAll('.duration-step').forEach(function(btn) {
+    btn.addEventListener('click', function() {
       var inp = document.getElementById('finish-duration');
       var v = parseInt(inp.value) || 60;
-      v = Math.max(1, Math.min(300, v + parseInt(btn.dataset.delta)));
-      inp.value = v;
+      inp.value = Math.max(1, Math.min(300, v + parseInt(btn.dataset.delta)));
     });
   });
 
-  // RPE buttons
-  document.querySelectorAll('.rpe-btn').forEach(function (btn) {
-    btn.addEventListener('click', function () {
+  document.querySelectorAll('.rpe-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
       selectedRpe = parseInt(btn.dataset.rpe);
       var color = RPE_COLORS[selectedRpe];
-      document.querySelectorAll('.rpe-btn').forEach(function (b) {
+      document.querySelectorAll('.rpe-btn').forEach(function(b) {
         var active = parseInt(b.dataset.rpe) === selectedRpe;
-        b.style.background   = active ? color : 'rgba(255,255,255,0.05)';
-        b.style.color        = active ? '#000' : 'rgba(255,255,255,0.6)';
-        b.style.borderColor  = active ? color : 'rgba(255,255,255,0.18)';
-        b.style.fontWeight   = active ? '900' : '800';
-        b.style.transform    = active ? 'scale(1.12)' : '';
+        b.style.background  = active ? color : 'rgba(255,255,255,0.05)';
+        b.style.color       = active ? '#000' : 'rgba(255,255,255,0.6)';
+        b.style.borderColor = active ? color : 'rgba(255,255,255,0.18)';
+        b.style.fontWeight  = active ? '900' : '800';
+        b.style.transform   = active ? 'scale(1.12)' : '';
       });
       document.getElementById('rpe-label').textContent = RPE_LABELS[selectedRpe] || '';
       if (finishSubmitBtn) finishSubmitBtn.disabled = false;
     });
   });
 
-  // Submit
   if (finishSubmitBtn) {
-    finishSubmitBtn.addEventListener('click', function () {
+    finishSubmitBtn.addEventListener('click', function() {
       if (!selectedRpe) return;
       var duration = parseInt(document.getElementById('finish-duration').value) || null;
       finishSubmitBtn.disabled = true;
       finishSubmitBtn.textContent = '保存中…';
       fetch(finishSubmitBtn.dataset.finishUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ session_rpe: selectedRpe, duration_min: duration })
       })
-      .then(function (r) { return r.json(); })
-      .then(function () {
-        window.location.href = finishSubmitBtn.dataset.redirectUrl;
-      })
-      .catch(function () {
-        finishSubmitBtn.disabled = false;
-        finishSubmitBtn.textContent = '記録して終了 →';
-      });
+      .then(function(r) { return r.json(); })
+      .then(function() { window.location.href = finishSubmitBtn.dataset.redirectUrl; })
+      .catch(function() { finishSubmitBtn.disabled = false; finishSubmitBtn.textContent = '記録して終了 →'; });
     });
   }
 
   // ── Quality buttons ───────────────────────────────────────────────────────
-  document.querySelectorAll('.quality-btn').forEach(function (btn) {
-    btn.addEventListener('click', function () {
+  document.querySelectorAll('.quality-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
       var seId = btn.dataset.seId;
       var q    = parseInt(btn.dataset.quality);
       btn.disabled = true;
       fetch('/api/se/' + seId + '/quality-pain', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ quality: q })
       })
-      .then(function (r) { return r.json(); })
-      .then(function (data) {
-        // Re-style all quality buttons for this exercise
-        document.querySelectorAll('.quality-btn[data-se-id="' + seId + '"]').forEach(function (b) {
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        document.querySelectorAll('.quality-btn[data-se-id="' + seId + '"]').forEach(function(b) {
           var bq = parseInt(b.dataset.quality);
           var active = (bq === data.quality);
           var color = bq <= 2 ? '#f44336' : (bq === 3 ? '#ff9800' : '#4caf50');
           b.style.background = active ? color : 'rgba(255,255,255,0.04)';
           b.style.color      = active ? '#fff' : 'rgba(255,255,255,0.4)';
         });
-        // Update quality val span
         var qEl = document.getElementById('quality-val-' + seId);
         if (qEl && data.quality) {
           var qColor = data.quality <= 2 ? '#f44336' : (data.quality === 3 ? '#ff9800' : '#4caf50');
           qEl.innerHTML = ': <strong style="color:' + qColor + ';">Q' + data.quality + '</strong>';
         }
-        // Quality ≤ 2 stop proposal
         if (data.quality && data.quality <= 2) {
           var msg = data.quality === 1
             ? '⚠️ Q1 — フォーム崩壊の危険があります。\nこの種目を即中止しますか？\n（続行する場合はキャンセル）'
             : 'Q2 — パフォーマンスが低下しています。\nこの種目を終了しますか？\n（続行する場合はキャンセル）';
           if (confirm(msg)) {
             fetch('/api/se/' + seId + '/complete', { method: 'POST' });
-            var card = document.getElementById('ex-card-' + seId);
-            if (card) {
-              card.dataset.completed = 'true';
-              card.classList.add('se-completed');
-              setTimeout(function () { setCardCollapsed(card, true); }, 400);
-            }
-            // Q1の場合、痛みフラグも確認
+            var slide = document.getElementById('slide-' + seId);
+            if (slide) slide.remove();
+            updateCarousel();
+            addToCompletedList(seId);
+            updateDoneCount();
             if (data.quality === 1) {
-              setTimeout(function () {
+              setTimeout(function() {
                 if (confirm('🩹 痛みや強い違和感はありますか？\n「OK」で痛みフラグをONにします。')) {
                   fetch('/api/se/' + seId + '/quality-pain', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ pain_flag: true })
-                  }).then(function () {
-                    var painBtn = document.querySelector('.pain-btn[data-se-id="' + seId + '"]');
-                    if (painBtn) {
-                      painBtn.classList.add('btn-danger');
-                      painBtn.classList.remove('btn-outline-secondary');
-                    }
                   });
                 }
               }, 300);
@@ -1318,57 +1159,56 @@
           }
         }
       })
-      .catch(function () {})
-      .finally(function () { btn.disabled = false; });
+      .catch(function() {})
+      .finally(function() { btn.disabled = false; });
     });
   });
 
   // ── Pain flag ─────────────────────────────────────────────────────────────
-  document.querySelectorAll('.pain-btn').forEach(function (btn) {
-    btn.addEventListener('click', function () {
+  document.querySelectorAll('.pain-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
       var seId = btn.dataset.seId;
       btn.disabled = true;
       var currentPain = btn.classList.contains('btn-danger');
       fetch('/api/se/' + seId + '/quality-pain', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pain_flag: !currentPain })
       })
-      .then(function (r) { return r.json(); })
-      .then(function (data) {
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
         btn.classList.toggle('btn-danger', data.pain_flag);
         btn.classList.toggle('btn-outline-secondary', !data.pain_flag);
       })
-      .catch(function () {})
-      .finally(function () { btn.disabled = false; });
+      .catch(function() {})
+      .finally(function() { btn.disabled = false; });
     });
   });
 
   // ── Contacts / Throws inputs ──────────────────────────────────────────────
-  document.querySelectorAll('.contacts-input, .throws-input').forEach(function (input) {
+  document.querySelectorAll('.contacts-input, .throws-input').forEach(function(input) {
     var field = input.classList.contains('contacts-input') ? 'contacts' : 'throws';
-    input.addEventListener('blur', function () {
+    input.addEventListener('blur', function() {
       var val = parseInt(input.value);
       if (isNaN(val) || val < 0) return;
       var seId = input.dataset.seId;
       fetch('/api/se/' + seId + '/quality-pain', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ [field]: val })
       })
-      .then(function (r) { return r.json(); })
-      .then(function (data) {
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
         var valEl = document.getElementById(field + '-val-' + seId);
         if (valEl) {
           var v = data[field];
-          if (v != null) {
-            valEl.innerHTML = ': <strong class="text-light">' + v + '</strong>' + (field === 'contacts' ? '回' : '投');
-          }
+          if (v != null) valEl.innerHTML = ': <strong class="text-light">' + v + '</strong>' + (field === 'contacts' ? '回' : '投');
         }
       })
-      .catch(function () {});
+      .catch(function() {});
     });
   });
+
+  // ── Init: first dot active ─────────────────────────────────────────────
+  activateDot(0);
 
 })();
 </script>
