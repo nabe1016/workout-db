@@ -548,16 +548,24 @@
               {{ ['①','②','③','④','⑤','⑥'][i-1] }}
             </button>
             {% endfor %}
-            {# Quality selector (plyometric / power のみ) #}
+            {# Quality selector (plyometric / power のみ) — プルダウン #}
             {% if ex.exercise_type in ('plyometric', 'power') %}
-            <div class="quality-selector d-flex gap-0 ms-1" data-se-id="{{ ex.id }}">
-              {% for q in [1,2,3,4,5] %}
-              <button type="button" class="quality-btn btn btn-sm"
-                      data-se-id="{{ ex.id }}" data-quality="{{ q }}"
-                      style="width:1.5rem;height:2rem;font-size:0.68rem;padding:0;border-radius:{% if loop.first %}4px 0 0 4px{% elif loop.last %}0 4px 4px 0{% else %}0{% endif %};
-                             border:1px solid rgba(255,255,255,0.2);{% if ex.quality == q %}background:{% if q <= 2 %}#f44336{% elif q == 3 %}#ff9800{% else %}#4caf50{% endif %};color:#fff;{% else %}background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.4);{% endif %}">Q{{ q }}</button>
-              {% endfor %}
-            </div>
+            {% set qcolor = '#f44336' if ex.quality and ex.quality <= 2 else ('#ff9800' if ex.quality == 3 else ('#4caf50' if ex.quality and ex.quality >= 4 else 'rgba(255,255,255,0.3)')) %}
+            <select class="quality-select form-select form-select-sm ms-1"
+                    data-se-id="{{ ex.id }}"
+                    id="quality-select-{{ ex.id }}"
+                    style="width:4.8rem;height:2rem;font-size:0.75rem;padding:0 0.3rem;
+                           border-radius:6px;font-weight:700;
+                           background:rgba(255,255,255,0.06);
+                           border:1px solid rgba(255,255,255,0.2);
+                           color:{{ qcolor }};">
+              <option value="" {% if not ex.quality %}selected{% endif %} style="background:#1a1a1a;color:rgba(255,255,255,0.4);">Q —</option>
+              <option value="1" {% if ex.quality == 1 %}selected{% endif %} style="background:#1a1a1a;color:#f44336;">Q1 ✗</option>
+              <option value="2" {% if ex.quality == 2 %}selected{% endif %} style="background:#1a1a1a;color:#f44336;">Q2 △</option>
+              <option value="3" {% if ex.quality == 3 %}selected{% endif %} style="background:#1a1a1a;color:#ff9800;">Q3 ○</option>
+              <option value="4" {% if ex.quality == 4 %}selected{% endif %} style="background:#1a1a1a;color:#4caf50;">Q4 ◎</option>
+              <option value="5" {% if ex.quality == 5 %}selected{% endif %} style="background:#1a1a1a;color:#4caf50;">Q5 ★</option>
+            </select>
             {% endif %}
             {# Complete / Skip #}
             <div class="ms-auto d-flex gap-1 flex-shrink-0">
@@ -1311,29 +1319,31 @@
     });
   }
 
-  // ── Quality buttons ───────────────────────────────────────────────────────
-  document.querySelectorAll('.quality-btn').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      var seId = btn.dataset.seId;
-      var q    = parseInt(btn.dataset.quality);
-      btn.disabled = true;
+  // ── Quality select (dropdown) ─────────────────────────────────────────────
+  function qualityColor(q) {
+    if (!q) return 'rgba(255,255,255,0.3)';
+    return q <= 2 ? '#f44336' : (q === 3 ? '#ff9800' : '#4caf50');
+  }
+  document.querySelectorAll('.quality-select').forEach(function(sel) {
+    sel.addEventListener('change', function() {
+      var seId = sel.dataset.seId;
+      var q    = sel.value === '' ? null : parseInt(sel.value);
+      sel.disabled = true;
       fetch('/api/se/' + seId + '/quality-pain', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ quality: q })
       })
       .then(function(r) { return r.json(); })
       .then(function(data) {
-        document.querySelectorAll('.quality-btn[data-se-id="' + seId + '"]').forEach(function(b) {
-          var bq = parseInt(b.dataset.quality);
-          var active = (bq === data.quality);
-          var color = bq <= 2 ? '#f44336' : (bq === 3 ? '#ff9800' : '#4caf50');
-          b.style.background = active ? color : 'rgba(255,255,255,0.04)';
-          b.style.color      = active ? '#fff' : 'rgba(255,255,255,0.4)';
-        });
+        sel.style.color = qualityColor(data.quality || null);
         var qEl = document.getElementById('quality-val-' + seId);
-        if (qEl && data.quality) {
-          var qColor = data.quality <= 2 ? '#f44336' : (data.quality === 3 ? '#ff9800' : '#4caf50');
-          qEl.innerHTML = ': <strong style="color:' + qColor + ';">Q' + data.quality + '</strong>';
+        if (qEl) {
+          if (data.quality) {
+            var qColor = qualityColor(data.quality);
+            qEl.innerHTML = ': <strong style="color:' + qColor + ';">Q' + data.quality + '</strong>';
+          } else {
+            qEl.innerHTML = '';
+          }
         }
         if (data.quality && data.quality <= 2) {
           var msg = data.quality === 1
@@ -1360,7 +1370,7 @@
         }
       })
       .catch(function() {})
-      .finally(function() { btn.disabled = false; });
+      .finally(function() { sel.disabled = false; });
     });
   });
 
