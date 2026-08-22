@@ -419,12 +419,13 @@
                   </div>
                   {% endif %}
                   {% else %}
-                  {% if ex.one_rep_max %}
                   <div class="d-flex">
                     <span class="text-secondary" style="width:2.8em;flex-shrink:0;">1RM</span>
-                    <span>: <strong class="text-light">{{ ex.one_rep_max }}kg</strong></span>
+                    <span id="orm-val-{{ ex.id }}">
+                      {% if ex.one_rep_max %}: <strong class="text-light">{{ ex.one_rep_max }}kg</strong>
+                      {% else %}<span class="text-secondary">: —</span>{% endif %}
+                    </span>
                   </div>
-                  {% endif %}
                   {% if ex.needs_bench %}
                   <div class="d-flex">
                     <span class="text-secondary" style="width:2.8em;flex-shrink:0;">角度</span>
@@ -1083,7 +1084,12 @@
     var totalEl = document.getElementById('total-exp');
     if (totalEl && data.session_total_exp !== undefined) totalEl.textContent = data.session_total_exp.toLocaleString();
 
-    if (data.one_rep_max != null) { var oi = card.querySelector('[data-field="one_rep_max"]'); if (oi) oi.value = data.one_rep_max; }
+    if (data.one_rep_max != null) {
+      var oi = card.querySelector('[data-field="one_rep_max"]');
+      if (oi) oi.value = data.one_rep_max;
+      var ormEl = document.getElementById('orm-val-' + seId);
+      if (ormEl) ormEl.innerHTML = ': <strong class="text-light">' + data.one_rep_max + 'kg</strong>';
+    }
     if (data.reps       != null) { var ri = card.querySelector('[data-field="reps"]');        if (ri) ri.value = data.reps; }
     var pctLblEl = document.getElementById('pct-label-' + seId);
     var pi = card.querySelector('[data-field="low_load_pct"]');
