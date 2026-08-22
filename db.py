@@ -2116,14 +2116,14 @@ def record_session_finish(session_id: int, duration_min: int, session_rpe: int,
         # Compute Strength Volume
         cur.execute("""
             SELECT COALESCE(SUM(
-                CASE WHEN COALESCE(load_mode,'high') = 'low' THEN
-                    COALESCE(weight_low_load, weight_setting, 0)
-                ELSE COALESCE(weight_setting, 0)
+                CASE WHEN COALESCE(se.load_mode,'high') = 'low' THEN
+                    COALESCE(se.weight_low_load, se.weight_setting, 0)
+                ELSE COALESCE(se.weight_setting, 0)
                 END *
-                COALESCE(reps, 0) *
-                (COALESCE(set1_completed::int,0)+COALESCE(set2_completed::int,0)+
-                 COALESCE(set3_completed::int,0)+COALESCE(set4_completed::int,0)+
-                 COALESCE(set5_completed::int,0)+COALESCE(set6_completed::int,0))
+                COALESCE(se.reps, 0) *
+                (COALESCE(se.set1_completed::int,0)+COALESCE(se.set2_completed::int,0)+
+                 COALESCE(se.set3_completed::int,0)+COALESCE(se.set4_completed::int,0)+
+                 COALESCE(se.set5_completed::int,0)+COALESCE(se.set6_completed::int,0))
             ), 0)
             FROM session_exercises se
             JOIN exercises ex ON ex.id = se.exercise_id
@@ -2135,9 +2135,9 @@ def record_session_finish(session_id: int, duration_min: int, session_rpe: int,
         # Compute plyometric contacts
         cur.execute("""
             SELECT COALESCE(SUM(COALESCE(se.contacts, se.reps, 0) *
-                (COALESCE(set1_completed::int,0)+COALESCE(set2_completed::int,0)+
-                 COALESCE(set3_completed::int,0)+COALESCE(set4_completed::int,0)+
-                 COALESCE(set5_completed::int,0)+COALESCE(set6_completed::int,0))), 0)
+                (COALESCE(se.set1_completed::int,0)+COALESCE(se.set2_completed::int,0)+
+                 COALESCE(se.set3_completed::int,0)+COALESCE(se.set4_completed::int,0)+
+                 COALESCE(se.set5_completed::int,0)+COALESCE(se.set6_completed::int,0))), 0)
             FROM session_exercises se
             JOIN exercises ex ON ex.id = se.exercise_id
             WHERE se.session_id = %s
@@ -2148,9 +2148,9 @@ def record_session_finish(session_id: int, duration_min: int, session_rpe: int,
         # Compute power throws
         cur.execute("""
             SELECT COALESCE(SUM(COALESCE(se.throws, se.reps, 0) *
-                (COALESCE(set1_completed::int,0)+COALESCE(set2_completed::int,0)+
-                 COALESCE(set3_completed::int,0)+COALESCE(set4_completed::int,0)+
-                 COALESCE(set5_completed::int,0)+COALESCE(set6_completed::int,0))), 0)
+                (COALESCE(se.set1_completed::int,0)+COALESCE(se.set2_completed::int,0)+
+                 COALESCE(se.set3_completed::int,0)+COALESCE(se.set4_completed::int,0)+
+                 COALESCE(se.set5_completed::int,0)+COALESCE(se.set6_completed::int,0))), 0)
             FROM session_exercises se
             JOIN exercises ex ON ex.id = se.exercise_id
             WHERE se.session_id = %s
