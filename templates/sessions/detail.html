@@ -83,6 +83,47 @@
 </div>
 {% endif %}
 
+{# ── 本日のメニュー一覧（アコーディオン） ── #}
+{% if exercises %}
+<div class="card mb-2" style="border:1px solid rgba(255,255,255,0.12);">
+  <div class="card-body py-2 px-3" style="cursor:pointer;"
+       onclick="var b=document.getElementById('menu-list-body');var a=this.querySelector('.ml-arrow');var open=b.style.display!=='none';b.style.display=open?'none':'';a.textContent=open?'▶':'▼';">
+    <div class="d-flex justify-content-between align-items-center">
+      <div class="d-flex align-items-center gap-2">
+        <span style="font-size:1rem;line-height:1;">📋</span>
+        <div>
+          <div style="font-size:0.6rem;font-weight:900;color:var(--txt-2);letter-spacing:0.06em;text-transform:uppercase;">TODAY'S MENU</div>
+          <div style="font-size:0.82rem;font-weight:700;">本日のメニュー（{{ exercises|length }}種目）</div>
+        </div>
+      </div>
+      <span class="ml-arrow" style="color:var(--txt-2);font-size:0.7rem;">▶</span>
+    </div>
+  </div>
+  <div id="menu-list-body" style="display:none;padding:0 0.75rem 0.75rem;">
+    {% set ns = namespace(cur_part=None) %}
+    {% for ex in exercises %}
+    {% if ex.body_part != ns.cur_part %}
+    {% if not loop.first %}</ul>{% endif %}
+    {% set ns.cur_part = ex.body_part %}
+    <div style="font-size:0.58rem;font-weight:900;letter-spacing:0.07em;text-transform:uppercase;
+                color:rgba(255,255,255,0.4);margin-top:{% if loop.first %}0{% else %}0.6rem{% endif %};margin-bottom:0.2rem;">
+      {{ ex.body_part or 'その他' }}
+    </div>
+    <ul style="margin:0;padding-left:1.1rem;list-style:disc;">
+    {% endif %}
+      <li style="font-size:0.8rem;line-height:1.7;
+                 color:{% if ex.completed %}rgba(255,255,255,0.35){% else %}var(--txt-1){% endif %};">
+        {% if ex.completed %}<s>{{ ex.exercise_name }}</s>{% else %}{{ ex.exercise_name }}{% endif %}
+        {% if ex.weight_setting %}
+        <span style="font-size:0.68rem;color:var(--txt-2);margin-left:0.3em;">{{ ex.weight_setting }}kg</span>
+        {% endif %}
+      </li>
+    {% if loop.last %}</ul>{% endif %}
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
 {# ── ウォームアップ導線カード ── #}
 {% set has_explosive = exercises | selectattr('exercise_type', 'in', ['plyometric', 'power']) | list | length > 0 %}
 {% set has_strength_main = exercises | selectattr('exercise_type', 'equalto', 'strength') | list | length > 0 %}
