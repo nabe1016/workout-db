@@ -43,6 +43,7 @@ def run_migrations():
 
 
 run_migrations()
+db.ensure_schema()
 
 # body_part → card background tint  (上肢 / 下肢 / 体幹)
 _CATEGORY_BG = {

@@ -25,6 +25,48 @@ def _conn():
     return psycopg2.connect(_DATABASE_URL, cursor_factory=RealDictCursor)
 
 
+def ensure_schema():
+    """Add missing columns to existing tables without dropping data."""
+    migrations = [
+        # workout_sessions summary columns
+        "ALTER TABLE workout_sessions ADD COLUMN IF NOT EXISTS session_rpe INTEGER",
+        "ALTER TABLE workout_sessions ADD COLUMN IF NOT EXISTS duration_min INTEGER",
+        "ALTER TABLE workout_sessions ADD COLUMN IF NOT EXISTS session_load INTEGER",
+        "ALTER TABLE workout_sessions ADD COLUMN IF NOT EXISTS session_type TEXT",
+        "ALTER TABLE workout_sessions ADD COLUMN IF NOT EXISTS strength_volume_kg FLOAT",
+        "ALTER TABLE workout_sessions ADD COLUMN IF NOT EXISTS plyometric_contacts INTEGER",
+        "ALTER TABLE workout_sessions ADD COLUMN IF NOT EXISTS power_throws INTEGER",
+        "ALTER TABLE workout_sessions ADD COLUMN IF NOT EXISTS avg_quality FLOAT",
+        "ALTER TABLE workout_sessions ADD COLUMN IF NOT EXISTS post_notes TEXT",
+        # session_exercises extra columns
+        "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS load_mode TEXT DEFAULT 'high'",
+        "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS weight_low_load FLOAT",
+        "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS low_load_pct INTEGER",
+        "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS reps_low INTEGER",
+        "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS quality INTEGER",
+        "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS pain_flag BOOLEAN DEFAULT false",
+        "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS contacts INTEGER",
+        "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS throws INTEGER",
+        "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS skipped BOOLEAN DEFAULT false",
+        "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS sort_order INTEGER",
+        "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS bench_angle INTEGER",
+        "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS one_rep_max FLOAT",
+        "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS weight_setting FLOAT",
+        "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS set1_completed BOOLEAN DEFAULT false",
+        "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS set2_completed BOOLEAN DEFAULT false",
+        "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS set3_completed BOOLEAN DEFAULT false",
+        "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS set4_completed BOOLEAN DEFAULT false",
+        "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS set5_completed BOOLEAN DEFAULT false",
+        "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS set6_completed BOOLEAN DEFAULT false",
+        "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS exp_earned INTEGER DEFAULT 0",
+        "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS completed BOOLEAN DEFAULT false",
+    ]
+    with _conn() as conn:
+        cur = conn.cursor()
+        for sql in migrations:
+            cur.execute(sql)
+
+
 def date_to_dow(d) -> str:
     return DOW_MAP[d.weekday()]
 
@@ -2067,7 +2109,7 @@ def record_se_quality_pain(se_id: int, quality: int = None,
 def record_session_finish(session_id: int, duration_min: int, session_rpe: int,
                            session_type: str = None) -> dict:
     """Record RPE, duration, session_load; compute and store session summary metrics."""
-    session_load = duration_min * session_rpe
+    session_load = (duration_min or 0) * session_rpe
     with _conn() as conn:
         cur = conn.cursor()
 
