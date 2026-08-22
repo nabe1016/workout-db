@@ -13,23 +13,30 @@
 <div class="card">
   <div class="card-body px-3 py-0">
     {% for s in sessions %}
-    <a href="{{ url_for('session_detail', session_id=s.id) }}" class="text-decoration-none list-row">
-      <div class="flex-grow-1">
-        <div class="fw-bold">
-          {{ s.session_date.strftime('%Y/%m/%d') }}
-          <span style="color:var(--txt-2);font-weight:400;font-size:0.88rem;">（{{ s.day_of_week }}）</span>
+    <div class="list-row" style="padding:0;">
+      <a href="{{ url_for('session_detail', session_id=s.id) }}"
+         class="text-decoration-none d-flex align-items-center flex-grow-1 py-3 px-3" style="min-width:0;">
+        <div class="flex-grow-1" style="min-width:0;">
+          <div class="fw-bold">
+            {{ s.session_date.strftime('%Y/%m/%d') }}
+            <span style="color:var(--txt-2);font-weight:400;font-size:0.88rem;">（{{ s.day_of_week }}）</span>
+          </div>
+          {% if s.start_time and s.end_time %}
+          <div style="font-size:0.78rem;color:var(--txt-2);">
+            {{ s.start_time.strftime('%H:%M') }} – {{ s.end_time.strftime('%H:%M') }}
+            · {{ s.exercise_count }}種目
+          </div>
+          {% else %}
+          <div style="font-size:0.78rem;color:var(--txt-2);">{{ s.exercise_count }}種目</div>
+          {% endif %}
         </div>
-        {% if s.start_time and s.end_time %}
-        <div style="font-size:0.78rem;color:var(--txt-2);">
-          {{ s.start_time.strftime('%H:%M') }} – {{ s.end_time.strftime('%H:%M') }}
-          · {{ s.exercise_count }}種目
-        </div>
-        {% else %}
-        <div style="font-size:0.78rem;color:var(--txt-2);">{{ s.exercise_count }}種目</div>
-        {% endif %}
-      </div>
-      <span class="badge bg-warning">{{ "{:,}".format(s.total_exp or 0) }} EXP</span>
-    </a>
+        <span class="badge bg-warning ms-2 flex-shrink-0">{{ "{:,}".format(s.total_exp or 0) }} EXP</span>
+      </a>
+      <a href="{{ url_for('session_advice', session_id=s.id) }}"
+         class="d-flex align-items-center justify-content-center flex-shrink-0 px-3"
+         style="border-left:1px solid var(--sep);height:100%;color:var(--teal);font-size:1.1rem;text-decoration:none;"
+         title="結果・アドバイスを見る">📊</a>
+    </div>
     {% endfor %}
   </div>
 </div>
