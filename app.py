@@ -672,16 +672,18 @@ def my_set_sync_from_latest(my_set_id):
 @app.route("/api/se/<int:se_id>/quality-pain", methods=["POST"])
 def api_se_quality_pain(se_id):
     data = request.get_json(force=True) or {}
-    quality   = data.get("quality")
-    pain_flag = data.get("pain_flag")
-    contacts  = data.get("contacts")
-    throws    = data.get("throws")
+    quality     = data.get("quality")
+    pain_flag   = data.get("pain_flag")
+    contacts    = data.get("contacts")
+    throws      = data.get("throws")
+    stop_reason = data.get("stop_reason")
     result = db.record_se_quality_pain(
         se_id,
         quality=int(quality) if quality is not None else None,
         pain_flag=bool(pain_flag) if pain_flag is not None else None,
         contacts=int(contacts) if contacts is not None else None,
         throws=int(throws) if throws is not None else None,
+        stop_reason=str(stop_reason) if stop_reason else None,
     )
     return jsonify(result)
 

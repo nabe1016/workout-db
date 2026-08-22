@@ -60,6 +60,7 @@ def ensure_schema():
         "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS set6_completed BOOLEAN DEFAULT false",
         "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS exp_earned INTEGER DEFAULT 0",
         "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS completed BOOLEAN DEFAULT false",
+        "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS stop_reason TEXT",
     ]
     with _conn() as conn:
         cur = conn.cursor()
@@ -2076,8 +2077,9 @@ def build_volume_metrics(session, exercises: list, body_weight: float = 65.0) ->
 def record_se_quality_pain(se_id: int, quality: int = None,
                             pain_flag: bool = None,
                             contacts: int = None,
-                            throws: int = None) -> dict:
-    """Record quality / pain_flag / contacts / throws for a session exercise."""
+                            throws: int = None,
+                            stop_reason: str = None) -> dict:
+    """Record quality / pain_flag / contacts / throws / stop_reason for a session exercise."""
     with _conn() as conn:
         cur = conn.cursor()
         sets = []
@@ -2094,12 +2096,15 @@ def record_se_quality_pain(se_id: int, quality: int = None,
         if throws is not None:
             sets.append("throws = %s")
             vals.append(int(throws))
+        if stop_reason is not None:
+            sets.append("stop_reason = %s")
+            vals.append(str(stop_reason))
         if not sets:
             return {}
         vals.append(se_id)
         cur.execute(f"UPDATE session_exercises SET {', '.join(sets)} WHERE id = %s", vals)
         cur.execute(
-            "SELECT quality, pain_flag, contacts, throws FROM session_exercises WHERE id = %s",
+            "SELECT quality, pain_flag, contacts, throws, stop_reason FROM session_exercises WHERE id = %s",
             (se_id,)
         )
         row = cur.fetchone()

@@ -545,8 +545,8 @@
               {{ ['①','②','③','④','⑤','⑥'][i-1] }}
             </button>
             {% endfor %}
-            {# Quality selector (plyometric / power のみ) — プルダウン #}
-            {% if ex.exercise_type in ('plyometric', 'power') %}
+            {# Quality selector (plyometric / power のみ、アプローチジャンプは除外) — プルダウン #}
+            {% if ex.exercise_type in ('plyometric', 'power') and ex.exercise_name != 'アプローチジャンプ' %}
             {% set qcolor = '#f44336' if ex.quality and ex.quality <= 2 else ('#ff9800' if ex.quality == 3 else ('#4caf50' if ex.quality and ex.quality >= 4 else 'rgba(255,255,255,0.3)')) %}
             <select class="quality-select form-select form-select-sm ms-1"
                     data-se-id="{{ ex.id }}"
@@ -576,7 +576,10 @@
                       style="height:2rem;font-size:0.75rem;padding:0 0.5rem;border-radius:6px;">⏭ パス</button>
               <button type="button"
                       class="complete-btn btn {% if ex.completed %}btn-success{% else %}btn-outline-secondary{% endif %}"
-                      data-se-id="{{ ex.id }}" title="完了"
+                      data-se-id="{{ ex.id }}"
+                      data-exercise-name="{{ ex.exercise_name }}"
+                      data-exercise-type="{{ ex.exercise_type }}"
+                      title="完了"
                       style="height:2rem;font-size:0.85rem;padding:0 0.6rem;border-radius:6px;font-weight:700;">✓ 完了</button>
             </div>
           </div>
@@ -754,6 +757,42 @@
               data-redirect-url="{{ url_for('session_finish', session_id=session.id) }}"
               disabled>
         記録して終了 →
+      </button>
+    </div>
+  </div>
+</div>
+
+{# ── アプローチジャンプ Quality評価モーダル ── #}
+<div id="aj-quality-modal-overlay"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.78);z-index:10000;
+            align-items:flex-end;justify-content:center;">
+  <div style="background:var(--card-bg,#1c1c1e);border-radius:20px 20px 0 0;
+              width:100%;max-width:520px;padding:1.5rem 1.25rem 2rem;">
+    <div style="text-align:center;margin-bottom:1.2rem;">
+      <div style="font-size:1.1rem;font-weight:800;color:var(--txt-1);">🏃 アプローチジャンプ 品質評価</div>
+      <div id="aj-quality-prompt" style="font-size:0.82rem;color:var(--txt-2);margin-top:0.3rem;"></div>
+    </div>
+    <div id="aj-quality-btns" class="d-flex justify-content-center gap-2 mb-3"></div>
+    {# 途中終了理由（Q1/Q2のみ） #}
+    <div id="aj-reason-section" style="display:none;margin-bottom:1rem;">
+      <div style="font-size:0.78rem;color:var(--txt-2);margin-bottom:0.5rem;text-align:center;">終了理由（任意）</div>
+      <div class="d-flex flex-wrap gap-1 justify-content-center" id="aj-reason-btns">
+        <button type="button" class="aj-reason-btn btn btn-sm btn-outline-secondary" data-code="height_drop">高さ低下</button>
+        <button type="button" class="aj-reason-btn btn btn-sm btn-outline-secondary" data-code="fatigue">疲労</button>
+        <button type="button" class="aj-reason-btn btn btn-sm btn-outline-secondary" data-code="heavy_takeoff">踏切が重い</button>
+        <button type="button" class="aj-reason-btn btn btn-sm btn-outline-secondary" data-code="timing_breakdown">タイミング崩れ</button>
+        <button type="button" class="aj-reason-btn btn btn-sm btn-outline-secondary" data-code="form_breakdown">フォーム崩れ</button>
+        <button type="button" class="aj-reason-btn btn btn-sm btn-outline-secondary" data-code="pain_discomfort">痛み・違和感</button>
+        <button type="button" class="aj-reason-btn btn btn-sm btn-outline-secondary" data-code="landing_instability">着地不安定</button>
+        <button type="button" class="aj-reason-btn btn btn-sm btn-outline-secondary" data-code="other">その他</button>
+      </div>
+    </div>
+    <div class="d-flex gap-2">
+      <button type="button" id="aj-quality-cancel"
+              class="btn btn-outline-secondary flex-fill" style="height:2.8rem;">キャンセル</button>
+      <button type="button" id="aj-quality-submit"
+              class="btn btn-success flex-fill fw-bold" style="height:2.8rem;" disabled>
+        評価して完了 →
       </button>
     </div>
   </div>
@@ -987,9 +1026,151 @@
     }
   }
 
+  // ── アプローチジャンプ Quality評価モーダル ─────────────────────────────────
+  var ajOverlay    = document.getElementById('aj-quality-modal-overlay');
+  var ajSubmitBtn  = document.getElementById('aj-quality-submit');
+  var ajCancelBtn  = document.getElementById('aj-quality-cancel');
+  var ajCurrentSeId   = null;
+  var ajCurrentCompBtn = null;
+  var ajSelectedQ  = null;
+  var ajSelectedReason = null;
+
+  var AJ_Q_COLORS = { 3:'#ff9800', 4:'#4caf50', 5:'#4caf50', 1:'#f44336', 2:'#f44336' };
+  var AJ_Q_LABELS = { 1:'Q1 継続不適', 2:'Q2 途中終了', 3:'Q3 許容範囲', 4:'Q4 良好', 5:'Q5 非常に良い' };
+
+  function openAjQualityModal(seId, btn) {
+    ajCurrentSeId   = seId;
+    ajCurrentCompBtn = btn;
+    ajSelectedQ = null;
+    ajSelectedReason = null;
+    if (ajSubmitBtn) ajSubmitBtn.disabled = true;
+
+    // Count completed sets
+    var setButtons = document.querySelectorAll('.set-toggle-btn[data-se-id="' + seId + '"]');
+    var doneSets = 0;
+    setButtons.forEach(function(sb) { if (sb.dataset.completed === 'true') doneSets++; });
+
+    var prompt = document.getElementById('aj-quality-prompt');
+    var btnsEl = document.getElementById('aj-quality-btns');
+    var reasonSection = document.getElementById('aj-reason-section');
+    btnsEl.innerHTML = '';
+    reasonSection.style.display = 'none';
+
+    if (doneSets >= 3) {
+      if (prompt) prompt.textContent = '本日のアプローチジャンプ全体の品質を評価してください';
+      [3, 4, 5].forEach(function(q) { btnsEl.appendChild(makeAjQBtn(q)); });
+    } else {
+      if (prompt) prompt.textContent = '予定3セットを完了しなかった理由に近い評価を選択してください';
+      [1, 2].forEach(function(q) { btnsEl.appendChild(makeAjQBtn(q)); });
+    }
+
+    // Reset reason buttons
+    document.querySelectorAll('.aj-reason-btn').forEach(function(b) {
+      b.classList.remove('btn-warning');
+      b.classList.add('btn-outline-secondary');
+    });
+
+    if (ajOverlay) { ajOverlay.style.display = 'flex'; document.body.style.overflow = 'hidden'; }
+  }
+
+  function makeAjQBtn(q) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = AJ_Q_LABELS[q];
+    b.style.cssText = 'width:6rem;height:3rem;border-radius:10px;font-weight:800;font-size:0.85rem;' +
+      'background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.7);' +
+      'border:1.5px solid rgba(255,255,255,0.2);cursor:pointer;';
+    b.addEventListener('click', function() {
+      ajSelectedQ = q;
+      document.querySelectorAll('#aj-quality-btns button').forEach(function(bb) {
+        bb.style.background = 'rgba(255,255,255,0.06)';
+        bb.style.color = 'rgba(255,255,255,0.7)';
+        bb.style.borderColor = 'rgba(255,255,255,0.2)';
+      });
+      b.style.background = AJ_Q_COLORS[q];
+      b.style.color = '#fff';
+      b.style.borderColor = AJ_Q_COLORS[q];
+      // Show reason section only for Q1/Q2
+      var rs = document.getElementById('aj-reason-section');
+      if (rs) rs.style.display = (q <= 2) ? '' : 'none';
+      if (ajSubmitBtn) ajSubmitBtn.disabled = false;
+    });
+    return b;
+  }
+
+  function closeAjQualityModal() {
+    if (ajOverlay) ajOverlay.style.display = 'none';
+    document.body.style.overflow = '';
+    if (ajCurrentCompBtn) ajCurrentCompBtn.disabled = false;
+    ajCurrentSeId = null; ajCurrentCompBtn = null; ajSelectedQ = null; ajSelectedReason = null;
+  }
+
+  if (ajCancelBtn) ajCancelBtn.addEventListener('click', closeAjQualityModal);
+  if (ajOverlay) {
+    ajOverlay.addEventListener('click', function(e) { if (e.target === ajOverlay) closeAjQualityModal(); });
+  }
+
+  document.querySelectorAll('.aj-reason-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      ajSelectedReason = btn.dataset.code;
+      document.querySelectorAll('.aj-reason-btn').forEach(function(b) {
+        b.classList.remove('btn-warning');
+        b.classList.add('btn-outline-secondary');
+      });
+      btn.classList.remove('btn-outline-secondary');
+      btn.classList.add('btn-warning');
+    });
+  });
+
+  if (ajSubmitBtn) {
+    ajSubmitBtn.addEventListener('click', function() {
+      if (!ajSelectedQ || !ajCurrentSeId) return;
+      ajSubmitBtn.disabled = true;
+      ajSubmitBtn.textContent = '保存中…';
+      var seId = ajCurrentSeId;
+      // Save quality (and optional stop_reason)
+      var payload = { quality: ajSelectedQ };
+      if (ajSelectedReason) payload.stop_reason = ajSelectedReason;
+      fetch('/api/se/' + seId + '/quality-pain', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      .then(function(r) { return r.json(); })
+      .then(function() {
+        // Now complete the exercise
+        return fetch('/api/se/' + seId + '/complete', { method: 'POST' });
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (ajOverlay) ajOverlay.style.display = 'none';
+        document.body.style.overflow = '';
+        if (data.completed) {
+          var slide = document.getElementById('slide-' + seId);
+          if (slide) slide.remove();
+          updateCarousel();
+          addToCompletedList(seId);
+          updateDoneCount();
+        } else {
+          window.location.reload();
+        }
+      })
+      .catch(function() {
+        ajSubmitBtn.disabled = false;
+        ajSubmitBtn.textContent = '評価して完了 →';
+      });
+    });
+  }
+
+  // ── Complete button ────────────────────────────────────────────────────────
   document.querySelectorAll('.complete-btn').forEach(function(btn) {
     btn.addEventListener('click', function() {
       var seId = btn.dataset.seId;
+      // アプローチジャンプは専用モーダルで評価
+      if (btn.dataset.exerciseName === 'アプローチジャンプ') {
+        btn.disabled = true;
+        openAjQualityModal(seId, btn);
+        return;
+      }
       btn.disabled = true;
       fetch('/api/se/' + seId + '/complete', { method: 'POST' })
         .then(function(r) { return r.json(); })
