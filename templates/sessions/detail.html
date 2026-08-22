@@ -418,7 +418,7 @@
                 <div class="d-flex align-items-center gap-2 mt-1">
                   <button type="button" class="adjust-toggle-btn btn btn-sm btn-outline-secondary"
                           data-se-id="{{ ex.id }}"
-                          style="font-size:0.6rem;padding:0.08rem 0.35rem;line-height:1.4;border-radius:4px;">⚙</button>
+                          style="font-size:0.6rem;padding:0.08rem 0.35rem;line-height:1.4;border-radius:4px;color:var(--yellow);">⚙</button>
                   <span class="badge bg-warning text-dark exp-badge-{{ ex.id }}" style="font-size:0.62rem;">
                     {{ "{:,}".format(ex.exp_earned) }} EXP
                   </span>
@@ -434,7 +434,7 @@
                 </div>
                 {# Inline adjust panel #}
                 <div class="adjust-panel mt-1 p-2" id="adjust-{{ ex.id }}"
-                     style="display:none;background:rgba(255,255,255,0.05);border-radius:7px;">
+                     style="background:rgba(255,255,255,0.05);border-radius:7px;">
                   <div class="d-flex gap-2 align-items-end flex-wrap">
                     <div>
                       <div class="section-label" style="margin-bottom:0.15rem;font-size:0.6rem;">1RM kg</div>
