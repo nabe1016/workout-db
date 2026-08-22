@@ -389,18 +389,11 @@
                   </div>
                   {% if ex.exercise_type == 'plyometric' %}
                   <div class="d-flex align-items-center gap-1">
-                    <span class="text-secondary" style="width:3.4em;flex-shrink:0;">接地</span>
+                    <span class="text-secondary" style="width:3.4em;flex-shrink:0;">総JUMP</span>
                     <span id="contacts-val-{{ ex.id }}">
-                      {% if ex.contacts %}: <strong class="text-light">{{ ex.contacts }}</strong>回{% else %}<span class="text-secondary">: —</span>{% endif %}
+                      {% set sets_done = (ex.set1_completed|int(0)) + (ex.set2_completed|int(0)) + (ex.set3_completed|int(0)) + (ex.set4_completed|int(0)) + (ex.set5_completed|int(0)) + (ex.set6_completed|int(0)) %}
+                      {% if sets_done > 0 and ex.reps %}: <strong class="text-light">{{ ex.reps * sets_done }}</strong>回{% else %}<span class="text-secondary">: —</span>{% endif %}
                     </span>
-                    <select class="form-select form-select-sm contacts-select ms-1"
-                            data-se-id="{{ ex.id }}"
-                            style="width:6rem;font-size:0.75rem;padding:0.15rem 0.3rem;">
-                      <option value="">—</option>
-                      {% for v in range(1, 201) %}
-                      <option value="{{ v }}" {% if ex.contacts == v %}selected{% endif %}>{{ v }}回</option>
-                      {% endfor %}
-                    </select>
                   </div>
                   {% elif ex.exercise_type == 'power' %}
                   <div class="d-flex align-items-center gap-1">
@@ -478,6 +471,7 @@
                 <div class="adjust-panel mt-1 px-1 py-1" id="adjust-{{ ex.id }}"
                      style="background:rgba(255,255,255,0.05);border-radius:7px;">
                   <div class="d-flex gap-1 align-items-end flex-wrap">
+                    {% if ex.exercise_type not in ('plyometric', 'power') %}
                     <div>
                       <div class="section-label" style="margin-bottom:0.1rem;font-size:0.55rem;">1RM kg</div>
                       <input type="number" class="form-control form-control-sm adjust-input"
@@ -485,6 +479,7 @@
                              value="{{ ex.one_rep_max or '' }}" step="0.5" min="0"
                              style="width:4rem;font-size:0.75rem;padding:0.15rem 0.3rem;">
                     </div>
+                    {% endif %}
                     <div>
                       <div class="section-label" style="margin-bottom:0.1rem;font-size:0.55rem;">Reps</div>
                       <input type="number" class="form-control form-control-sm adjust-input"
@@ -492,6 +487,7 @@
                              value="{{ (ex.reps_low if mode == 'low' else ex.reps) or '' }}" step="1" min="1"
                              style="width:2.8rem;font-size:0.75rem;padding:0.15rem 0.3rem;">
                     </div>
+                    {% if ex.exercise_type not in ('plyometric', 'power') %}
                     <div>
                       <div class="section-label" id="pct-label-{{ ex.id }}"
                            style="margin-bottom:0.1rem;font-size:0.55rem;">{% if mode == 'high' %}高%{% else %}低%{% endif %}</div>
@@ -502,6 +498,7 @@
                              {% if mode == 'high' %}readonly{% endif %}
                              style="width:2.8rem;font-size:0.75rem;padding:0.15rem 0.3rem;{% if mode == 'high' %}opacity:0.5;{% endif %}">
                     </div>
+                    {% endif %}
                     {% if ex.needs_bench %}
                     <div>
                       <div class="section-label" style="margin-bottom:0.1rem;font-size:0.55rem;">角度°</div>
@@ -861,6 +858,22 @@
     });
   });
 
+  // ── Auto-calculate plyometric contacts (総JUMP = reps × completed sets) ───
+  function updateContactsVal(seId) {
+    var el = document.getElementById('contacts-val-' + seId);
+    if (!el) return;
+    var setButtons = document.querySelectorAll('.set-toggle-btn[data-se-id="' + seId + '"]');
+    var doneCount = 0;
+    setButtons.forEach(function(sb) { if (sb.dataset.completed === 'true') doneCount++; });
+    var repInput = document.querySelector('.adjust-input[data-se-id="' + seId + '"][data-field="reps"]');
+    var reps = repInput ? (parseInt(repInput.value) || 0) : 0;
+    if (doneCount > 0 && reps > 0) {
+      el.innerHTML = ': <strong class="text-light">' + (reps * doneCount) + '</strong>回';
+    } else {
+      el.innerHTML = '<span class="text-secondary">: —</span>';
+    }
+  }
+
   // ── Set reveal: show ④⑤⑥ when previous set is completed ─────────────────
   function updateSetReveal(seId) {
     [4, 5, 6].forEach(function(i) {
@@ -886,6 +899,7 @@
           btn.classList.toggle('btn-success', data.completed);
           btn.classList.toggle('btn-outline-secondary', !data.completed);
           updateSetReveal(seId);
+          updateContactsVal(seId);
 
           var expEl = document.querySelector('.exp-badge-' + seId);
           if (expEl) expEl.textContent = data.exp_earned.toLocaleString() + ' EXP';
@@ -1173,7 +1187,7 @@
       var ormEl = document.getElementById('orm-val-' + seId);
       if (ormEl) ormEl.innerHTML = ': <strong class="text-light">' + data.one_rep_max + 'kg</strong>';
     }
-    if (data.reps       != null) { var ri = card.querySelector('[data-field="reps"]');        if (ri) ri.value = data.reps; }
+    if (data.reps       != null) { var ri = card.querySelector('[data-field="reps"]');        if (ri) ri.value = data.reps; updateContactsVal(seId); }
     var pctLblEl = document.getElementById('pct-label-' + seId);
     var pi = card.querySelector('[data-field="low_load_pct"]');
     if (pctLblEl) pctLblEl.textContent = isLow ? '低%' : '高%';
