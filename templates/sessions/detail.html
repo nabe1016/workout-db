@@ -601,7 +601,7 @@
       <div class="d-flex align-items-center gap-2">
         <span style="color:#4caf50;font-size:1rem;flex-shrink:0;line-height:1;">✓</span>
         <a href="{{ url_for('exercise_progress', exercise_id=ex.exercise_id) }}"
-           class="fw-bold text-secondary text-decoration-none" style="font-size:0.88rem;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+           class="fw-bold text-secondary text-decoration-none" style="font-size:0.88rem;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">
           {{ ex.exercise_name }}
         </a>
         {% if ex.body_part %}
@@ -610,6 +610,9 @@
         <span class="badge bg-warning text-dark exp-badge-{{ ex.id }}" style="font-size:0.58rem;flex-shrink:0;">
           {{ "{:,}".format(ex.exp_earned) }} EXP
         </span>
+        <button type="button" class="uncomplete-btn btn btn-sm btn-outline-secondary flex-shrink-0"
+                data-se-id="{{ ex.id }}"
+                style="font-size:0.6rem;padding:0.05rem 0.35rem;line-height:1.4;border-radius:4px;">戻す</button>
       </div>
     </div>
   </div>
@@ -626,12 +629,13 @@
   <div id="completed-list" class="d-flex flex-column gap-2">
     {% for ex in all_finished %}
     <div class="card exercise-card {% if ex.completed %}se-completed{% elif ex.skipped %}se-skipped{% endif %}"
+         id="done-card-{{ ex.id }}"
          style="opacity:0.72;{% if ex.body_part %}--card-bg:{{ category_bg(ex.body_part) }};{% endif %}">
       <div class="card-body py-2 px-2">
         <div class="d-flex align-items-center gap-2">
           <span style="color:{% if ex.completed %}#4caf50{% else %}#ff9800{% endif %};font-size:1rem;flex-shrink:0;line-height:1;">{% if ex.completed %}✓{% else %}⏭{% endif %}</span>
           <a href="{{ url_for('exercise_progress', exercise_id=ex.exercise_id) }}"
-             class="fw-bold text-secondary text-decoration-none" style="font-size:0.88rem;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+             class="fw-bold text-secondary text-decoration-none" style="font-size:0.88rem;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">
             {{ ex.exercise_name }}
           </a>
           {% if ex.body_part %}
@@ -640,6 +644,11 @@
           <span class="badge bg-warning text-dark exp-badge-{{ ex.id }}" style="font-size:0.58rem;flex-shrink:0;">
             {{ "{:,}".format(ex.exp_earned) }} EXP
           </span>
+          {% if ex.completed %}
+          <button type="button" class="uncomplete-btn btn btn-sm btn-outline-secondary flex-shrink-0"
+                  data-se-id="{{ ex.id }}"
+                  style="font-size:0.6rem;padding:0.05rem 0.35rem;line-height:1.4;border-radius:4px;">戻す</button>
+          {% endif %}
         </div>
       </div>
     </div>
@@ -974,6 +983,26 @@
         })
         .catch(function() { btn.disabled = false; });
     });
+  });
+
+  // ── 完了済みから戻す ───────────────────────────────────────────────────────
+  document.addEventListener('click', function(e) {
+    var btn = e.target.closest('.uncomplete-btn');
+    if (!btn) return;
+    var seId = btn.dataset.seId;
+    btn.disabled = true;
+    btn.textContent = '…';
+    fetch('/api/se/' + seId + '/complete', { method: 'POST' })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (!data.completed) {
+          window.location.reload();
+        } else {
+          btn.disabled = false;
+          btn.textContent = '戻す';
+        }
+      })
+      .catch(function() { btn.disabled = false; btn.textContent = '戻す'; });
   });
 
   // ── EXP 再計算 ────────────────────────────────────────────────────────────
