@@ -72,7 +72,18 @@ def get_session_with_exercises(session_id: int):
                       WHERE se2.exercise_id = se.exercise_id
                         AND se2.one_rep_max IS NOT NULL
                       ORDER BY se2.id DESC LIMIT 1)
-                   ) AS one_rep_max
+                   ) AS one_rep_max,
+                   COALESCE(
+                     se.weight_setting,
+                     ROUND(COALESCE(
+                       se.one_rep_max,
+                       ex.one_rep_max,
+                       (SELECT se2.one_rep_max FROM session_exercises se2
+                        WHERE se2.exercise_id = se.exercise_id
+                          AND se2.one_rep_max IS NOT NULL
+                        ORDER BY se2.id DESC LIMIT 1)
+                     ) * 0.8, 1)
+                   ) AS weight_setting
             FROM session_exercises se
             JOIN exercises ex ON ex.id = se.exercise_id
             WHERE se.session_id = %s
