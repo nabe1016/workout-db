@@ -2110,92 +2110,104 @@ def record_session_finish(session_id: int, duration_min: int, session_rpe: int,
                            session_type: str = None) -> dict:
     """Record RPE, duration, session_load; compute and store session summary metrics."""
     session_load = (duration_min or 0) * session_rpe
+    result = {
+        "session_load": session_load,
+        "strength_volume_kg": 0,
+        "plyometric_contacts": 0,
+        "power_throws": 0,
+        "avg_quality": None,
+    }
+
+    # ── Step 1: Always save core fields (these columns definitely exist) ──────
+    core_parts = ["session_rpe=%s", "duration_min=%s", "session_load=%s"]
+    core_vals  = [session_rpe, duration_min, session_load]
+    if session_type:
+        core_parts.append("session_type=%s")
+        core_vals.append(session_type)
+    core_vals.append(session_id)
     with _conn() as conn:
         cur = conn.cursor()
-
-        # Compute Strength Volume
-        cur.execute("""
-            SELECT COALESCE(SUM(
-                CASE WHEN COALESCE(se.load_mode,'high') = 'low' THEN
-                    COALESCE(se.weight_low_load, se.weight_setting, 0)
-                ELSE COALESCE(se.weight_setting, 0)
-                END *
-                COALESCE(se.reps, 0) *
-                (COALESCE(se.set1_completed::int,0)+COALESCE(se.set2_completed::int,0)+
-                 COALESCE(se.set3_completed::int,0)+COALESCE(se.set4_completed::int,0)+
-                 COALESCE(se.set5_completed::int,0)+COALESCE(se.set6_completed::int,0))
-            ), 0)
-            FROM session_exercises se
-            JOIN exercises ex ON ex.id = se.exercise_id
-            WHERE se.session_id = %s
-              AND COALESCE(ex.exercise_type,'strength') = 'strength'
-        """, (session_id,))
-        strength_vol = float(cur.fetchone()[0] or 0)
-
-        # Compute plyometric contacts
-        cur.execute("""
-            SELECT COALESCE(SUM(COALESCE(se.contacts, se.reps, 0) *
-                (COALESCE(se.set1_completed::int,0)+COALESCE(se.set2_completed::int,0)+
-                 COALESCE(se.set3_completed::int,0)+COALESCE(se.set4_completed::int,0)+
-                 COALESCE(se.set5_completed::int,0)+COALESCE(se.set6_completed::int,0))), 0)
-            FROM session_exercises se
-            JOIN exercises ex ON ex.id = se.exercise_id
-            WHERE se.session_id = %s
-              AND COALESCE(ex.exercise_type,'strength') = 'plyometric'
-        """, (session_id,))
-        plyo_contacts = int(cur.fetchone()[0] or 0)
-
-        # Compute power throws
-        cur.execute("""
-            SELECT COALESCE(SUM(COALESCE(se.throws, se.reps, 0) *
-                (COALESCE(se.set1_completed::int,0)+COALESCE(se.set2_completed::int,0)+
-                 COALESCE(se.set3_completed::int,0)+COALESCE(se.set4_completed::int,0)+
-                 COALESCE(se.set5_completed::int,0)+COALESCE(se.set6_completed::int,0))), 0)
-            FROM session_exercises se
-            JOIN exercises ex ON ex.id = se.exercise_id
-            WHERE se.session_id = %s
-              AND COALESCE(ex.exercise_type,'strength') = 'power'
-        """, (session_id,))
-        power_throws = int(cur.fetchone()[0] or 0)
-
-        # Compute avg quality
-        cur.execute("""
-            SELECT AVG(se.quality)
-            FROM session_exercises se
-            JOIN exercises ex ON ex.id = se.exercise_id
-            WHERE se.session_id = %s
-              AND se.quality IS NOT NULL
-              AND COALESCE(ex.exercise_type,'strength') IN ('plyometric','power')
-        """, (session_id,))
-        avg_q_row = cur.fetchone()[0]
-        avg_quality = round(float(avg_q_row), 2) if avg_q_row else None
-
-        update_parts = [
-            "session_rpe=%s", "duration_min=%s", "session_load=%s",
-            "strength_volume_kg=%s", "plyometric_contacts=%s",
-            "power_throws=%s", "avg_quality=%s",
-        ]
-        update_vals = [
-            session_rpe, duration_min, session_load,
-            strength_vol, plyo_contacts, power_throws, avg_quality,
-        ]
-        if session_type:
-            update_parts.append("session_type=%s")
-            update_vals.append(session_type)
-        update_vals.append(session_id)
-
         cur.execute(
-            f"UPDATE workout_sessions SET {', '.join(update_parts)} WHERE id = %s",
-            update_vals
+            f"UPDATE workout_sessions SET {', '.join(core_parts)} WHERE id = %s",
+            core_vals
         )
 
-    return {
-        "session_load":        session_load,
-        "strength_volume_kg":  strength_vol,
-        "plyometric_contacts": plyo_contacts,
-        "power_throws":        power_throws,
-        "avg_quality":         avg_quality,
-    }
+    # ── Step 2: Compute & save extended metrics (best-effort) ─────────────────
+    try:
+        with _conn() as conn:
+            cur = conn.cursor()
+
+            cur.execute("""
+                SELECT COALESCE(SUM(
+                    CASE WHEN COALESCE(se.load_mode,'high') = 'low' THEN
+                        COALESCE(se.weight_low_load, se.weight_setting, 0)
+                    ELSE COALESCE(se.weight_setting, 0)
+                    END *
+                    COALESCE(se.reps, 0) *
+                    (COALESCE(se.set1_completed::int,0)+COALESCE(se.set2_completed::int,0)+
+                     COALESCE(se.set3_completed::int,0)+COALESCE(se.set4_completed::int,0)+
+                     COALESCE(se.set5_completed::int,0)+COALESCE(se.set6_completed::int,0))
+                ), 0)
+                FROM session_exercises se
+                JOIN exercises ex ON ex.id = se.exercise_id
+                WHERE se.session_id = %s
+                  AND COALESCE(ex.exercise_type,'strength') = 'strength'
+            """, (session_id,))
+            strength_vol = float(cur.fetchone()[0] or 0)
+
+            cur.execute("""
+                SELECT COALESCE(SUM(COALESCE(se.contacts, se.reps, 0) *
+                    (COALESCE(se.set1_completed::int,0)+COALESCE(se.set2_completed::int,0)+
+                     COALESCE(se.set3_completed::int,0)+COALESCE(se.set4_completed::int,0)+
+                     COALESCE(se.set5_completed::int,0)+COALESCE(se.set6_completed::int,0))), 0)
+                FROM session_exercises se
+                JOIN exercises ex ON ex.id = se.exercise_id
+                WHERE se.session_id = %s
+                  AND COALESCE(ex.exercise_type,'strength') = 'plyometric'
+            """, (session_id,))
+            plyo_contacts = int(cur.fetchone()[0] or 0)
+
+            cur.execute("""
+                SELECT COALESCE(SUM(COALESCE(se.throws, se.reps, 0) *
+                    (COALESCE(se.set1_completed::int,0)+COALESCE(se.set2_completed::int,0)+
+                     COALESCE(se.set3_completed::int,0)+COALESCE(se.set4_completed::int,0)+
+                     COALESCE(se.set5_completed::int,0)+COALESCE(se.set6_completed::int,0))), 0)
+                FROM session_exercises se
+                JOIN exercises ex ON ex.id = se.exercise_id
+                WHERE se.session_id = %s
+                  AND COALESCE(ex.exercise_type,'strength') = 'power'
+            """, (session_id,))
+            power_throws = int(cur.fetchone()[0] or 0)
+
+            cur.execute("""
+                SELECT AVG(se.quality)
+                FROM session_exercises se
+                JOIN exercises ex ON ex.id = se.exercise_id
+                WHERE se.session_id = %s
+                  AND se.quality IS NOT NULL
+                  AND COALESCE(ex.exercise_type,'strength') IN ('plyometric','power')
+            """, (session_id,))
+            avg_q_row = cur.fetchone()[0]
+            avg_quality = round(float(avg_q_row), 2) if avg_q_row else None
+
+            cur.execute("""
+                UPDATE workout_sessions
+                SET strength_volume_kg=%s, plyometric_contacts=%s,
+                    power_throws=%s, avg_quality=%s
+                WHERE id = %s
+            """, (strength_vol, plyo_contacts, power_throws, avg_quality, session_id))
+
+            result.update({
+                "strength_volume_kg":  strength_vol,
+                "plyometric_contacts": plyo_contacts,
+                "power_throws":        power_throws,
+                "avg_quality":         avg_quality,
+            })
+    except Exception:
+        import traceback
+        traceback.print_exc()
+
+    return result
 
 
 # ── Volleyball Program 3プラン my-set seed ────────────────────────────────────
