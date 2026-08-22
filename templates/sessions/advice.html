@@ -19,8 +19,8 @@
   <div class="text-secondary small">{{ session.session_date.strftime('%Y/%m/%d') }}（{{ session.day_of_week }}）</div>
 </div>
 
-{# Stats #}
-<div class="card mb-3">
+{# Stats — 第1階層: EXP / 種目数 / 完了数 #}
+<div class="card mb-2">
   <div class="card-body px-3 py-0">
     <div class="row g-0">
       <div class="col-4" style="border-right:0.5px solid var(--sep);">
@@ -39,6 +39,45 @@
         <div class="stat-block">
           <div class="stat-value" style="color:var(--green);">{{ completed_count }}</div>
           <div class="stat-label">完全完了</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# Stats — 第2階層: Session Load / Strength Volume #}
+<div class="card mb-3">
+  <div class="card-body px-3 py-0">
+    <div class="row g-0">
+      <div class="col-6" style="border-right:0.5px solid var(--sep);">
+        <div class="stat-block py-2">
+          {% if session.session_load %}
+          <div class="stat-value" style="color:var(--blue);font-size:1.4rem;">
+            {{ session.session_load }}
+          </div>
+          {% else %}
+          <div class="stat-value" style="color:var(--txt-2);font-size:1.4rem;">—</div>
+          {% endif %}
+          <div class="stat-label">Session Load</div>
+          {% if session.duration_min and session.session_rpe %}
+          <div style="font-size:0.62rem;color:var(--txt-2);margin-top:0.1rem;">
+            {{ session.duration_min }}分 × RPE{{ session.session_rpe }}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      <div class="col-6">
+        <div class="stat-block py-2">
+          {% if session.strength_volume_kg and session.strength_volume_kg > 0 %}
+          <div class="stat-value" style="color:var(--orange);font-size:1.4rem;">
+            {{ "{:,.0f}".format(session.strength_volume_kg) }}
+            <span style="font-size:0.7rem;font-weight:400;">kg</span>
+          </div>
+          {% else %}
+          <div class="stat-value" style="color:var(--txt-2);font-size:1.4rem;">—</div>
+          {% endif %}
+          <div class="stat-label">Strength Volume</div>
+          <div style="font-size:0.62rem;color:var(--txt-2);margin-top:0.1rem;">重量×rep×set</div>
         </div>
       </div>
     </div>

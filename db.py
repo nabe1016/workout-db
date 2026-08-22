@@ -1841,18 +1841,67 @@ def build_advice(session, exercises: list, body_weight: float = 65.0) -> tuple:
                         "title": "明日は積極的リカバリーを",
                         "body": "ウォーキングや軽いストレッチで血流を促進すると回復が早まります。週2〜3回の高品質セッションを継続することが、最新科学が示す最も効率的な筋肥大戦略です。"})
 
-    # ── 漸進性過負荷の分析 ────────────────────────────────────────────────────
+    # ── 漸進性過負荷の分析（exerciseType別ロジック）────────────────────────
     overload_tips = []
     for ex in exercises:
-        name = ex.get("exercise_name") or "この種目"
-        mode = ex.get("load_mode") or "high"
-        reps = int(ex.get("reps_low") or 20) if mode == "low" else (ex.get("reps") or 0)
-        done = sum(1 for i in range(1, 11) if ex.get(f"set{i}_completed"))
-        if done < 3 or reps <= 0:
+        name     = ex.get("exercise_name") or "この種目"
+        mode     = ex.get("load_mode") or "high"
+        ex_type  = (ex.get("exercise_type") or "strength").lower()
+        reps     = int(ex.get("reps_low") or 20) if mode == "low" else int(ex.get("reps") or 0)
+        done     = sum(1 for i in range(1, 11) if ex.get(f"set{i}_completed"))
+        quality  = ex.get("quality")
+        se_id_val = ex.get("id")
+
+        if done < 1 or reps <= 0:
             continue
 
-        se_id_val = ex.get("id")
+        # ── Plyometric：rep増加は提案しない。Quality・完遂を優先 ───────────
+        if ex_type == "plyometric":
+            if done >= 3 and quality and quality >= 4:
+                overload_tips.append({
+                    "icon": "⚡", "name": name,
+                    "title": "高品質で完遂！この水準を維持",
+                    "body": f"Q{quality}で{done}セット完遂。次回も同じ強度・リズムで質の高いジャンプを意識してください。",
+                    "se_id": se_id_val, "action": "maintain", "new_value": None,
+                })
+            elif done >= 3:
+                overload_tips.append({
+                    "icon": "🎯", "name": name,
+                    "title": "全セット完遂！動作品質を高めよう",
+                    "body": f"{done}セット完遂。次回は踏切のタイミング・腕振り・高さの一貫性をさらに意識してみましょう。",
+                    "se_id": se_id_val, "action": "maintain", "new_value": None,
+                })
+            else:
+                overload_tips.append({
+                    "icon": "🏃", "name": name,
+                    "title": "次回は全3セット完遂を目標に",
+                    "body": f"今回は{done}セット実施。重量・rep増加より「全セット高品質で完遂」を優先してください。",
+                    "se_id": se_id_val, "action": "maintain", "new_value": None,
+                })
+            continue
+
+        # ── Power：Quality・速度優先。Q4〜5維持で微増候補 ─────────────────
+        if ex_type == "power":
+            if quality and quality >= 4 and done >= 3:
+                overload_tips.append({
+                    "icon": "🚀", "name": name,
+                    "title": "高Quality継続中！次回も速度優先で",
+                    "body": f"Q{quality}×{done}セット達成。速度と爆発力を最優先に維持してください。Quality4〜5を安定して達成できたら負荷の微増を検討します。",
+                    "se_id": se_id_val, "action": "maintain", "new_value": None,
+                })
+            else:
+                overload_tips.append({
+                    "icon": "🎯", "name": name,
+                    "title": "速度・Quality優先で継続",
+                    "body": f"Power系種目は重量増加より「速度・爆発力・Quality」を優先します。Q4〜5を安定させることが次のステップです。",
+                    "se_id": se_id_val, "action": "maintain", "new_value": None,
+                })
+            continue
+
+        # ── Low-load mode（strength / core / accessory 共通）───────────────
         if mode == "low":
+            if done < 3:
+                continue
             if reps >= 30:
                 pct = float(ex.get("low_load_pct") or 30)
                 new_pct = round(pct + 5)
@@ -1870,29 +1919,61 @@ def build_advice(session, exercises: list, body_weight: float = 65.0) -> tuple:
                         "body": f"低負荷で{reps}rep × {done}セット達成！次回は高負荷（1RM×80%）での8-12repに挑戦しましょう。",
                         "se_id": se_id_val, "action": "mode_switch", "new_value": "high",
                     })
-            elif reps < 30:
+            else:
                 new_reps = reps + 2
                 overload_tips.append({
                     "icon": "📊", "name": name,
                     "title": "rep数を増やしましょう",
-                    "body": f"低負荷{reps}rep × {done}セット達成！次回は {reps} → {new_reps} rep に増やしてみましょう。30repで重量アップです。",
+                    "body": f"低負荷{reps}rep × {done}セット達成！次回は {reps} → {new_reps} rep に増やしてみましょう。30repで%アップです。",
                     "se_id": se_id_val, "action": "reps", "new_value": new_reps,
                 })
-        else:
+            continue
+
+        # ── High-load: strength ────────────────────────────────────────────
+        if ex_type == "strength":
+            if done < 3:
+                continue
             if reps >= 12:
                 overload_tips.append({
                     "icon": "📈", "name": name,
                     "title": "次回は重量アップのチャンス！",
-                    "body": f"高負荷{reps}rep × {done}セット達成！1RMを更新して重量を1段階上げましょう。重量アップ後はrep数を8に戻してOKです。",
+                    "body": f"高負荷{reps}rep × {done}セット達成（RIR2〜3を確保できている目安）。1RMを更新して重量を1段階上げましょう。重量アップ後はrep数を8に戻してOKです。",
                     "se_id": se_id_val, "action": "weight_up", "new_value": None,
                 })
-            else:
+            elif reps >= 8:
                 new_reps = reps + 1
                 overload_tips.append({
                     "icon": "📊", "name": name,
                     "title": f"次回は {new_reps} rep を目標に",
-                    "body": f"高負荷{reps}rep × {done}セット達成！次回は {reps} → {new_reps} rep に増やしましょう。12repで重量アップです。",
+                    "body": f"高負荷{reps}rep × {done}セット達成！次回は {reps} → {new_reps} rep に増やしましょう。12repで重量アップのサインです。",
                     "se_id": se_id_val, "action": "reps", "new_value": new_reps,
+                })
+            else:
+                overload_tips.append({
+                    "icon": "🎯", "name": name,
+                    "title": "フォームを固めながら継続",
+                    "body": f"高負荷{reps}rep × {done}セット。まずはフォームを安定させて8repを目標にしましょう。",
+                    "se_id": se_id_val, "action": "maintain", "new_value": None,
+                })
+
+        # ── High-load: core / accessory ───────────────────────────────────
+        elif ex_type in ("core", "accessory"):
+            if done < 3:
+                continue
+            if reps >= 12:
+                new_reps = reps + 1
+                overload_tips.append({
+                    "icon": "📊", "name": name,
+                    "title": f"次回は {new_reps} rep を目標に",
+                    "body": f"{reps}rep × {done}セット達成！フォームと制御を保ちながら {reps} → {new_reps} rep に進めましょう。",
+                    "se_id": se_id_val, "action": "reps", "new_value": new_reps,
+                })
+            else:
+                overload_tips.append({
+                    "icon": "🎯", "name": name,
+                    "title": "フォームと制御を優先して継続",
+                    "body": f"{reps}rep × {done}セット。体幹・補助系はフォーム品質とRIR2〜3を最優先に。焦らず積み上げましょう。",
+                    "se_id": se_id_val, "action": "maintain", "new_value": None,
                 })
 
     return advice, intensity, overload_tips
