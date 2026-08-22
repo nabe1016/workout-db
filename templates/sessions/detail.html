@@ -559,12 +559,16 @@
               {% endfor %}
             </div>
             {% endif %}
-            {# Complete (no skip) #}
+            {# Complete / Skip #}
             <div class="ms-auto d-flex gap-1 flex-shrink-0">
               <button type="button"
                       class="pain-btn btn {% if ex.pain_flag %}btn-danger{% else %}btn-outline-secondary{% endif %}"
                       data-se-id="{{ ex.id }}" title="痛みあり"
                       style="width:2.1rem;height:2rem;font-size:0.85rem;padding:0;border-radius:6px;">🩹</button>
+              <button type="button"
+                      class="skip-btn btn {% if ex.skipped %}btn-warning{% else %}btn-outline-secondary{% endif %}"
+                      data-se-id="{{ ex.id }}" title="スキップ"
+                      style="height:2rem;font-size:0.75rem;padding:0 0.5rem;border-radius:6px;">⏭ パス</button>
               <button type="button"
                       class="complete-btn btn {% if ex.completed %}btn-success{% else %}btn-outline-secondary{% endif %}"
                       data-se-id="{{ ex.id }}" title="完了"
@@ -1003,6 +1007,48 @@
         }
       })
       .catch(function() { btn.disabled = false; btn.textContent = '戻す'; });
+  });
+
+  // ── Skip toggle ───────────────────────────────────────────────────────────
+  document.querySelectorAll('.skip-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var seId = btn.dataset.seId;
+      btn.disabled = true;
+      // スライドから種目名を先に取得
+      var slide = document.getElementById('slide-' + seId);
+      var exName = slide ? (slide.querySelector('a.fw-bold') || {}).textContent || '' : '';
+      exName = exName.trim();
+      fetch('/api/se/' + seId + '/skip', { method: 'POST' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.skipped) {
+            if (slide) slide.remove();
+            updateCarousel();
+            var completedList = document.getElementById('completed-list');
+            var section = document.getElementById('completed-section');
+            if (completedList) {
+              var div = document.createElement('div');
+              div.className = 'card exercise-card se-skipped';
+              div.id = 'done-card-' + seId;
+              div.style.opacity = '0.72';
+              div.innerHTML = '<div class="card-body py-2 px-2">'
+                + '<div class="d-flex align-items-center gap-2">'
+                + '<span style="color:#ff9800;font-size:1rem;flex-shrink:0;line-height:1;">⏭</span>'
+                + '<span class="fw-bold text-secondary" style="font-size:0.88rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + exName + '</span>'
+                + '</div></div>';
+              completedList.appendChild(div);
+            }
+            if (section) section.style.display = '';
+            var doneLabel = document.getElementById('done-count-label');
+            if (doneLabel) doneLabel.textContent = document.querySelectorAll('#completed-list .card').length + '件';
+            updateDoneCount();
+          } else {
+            window.location.reload();
+          }
+        })
+        .catch(function() {})
+        .finally(function() { btn.disabled = false; });
+    });
   });
 
   // ── EXP 再計算 ────────────────────────────────────────────────────────────
