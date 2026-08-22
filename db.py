@@ -64,7 +64,8 @@ def get_session_with_exercises(session_id: int):
                    ex.bodyweight_ratio, ex.is_time_based,
                    ex.lvup_high, ex.lvup_low,
                    COALESCE(ex.exercise_type, 'strength') AS exercise_type,
-                   COALESCE(ex.measurement_type, 'reps')  AS measurement_type
+                   COALESCE(ex.measurement_type, 'reps')  AS measurement_type,
+                   COALESCE(se.one_rep_max, ex.one_rep_max) AS one_rep_max
             FROM session_exercises se
             JOIN exercises ex ON ex.id = se.exercise_id
             WHERE se.session_id = %s
