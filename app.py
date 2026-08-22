@@ -694,7 +694,17 @@ def api_session_finish_rpe(session_id):
     session_type = data.get("session_type")
     if not session_rpe:
         return jsonify({"error": "session_rpe required"}), 400
-    result = db.record_session_finish(session_id, duration_min, session_rpe, session_type)
+    try:
+        result = db.record_session_finish(session_id, duration_min, session_rpe, session_type)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        # Try to ensure schema and retry once
+        try:
+            db.ensure_schema()
+            result = db.record_session_finish(session_id, duration_min, session_rpe, session_type)
+        except Exception as e2:
+            return jsonify({"error": str(e2)}), 500
     return jsonify(result)
 
 

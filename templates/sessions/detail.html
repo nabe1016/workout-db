@@ -1327,9 +1327,20 @@
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ session_rpe: selectedRpe, duration_min: duration })
       })
-      .then(function(r) { return r.json(); })
+      .then(function(r) {
+        if (!r.ok) {
+          return r.text().then(function(t) {
+            throw new Error('HTTP ' + r.status + ': ' + t.substring(0, 300));
+          });
+        }
+        return r.json();
+      })
       .then(function() { window.location.href = finishSubmitBtn.dataset.redirectUrl; })
-      .catch(function() { finishSubmitBtn.disabled = false; finishSubmitBtn.textContent = '記録して終了 →'; });
+      .catch(function(err) {
+        finishSubmitBtn.disabled = false;
+        finishSubmitBtn.textContent = '記録して終了 →';
+        alert('エラーが発生しました:\n' + (err && err.message ? err.message : err));
+      });
     });
   }
 
