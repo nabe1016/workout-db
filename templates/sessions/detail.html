@@ -53,6 +53,15 @@
       ▶ トレーニング開始
     </button>
     {% endif %}
+    {% if session.finished_at %}
+    <div class="d-flex align-items-center gap-2 mb-2 px-1" style="font-size:0.72rem;color:var(--txt-2);">
+      <span style="color:#69f0ae;">✔</span>
+      <span>記録済み — 種目を追加して後記録できます</span>
+      <a href="{{ url_for('exercise_new', session_id=session.id) }}"
+         class="btn btn-outline-secondary btn-sm ms-auto flex-shrink-0"
+         style="font-size:0.7rem;padding:0.15rem 0.5rem;border-radius:20px;">＋追加</a>
+    </div>
+    {% endif %}
     <div class="d-flex gap-2">
       <button type="button" class="btn btn-success btn-sm flex-fill fw-bold finish-trigger-btn"
               data-session-id="{{ session.id }}">終了・アドバイス</button>

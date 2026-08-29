@@ -382,6 +382,11 @@ document.querySelectorAll('.apply-tip-btn').forEach(function (btn) {
 
 {# Next actions #}
 <div class="d-flex flex-column gap-2">
+  <a href="{{ url_for('session_detail', session_id=session.id) }}"
+     class="btn btn-outline-secondary btn-lg w-100"
+     style="border-color:rgba(255,255,255,0.25);">
+    ➕ 種目を追加・後記録する
+  </a>
   <a href="{{ url_for('weight_log') }}" class="btn btn-outline-info btn-lg w-100">
     ⚖️ 今日の体重を記録する
   </a>
