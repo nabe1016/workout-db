@@ -7,6 +7,8 @@
         class="btn btn-outline-secondary btn-sm">再計算</button>
 <a href="{{ url_for('session_advice', session_id=session.id) }}"
    class="btn btn-outline-info btn-sm">📊</a>
+<a href="{{ url_for('session_time_edit', session_id=session.id) }}"
+   class="btn btn-outline-secondary btn-sm">📝</a>
 <a href="{{ url_for('exercise_new', session_id=session.id) }}"
    class="btn btn-outline-warning btn-sm">＋🏋️</a>
 {% endblock %}

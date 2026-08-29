@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% set back_url = url_for('session_detail', session_id=session.id) %}
+{% block title %}時間編集{% endblock %}
+{% block nav_title %}タイム編集{% endblock %}
+
+{% block content %}
+<form method="post">
+
+{# ── セッション開始時刻 ── #}
+<div class="card mb-3">
+  <div class="card-body py-2 px-3">
+    <div class="section-label mb-2">セッション</div>
+    <div class="d-flex align-items-center gap-3">
+      <span style="font-size:0.8rem;color:var(--txt-2);white-space:nowrap;">▶ 開始</span>
+      <input type="time" name="started_at_time"
+             class="form-control bg-dark text-light border-secondary"
+             style="max-width:8rem;"
+             value="{{ session.started_at.strftime('%H:%M') if session.started_at else '' }}">
+      {% if not session.started_at %}
+      <span style="font-size:0.65rem;color:var(--txt-2);">未記録</span>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{# ── 種目毎タイムスタンプ ── #}
+{% set _UNILATERAL = ['ブルガリアンスクワット', 'パロフプレス'] %}
+{% for ex in exercises %}
+{% set se_id = ex.id %}
+<div class="card mb-2{% if ex.at_home %} border-success{% endif %}"
+     {% if ex.at_home %}style="border-color:rgba(105,240,174,0.3)!important;"{% endif %}>
+  <div class="card-body py-2 px-3">
+
+    {# ヘッダー #}
+    <div class="d-flex align-items-center justify-content-between mb-2">
+      <div>
+        <span style="font-size:0.88rem;font-weight:700;">{{ ex.exercise_name }}</span>
+        {% if ex.at_home %}<span style="font-size:0.7rem;color:#69f0ae;margin-left:0.4rem;">🏠 自宅</span>{% endif %}
+        {% if ex.skipped %}<span style="font-size:0.65rem;color:var(--yellow);margin-left:0.4rem;">⏭ スキップ</span>{% endif %}
+      </div>
+      {% if ex.completed_at %}
+      <span style="font-size:0.65rem;color:var(--txt-2);">完了: {{ ex.completed_at.strftime('%H:%M') }}</span>
+      {% endif %}
+    </div>
+
+    {# セット別タイムスタンプ #}
+    <div class="d-flex flex-column gap-1">
+      {% for i in range(1, 7) %}
+      {% set c = ex.get("set%d_completed" % i) %}
+      {% if c %}
+      {% set ts = ex.get("set%d_at" % i) %}
+      {% if ex.exercise_name in _UNILATERAL %}
+        {% set side = '左' if i % 2 == 1 else '右' %}
+        {% set snum = ((i + 1) // 2) %}
+        {% set label = snum ~ side %}
+      {% else %}
+        {% set label = i ~ 'セット' %}
+      {% endif %}
+      <div class="d-flex align-items-center gap-2">
+        <span style="font-size:0.72rem;color:var(--txt-2);width:3.5rem;flex-shrink:0;">{{ label }}</span>
+        <input type="time" name="se_{{ se_id }}_set{{ i }}_at"
+               class="form-control form-control-sm bg-dark text-light border-secondary"
+               style="max-width:7rem;"
+               value="{{ ts.strftime('%H:%M') if ts else '' }}">
+        {% if ts and loop.index > 1 %}
+          {% set prev_i = loop.index0 %}
+          {# Duration hint is shown via JS #}
+        {% endif %}
+      </div>
+      {% endif %}
+      {% endfor %}
+
+      {# 完了打刻 #}
+      {% if ex.completed %}
+      <div class="d-flex align-items-center gap-2 mt-1 pt-1" style="border-top:0.5px solid var(--sep);">
+        <span style="font-size:0.72rem;color:#69f0ae;width:3.5rem;flex-shrink:0;">✅ 完了</span>
+        <input type="time" name="se_{{ se_id }}_completed_at"
+               class="form-control form-control-sm bg-dark text-light border-secondary"
+               style="max-width:7rem;"
+               value="{{ ex.completed_at.strftime('%H:%M') if ex.completed_at else '' }}">
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+{% endfor %}
+
+{# ── 保存ボタン ── #}
+<button type="submit" class="btn btn-warning btn-lg w-100 mt-2 fw-bold">
+  保存してリザルトへ →
+</button>
+
+</form>
+
+<script>
+(function() {
+  // Show delta (minutes) between consecutive time inputs within each card
+  document.querySelectorAll('.card').forEach(function(card) {
+    var inputs = Array.from(card.querySelectorAll('input[type="time"]'));
+    inputs.forEach(function(inp, idx) {
+      if (idx === 0) return;
+      inp.addEventListener('change', updateDeltas);
+    });
+    function updateDeltas() {
+      for (var i = 1; i < inputs.length; i++) {
+        var prev = inputs[i - 1].value, cur = inputs[i].value;
+        var hint = inputs[i].nextElementSibling;
+        if (!hint || !hint.classList.contains('time-delta')) {
+          hint = document.createElement('span');
+          hint.className = 'time-delta';
+          hint.style.cssText = 'font-size:0.6rem;color:rgba(255,255,255,0.28);flex-shrink:0;';
+          inputs[i].insertAdjacentElement('afterend', hint);
+        }
+        if (prev && cur) {
+          var pm = parseInt(prev.split(':')[0]) * 60 + parseInt(prev.split(':')[1]);
+          var cm = parseInt(cur.split(':')[0]) * 60 + parseInt(cur.split(':')[1]);
+          var diff = cm - pm;
+          hint.textContent = diff >= 0 ? '+' + diff + 'm' : diff + 'm';
+        } else {
+          hint.textContent = '';
+        }
+      }
+    }
+    updateDeltas();
+  });
+})();
+</script>
+{% endblock %}

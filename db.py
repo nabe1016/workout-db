@@ -2247,6 +2247,31 @@ def record_se_quality_pain(se_id: int, quality: int = None,
     return dict(row) if row else {}
 
 
+def update_exercise_timestamps(se_id: int, session_date,
+                               completed_at_str: str = None,
+                               set_times: dict = None) -> None:
+    """Update timestamp fields for a session exercise. Times are 'HH:MM' strings."""
+    sets, vals = [], []
+
+    def _ts(t_str):
+        if not t_str:
+            return None
+        h, m = map(int, t_str.split(":"))
+        return datetime.datetime.combine(session_date, datetime.time(h, m))
+
+    if completed_at_str is not None:
+        sets.append("completed_at = %s"); vals.append(_ts(completed_at_str) if completed_at_str else None)
+    if set_times:
+        for i in range(1, 7):
+            if i in set_times:
+                sets.append(f"set{i}_at = %s"); vals.append(_ts(set_times[i]) if set_times[i] else None)
+    if sets:
+        vals.append(se_id)
+        with _conn() as conn:
+            cur = conn.cursor()
+            cur.execute(f"UPDATE session_exercises SET {', '.join(sets)} WHERE id = %s", vals)
+
+
 def set_exercise_at_home(se_id: int, at_home: bool) -> dict:
     """Toggle the at_home flag for a session exercise."""
     with _conn() as conn:

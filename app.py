@@ -485,6 +485,49 @@ def weight_delete(logged_date):
     return redirect(url_for("weight_log"))
 
 
+# ── Session time edit ────────────────────────────────────────────────────────
+
+@app.route("/sessions/<int:session_id>/time-edit", methods=["GET", "POST"])
+def session_time_edit(session_id):
+    session, exercises = db.get_session_with_exercises(session_id)
+    if session is None:
+        return redirect(url_for("sessions_list"))
+
+    if request.method == "POST":
+        # Update session started_at
+        started_at_str = request.form.get("started_at_time", "").strip()
+        if started_at_str:
+            h, m = map(int, started_at_str.split(":"))
+            started_at = datetime.datetime.combine(session["session_date"], datetime.time(h, m))
+            db.update_session(session_id, session["session_date"],
+                              session["start_time"], session["end_time"],
+                              session["rep_count"], started_at=started_at)
+
+        # Update each exercise's timestamps
+        for ex in exercises:
+            se_id = ex["id"]
+            completed_at_str = request.form.get(f"se_{se_id}_completed_at", "").strip() or None
+            set_times = {}
+            for i in range(1, 7):
+                t = request.form.get(f"se_{se_id}_set{i}_at", "").strip()
+                if t:
+                    set_times[i] = t
+            if completed_at_str is not None or set_times:
+                db.update_exercise_timestamps(se_id, session["session_date"],
+                                              completed_at_str, set_times or None)
+
+        return redirect(url_for("session_advice", session_id=session_id))
+
+    # Sort: completed exercises first (by completed_at), then rest by sort_order
+    def _sort_key(ex):
+        ts = ex.get("completed_at")
+        return (0 if ts else 1, ts or datetime.datetime.min, ex.get("sort_order") or 999, ex["id"])
+
+    sorted_exs = sorted(exercises, key=_sort_key)
+    return render_template("sessions/time_edit.html",
+                           session=session, exercises=sorted_exs)
+
+
 # ── Session finish & advice ───────────────────────────────────────────────────
 
 @app.route("/sessions/<int:session_id>/finish", methods=["GET", "POST"])
