@@ -280,12 +280,25 @@ def session_edit(session_id):
         if not d:
             flash("日付を入力してください。", "danger")
             return render_template("sessions/form.html", session=session)
+
+        def _parse_ts(time_str):
+            if time_str and d:
+                try:
+                    import datetime as _dt
+                    t = _dt.datetime.strptime(time_str, "%H:%M").time()
+                    return _dt.datetime.combine(d, t)
+                except Exception:
+                    return None
+            return None
+
         db.update_session(
             session_id=session_id,
             session_date=d,
             start_time=request.form.get("start_time") or None,
             end_time=request.form.get("end_time") or None,
             rep_count=_parse_int(request.form.get("rep_count")),
+            started_at=_parse_ts(request.form.get("started_at_time") or None),
+            finished_at=_parse_ts(request.form.get("finished_at_time") or None),
         )
         flash("セッションを更新しました。", "success")
         return redirect(url_for("session_detail", session_id=session_id))

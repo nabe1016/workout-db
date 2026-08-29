@@ -157,16 +157,26 @@ def create_session(session_date, start_time, end_time, rep_count) -> int:
         return cur.fetchone()["id"]
 
 
-def update_session(session_id: int, session_date, start_time, end_time, rep_count) -> None:
+def update_session(session_id: int, session_date, start_time, end_time, rep_count,
+                   started_at=None, finished_at=None) -> None:
     dow = date_to_dow(session_date)
     with _conn() as conn:
         cur = conn.cursor()
-        cur.execute("""
+        extras = ""
+        params = [session_date, dow, start_time or None, end_time or None, rep_count or None]
+        if started_at is not None:
+            extras += ", started_at = %s"
+            params.append(started_at)
+        if finished_at is not None:
+            extras += ", finished_at = %s"
+            params.append(finished_at)
+        params.append(session_id)
+        cur.execute(f"""
             UPDATE workout_sessions
             SET session_date = %s, day_of_week = %s,
-                start_time = %s, end_time = %s, rep_count = %s
+                start_time = %s, end_time = %s, rep_count = %s{extras}
             WHERE id = %s
-        """, (session_date, dow, start_time or None, end_time or None, rep_count or None, session_id))
+        """, params)
     recalculate_session_exp(session_id)
 
 

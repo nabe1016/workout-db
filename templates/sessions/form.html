@@ -38,6 +38,36 @@
            placeholder="例: 8">
   </div>
 
+  {% if session %}
+  <div class="mb-4">
+    <div class="form-label d-flex align-items-center gap-2">
+      <span>記録時刻の修正</span>
+      <span class="badge" style="background:rgba(255,255,255,0.1);color:var(--txt-2);font-size:0.65rem;font-weight:400;">任意</span>
+    </div>
+    <div style="font-size:0.72rem;color:var(--txt-2);margin-bottom:0.5rem;">空欄のままにすると変更されません</div>
+    <div class="row g-2">
+      <div class="col-6">
+        <label class="form-label" style="font-size:0.8rem;">⏱ 開始ボタン時刻</label>
+        <input type="time" class="form-control bg-dark text-light border-secondary"
+               name="started_at_time"
+               value="{{ session.started_at.strftime('%H:%M') if session.started_at else '' }}">
+        <div style="font-size:0.65rem;color:var(--txt-2);margin-top:0.2rem;">
+          {% if session.started_at %}現在: {{ session.started_at.strftime('%H:%M') }}{% else %}未記録{% endif %}
+        </div>
+      </div>
+      <div class="col-6">
+        <label class="form-label" style="font-size:0.8rem;">✅ 終了記録時刻</label>
+        <input type="time" class="form-control bg-dark text-light border-secondary"
+               name="finished_at_time"
+               value="{{ session.finished_at.strftime('%H:%M') if session.finished_at else '' }}">
+        <div style="font-size:0.65rem;color:var(--txt-2);margin-top:0.2rem;">
+          {% if session.finished_at %}現在: {{ session.finished_at.strftime('%H:%M') }}{% else %}未記録{% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
   <button type="submit" class="btn btn-warning btn-lg w-100">保存</button>
 </form>
 
