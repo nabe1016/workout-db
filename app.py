@@ -605,6 +605,14 @@ def session_recalculate_exp(session_id):
     return jsonify(result)
 
 
+# ── Session start timestamp ────────────────────────────────────────────────────
+
+@app.route("/api/session/<int:session_id>/start", methods=["POST"])
+def api_session_start(session_id):
+    result = db.record_session_start(session_id)
+    return jsonify(result)
+
+
 # ── Inline set toggle (AJAX) ──────────────────────────────────────────────────
 
 @app.route("/api/se/<int:se_id>/toggle/<int:set_num>", methods=["POST"])

@@ -42,6 +42,17 @@
         {% endif %}
       </div>
     </div>
+    {% if session.started_at %}
+    <div class="d-flex align-items-center mb-2" style="font-size:0.75rem;">
+      <span style="color:#69f0ae;margin-right:0.4em;">⏱</span>
+      <span style="color:var(--txt-2);">開始: <strong style="color:rgba(255,255,255,0.85);">{{ session.started_at.strftime('%H:%M') }}</strong></span>
+    </div>
+    {% else %}
+    <button type="button" class="btn btn-primary btn-sm fw-bold w-100 mb-2" id="start-session-btn"
+            data-session-id="{{ session.id }}" style="letter-spacing:0.04em;">
+      ▶ トレーニング開始
+    </button>
+    {% endif %}
     <div class="d-flex gap-2">
       <button type="button" class="btn btn-success btn-sm flex-fill fw-bold finish-trigger-btn"
               data-session-id="{{ session.id }}">終了・アドバイス</button>
@@ -136,9 +147,16 @@
     </div>
     <ul style="margin:0;padding-left:1.1rem;list-style:disc;">
     {% endif %}
+      {% set _ens = namespace(sd=45) %}
+      {% if ex.exercise_type == 'plyometric' %}{% set _ens.sd = 25 %}
+      {% elif ex.exercise_type == 'power' %}{% set _ens.sd = 30 %}
+      {% elif ex.exercise_type == 'core' %}{% set _ens.sd = 40 %}{% endif %}
+      {% if ex.exercise_name in ('ブルガリアンスクワット', 'パロフプレス') %}{% set _ens.sd = _ens.sd * 2 %}{% endif %}
+      {% set _emin = ((3 * _ens.sd + 2 * 80) / 60) | round | int %}
       <li style="font-size:0.8rem;line-height:1.7;
                  color:{% if ex.completed %}rgba(255,255,255,0.35){% else %}var(--txt-1){% endif %};">
         {% if ex.completed %}<s>{{ ex.exercise_name }}</s>{% else %}{{ ex.exercise_name }}{% endif %}
+        <span style="font-size:0.65rem;color:var(--txt-2);margin-left:0.3em;">約{{ _emin }}分</span>
         {% if ex.weight_setting %}
         <span style="font-size:0.68rem;color:var(--txt-2);margin-left:0.3em;">{{ ex.weight_setting }}kg</span>
         {% endif %}
@@ -305,13 +323,20 @@
             {% endfor %}
           {% endif %}
 
-          {# Name row — 1行目: 種目名 ＋ ▼ボタン #}
+          {# Name row — 1行目: 種目名 ＋ 所要時間 ＋ ▼ボタン #}
+          {% set _cns = namespace(sd=45) %}
+          {% if ex.exercise_type == 'plyometric' %}{% set _cns.sd = 25 %}
+          {% elif ex.exercise_type == 'power' %}{% set _cns.sd = 30 %}
+          {% elif ex.exercise_type == 'core' %}{% set _cns.sd = 40 %}{% endif %}
+          {% if ex.exercise_name in ('ブルガリアンスクワット', 'パロフプレス') %}{% set _cns.sd = _cns.sd * 2 %}{% endif %}
+          {% set _cmin = ((3 * _cns.sd + 2 * 80) / 60) | round | int %}
           <div class="d-flex align-items-center gap-1" style="min-width:0;">
             <a href="{{ url_for('exercise_progress', exercise_id=ex.exercise_id) }}"
                class="fw-bold text-info text-decoration-none"
                style="font-size:0.82rem;line-height:1.3;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">
               {{ ex.exercise_name }}{% if ex.needs_bench %} 🪑{% endif %}
             </a>
+            <span style="font-size:0.62rem;color:var(--txt-2);flex-shrink:0;white-space:nowrap;">約{{ _cmin }}分</span>
             <button type="button" class="collapse-toggle-btn btn btn-sm flex-shrink-0"
                     data-se-id="{{ ex.id }}"
                     style="font-size:0.7rem;padding:0.05rem 0.3rem;line-height:1.4;border-radius:4px;color:var(--txt-2);background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);">▼</button>
@@ -1494,6 +1519,35 @@
   });
   if (modalOverlay) {
     modalOverlay.addEventListener('click', function(e) { if (e.target === modalOverlay) closeFinishModal(); });
+  }
+
+  // ── トレーニング開始ボタン ──
+  var startBtn = document.getElementById('start-session-btn');
+  if (startBtn) {
+    startBtn.addEventListener('click', function() {
+      startBtn.disabled = true;
+      startBtn.textContent = '記録中…';
+      fetch('/api/session/' + startBtn.dataset.sessionId + '/start', { method: 'POST' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.started_at) {
+            var t = new Date(data.started_at);
+            var hm = ('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2);
+            startBtn.closest('button, div').outerHTML =
+              '<div class="d-flex align-items-center mb-2" style="font-size:0.75rem;">' +
+              '<span style="color:#69f0ae;margin-right:0.4em;">⏱</span>' +
+              '<span style="color:var(--txt-2);">開始: <strong style="color:rgba(255,255,255,0.85);">' + hm + '</strong></span>' +
+              '</div>';
+          } else {
+            startBtn.textContent = '▶ トレーニング開始';
+            startBtn.disabled = false;
+          }
+        })
+        .catch(function() {
+          startBtn.textContent = '▶ トレーニング開始';
+          startBtn.disabled = false;
+        });
+    });
   }
   var cancelBtn = document.getElementById('finish-modal-cancel');
   if (cancelBtn) cancelBtn.addEventListener('click', closeFinishModal);

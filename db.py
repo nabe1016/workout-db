@@ -61,6 +61,15 @@ def ensure_schema():
         "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS exp_earned INTEGER DEFAULT 0",
         "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS completed BOOLEAN DEFAULT false",
         "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS stop_reason TEXT",
+        # timestamp tracking
+        "ALTER TABLE workout_sessions ADD COLUMN IF NOT EXISTS started_at TIMESTAMP",
+        "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP",
+        "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS set1_at TIMESTAMP",
+        "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS set2_at TIMESTAMP",
+        "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS set3_at TIMESTAMP",
+        "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS set4_at TIMESTAMP",
+        "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS set5_at TIMESTAMP",
+        "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS set6_at TIMESTAMP",
     ]
     with _conn() as conn:
         cur = conn.cursor()
@@ -303,12 +312,27 @@ def toggle_complete_exercise(se_id: int) -> dict:
         cur = conn.cursor()
         cur.execute("""
             UPDATE session_exercises
-            SET completed = NOT COALESCE(completed, false)
+            SET completed = NOT COALESCE(completed, false),
+                completed_at = CASE WHEN NOT COALESCE(completed, false) THEN NOW() ELSE NULL END
             WHERE id = %s
-            RETURNING completed
+            RETURNING completed, completed_at
         """, (se_id,))
         row = cur.fetchone()
     return {"completed": bool(row["completed"])}
+
+
+def record_session_start(session_id: int) -> dict:
+    """Record the moment the user presses the Start button (first press only)."""
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            UPDATE workout_sessions
+            SET started_at = COALESCE(started_at, NOW())
+            WHERE id = %s
+            RETURNING started_at
+        """, (session_id,))
+        row = cur.fetchone()
+    return {"started_at": row["started_at"].isoformat() if row else None}
 
 
 _MISSING = object()
@@ -1168,11 +1192,19 @@ def toggle_set_completion(se_id: int, set_num: int) -> dict:
                 lvup_low_achieved = True
                 cur.execute("UPDATE exercises SET lvup_low = TRUE WHERE id = %s", (exercise_id,))
 
-        cur.execute(f"""
-            UPDATE session_exercises
-            SET {col} = %s, exp_earned = %s
-            WHERE id = %s
-        """, (new_val, exp, se_id))
+        at_col = f"set{set_num}_at"
+        if new_val:
+            cur.execute(f"""
+                UPDATE session_exercises
+                SET {col} = %s, {at_col} = NOW(), exp_earned = %s
+                WHERE id = %s
+            """, (new_val, exp, se_id))
+        else:
+            cur.execute(f"""
+                UPDATE session_exercises
+                SET {col} = %s, {at_col} = NULL, exp_earned = %s
+                WHERE id = %s
+            """, (new_val, exp, se_id))
 
         session_id = se["session_id"]
 
