@@ -695,6 +695,17 @@
           </div>
           {% endif %}
 
+          {# ── 自宅にてトグル ── #}
+          <div class="mt-2 d-flex justify-content-end">
+            <button type="button"
+                    class="at-home-btn btn btn-sm"
+                    data-se-id="{{ ex.id }}"
+                    data-at-home="{{ 'true' if ex.at_home else 'false' }}"
+                    style="height:1.6rem;font-size:0.65rem;padding:0 0.5rem;border-radius:20px;
+                           {% if ex.at_home %}background:rgba(105,240,174,0.15);border:1px solid rgba(105,240,174,0.5);color:#69f0ae;{% else %}background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.3);{% endif %}">
+              🏠 自宅にて
+            </button>
+          </div>
 
         </div>
       </div>
@@ -1752,6 +1763,35 @@
         }
       })
       .catch(function() {});
+    });
+  });
+
+  // ── 自宅にてトグル ────────────────────────────────────────────────────────
+  document.querySelectorAll('.at-home-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var seId = btn.dataset.seId;
+      var current = btn.dataset.atHome === 'true';
+      var next = !current;
+      btn.disabled = true;
+      fetch('/api/se/' + seId + '/at-home', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ at_home: next })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        btn.dataset.atHome = data.at_home ? 'true' : 'false';
+        if (data.at_home) {
+          btn.style.background   = 'rgba(105,240,174,0.15)';
+          btn.style.border       = '1px solid rgba(105,240,174,0.5)';
+          btn.style.color        = '#69f0ae';
+        } else {
+          btn.style.background   = 'rgba(255,255,255,0.04)';
+          btn.style.border       = '1px solid rgba(255,255,255,0.12)';
+          btn.style.color        = 'rgba(255,255,255,0.3)';
+        }
+      })
+      .catch(function() {})
+      .finally(function() { btn.disabled = false; });
     });
   });
 

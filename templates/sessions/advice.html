@@ -55,6 +55,12 @@
       </span>
       {% endif %}
     </div>
+    {% set home_exs = exercises | selectattr('at_home') | list %}
+    {% if home_exs %}
+    <div style="font-size:0.62rem;color:rgba(255,255,255,0.28);margin-top:0.4rem;">
+      🏠 移動時間を除外: {{ home_exs | map(attribute='exercise_name') | join('、') }}
+    </div>
+    {% endif %}
     {% endif %}
   </div>
 </div>

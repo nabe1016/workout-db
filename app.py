@@ -587,16 +587,19 @@ def session_advice(session_id):
 
     started_at = session.get("started_at") if session else None
     last_completed_at = None
-    if exercises:
-        import operator
-        cmp_vals = [ex.get("completed_at") for ex in exercises if ex.get("completed_at")]
-        if cmp_vals:
-            last_completed_at = max(cmp_vals)
+    cmp_vals = [ex.get("completed_at") for ex in exercises if ex.get("completed_at")]
+    if cmp_vals:
+        last_completed_at = max(cmp_vals)
 
+    # Use stored duration_min (travel-adjusted) if available, else raw calc
     actual_min = None
     diff_min = None
-    if started_at and last_completed_at and last_completed_at > started_at:
+    stored_dur = session.get("duration_min") if session else None
+    if stored_dur:
+        actual_min = int(stored_dur)
+    elif started_at and last_completed_at and last_completed_at > started_at:
         actual_min = max(1, round((last_completed_at - started_at).total_seconds() / 60))
+    if actual_min is not None:
         diff_min = actual_min - est_min
 
     return render_template("sessions/advice.html",
@@ -739,6 +742,14 @@ def api_se_quality_pain(se_id):
         throws=int(throws) if throws is not None else None,
         stop_reason=str(stop_reason) if stop_reason else None,
     )
+    return jsonify(result)
+
+
+@app.route("/api/se/<int:se_id>/at-home", methods=["POST"])
+def api_se_at_home(se_id):
+    data = request.get_json(force=True) or {}
+    at_home = bool(data.get("at_home", False))
+    result = db.set_exercise_at_home(se_id, at_home)
     return jsonify(result)
 
 

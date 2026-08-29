@@ -70,6 +70,7 @@ def ensure_schema():
         "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS set4_at TIMESTAMP",
         "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS set5_at TIMESTAMP",
         "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS set6_at TIMESTAMP",
+        "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS at_home BOOLEAN DEFAULT false",
     ]
     with _conn() as conn:
         cur = conn.cursor()
@@ -2246,10 +2247,25 @@ def record_se_quality_pain(se_id: int, quality: int = None,
     return dict(row) if row else {}
 
 
+def set_exercise_at_home(se_id: int, at_home: bool) -> dict:
+    """Toggle the at_home flag for a session exercise."""
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE session_exercises SET at_home = %s WHERE id = %s RETURNING at_home",
+            (at_home, se_id)
+        )
+        row = cur.fetchone()
+    return {"at_home": bool(row["at_home"])} if row else {}
+
+
 def record_session_finish(session_id: int, session_rpe: int,
                            session_type: str = None) -> dict:
     """Record RPE; auto-calculate duration from started_at → last completed_at."""
     # Fetch started_at and last exercise completed_at
+    _UNILATERAL = {'ブルガリアンスクワット', 'パロフプレス'}
+    _TYPE_DUR   = {'plyometric': 25, 'power': 30, 'core': 40}
+
     with _conn() as conn:
         cur = conn.cursor()
         cur.execute(
@@ -2259,17 +2275,34 @@ def record_session_finish(session_id: int, session_rpe: int,
         started_at = sess_row["started_at"] if sess_row else None
 
         cur.execute(
-            """SELECT MAX(completed_at) AS last_completed
-               FROM session_exercises
-               WHERE session_id = %s AND completed_at IS NOT NULL""",
+            """SELECT se.completed_at, COALESCE(se.at_home, false) AS at_home,
+                      COALESCE(ex.exercise_type, 'strength') AS exercise_type,
+                      ex.name AS exercise_name
+               FROM session_exercises se
+               JOIN exercises ex ON ex.id = se.exercise_id
+               WHERE se.session_id = %s AND se.completed_at IS NOT NULL
+               ORDER BY se.completed_at""",
             (session_id,)
         )
-        comp_row = cur.fetchone()
-        last_completed = comp_row["last_completed"] if comp_row else None
+        comp_rows = cur.fetchall()
+
+    last_completed = comp_rows[-1]["completed_at"] if comp_rows else None
 
     if started_at and last_completed and last_completed > started_at:
-        delta_sec = (last_completed - started_at).total_seconds()
-        duration_min = max(1, round(delta_sec / 60))
+        total_sec = (last_completed - started_at).total_seconds()
+        # Subtract travel gaps for exercises marked as at_home
+        for i, row in enumerate(comp_rows):
+            if row["at_home"]:
+                prev_ts = comp_rows[i - 1]["completed_at"] if i > 0 else started_at
+                if prev_ts:
+                    gap_sec = (row["completed_at"] - prev_ts).total_seconds()
+                    set_dur = _TYPE_DUR.get(row["exercise_type"], 45)
+                    if row["exercise_name"] in _UNILATERAL:
+                        set_dur *= 2
+                    est_sec = 3 * set_dur + 2 * 80
+                    travel_sec = max(0, gap_sec - est_sec)
+                    total_sec -= travel_sec
+        duration_min = max(1, round(total_sec / 60))
     else:
         duration_min = None
 
