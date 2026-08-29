@@ -36,6 +36,10 @@
          class="d-flex align-items-center justify-content-center flex-shrink-0 px-3"
          style="border-left:1px solid var(--sep);height:100%;color:var(--teal);font-size:1.1rem;text-decoration:none;"
          title="結果・アドバイスを見る">📊</a>
+      <a href="{{ url_for('session_time_edit', session_id=s.id) }}"
+         class="d-flex align-items-center justify-content-center flex-shrink-0 px-3"
+         style="border-left:1px solid var(--sep);height:100%;color:var(--txt-2);font-size:1.1rem;text-decoration:none;"
+         title="タイム編集">📝</a>
     </div>
     {% endfor %}
   </div>
