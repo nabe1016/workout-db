@@ -87,6 +87,29 @@
 
 {# ── 本日のメニュー一覧（アコーディオン） ── #}
 {% if exercises %}
+{# 所要時間概算: セット間80秒インターバル、種目間60秒移動。片側ずつ種目(ブルガリアンスクワット/パロフプレス)は倍。 #}
+{# エキセントリック収縮重視テンポ想定: strength=45秒/set, power=30秒/set, plyometric=25秒/set, core=40秒/set #}
+{% set ns_time = namespace(total_sec=0) %}
+{% for ex in exercises %}
+  {% set n_sets = 3 %}
+  {% if ex.exercise_type == 'plyometric' %}
+    {% set set_dur = 25 %}
+  {% elif ex.exercise_type == 'power' %}
+    {% set set_dur = 30 %}
+  {% elif ex.exercise_type == 'core' %}
+    {% set set_dur = 40 %}
+  {% else %}
+    {% set set_dur = 45 %}
+  {% endif %}
+  {% if ex.exercise_name in ('ブルガリアンスクワット', 'パロフプレス') %}
+    {% set set_dur = set_dur * 2 %}
+  {% endif %}
+  {% set ns_time.total_sec = ns_time.total_sec + n_sets * set_dur + (n_sets - 1) * 80 %}
+{% endfor %}
+{% if exercises | length > 1 %}
+  {% set ns_time.total_sec = ns_time.total_sec + (exercises | length - 1) * 60 %}
+{% endif %}
+{% set est_min = (ns_time.total_sec / 60) | round | int %}
 <div class="card mb-2" style="border:1px solid rgba(255,255,255,0.12);">
   <div class="card-body py-2 px-3" style="cursor:pointer;"
        onclick="var b=document.getElementById('menu-list-body');var a=this.querySelector('.ml-arrow');var open=b.style.display!=='none';b.style.display=open?'none':'';a.textContent=open?'▶':'▼';">
@@ -95,7 +118,7 @@
         <span style="font-size:1rem;line-height:1;">📋</span>
         <div>
           <div style="font-size:0.6rem;font-weight:900;color:var(--txt-2);letter-spacing:0.06em;text-transform:uppercase;">TODAY'S MENU</div>
-          <div style="font-size:0.82rem;font-weight:700;">本日のメニュー（{{ exercises|length }}種目）</div>
+          <div style="font-size:0.82rem;font-weight:700;">本日のメニュー（{{ exercises|length }}種目）<span style="font-size:0.72rem;color:var(--txt-2);font-weight:400;margin-left:0.5em;">約{{ est_min }}分</span></div>
         </div>
       </div>
       <span class="ml-arrow" style="color:var(--txt-2);font-size:0.7rem;">▶</span>
