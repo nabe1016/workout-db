@@ -591,7 +591,7 @@
             <div class="d-flex align-items-center gap-1 mb-1">
               {% for i in [1,2,3,4,5,6] %}
               {% set c = ex.get("set%d_completed" % i) %}
-              {% set _side = '右' if i % 2 == 1 else '左' %}
+              {% set _side = '左' if i % 2 == 1 else '右' %}
               {% set _snum = ((i + 1) // 2) %}
               <button type="button"
                       class="set-toggle-btn btn btn-sm fw-bold {% if c %}btn-success{% else %}btn-outline-secondary{% endif %}"
