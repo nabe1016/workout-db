@@ -2246,12 +2246,38 @@ def record_se_quality_pain(se_id: int, quality: int = None,
     return dict(row) if row else {}
 
 
-def record_session_finish(session_id: int, duration_min: int, session_rpe: int,
+def record_session_finish(session_id: int, session_rpe: int,
                            session_type: str = None) -> dict:
-    """Record RPE, duration, session_load; compute and store session summary metrics."""
+    """Record RPE; auto-calculate duration from started_at → last completed_at."""
+    # Fetch started_at and last exercise completed_at
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT started_at FROM workout_sessions WHERE id = %s", (session_id,)
+        )
+        sess_row = cur.fetchone()
+        started_at = sess_row["started_at"] if sess_row else None
+
+        cur.execute(
+            """SELECT MAX(completed_at) AS last_completed
+               FROM session_exercises
+               WHERE session_id = %s AND completed_at IS NOT NULL""",
+            (session_id,)
+        )
+        comp_row = cur.fetchone()
+        last_completed = comp_row["last_completed"] if comp_row else None
+
+    if started_at and last_completed and last_completed > started_at:
+        delta_sec = (last_completed - started_at).total_seconds()
+        duration_min = max(1, round(delta_sec / 60))
+    else:
+        duration_min = None
+
     session_load = (duration_min or 0) * session_rpe
     result = {
         "session_load": session_load,
+        "duration_min": duration_min,
+        "last_completed_at": last_completed.isoformat() if last_completed else None,
         "strength_volume_kg": 0,
         "plyometric_contacts": 0,
         "power_throws": 0,
@@ -2259,8 +2285,14 @@ def record_session_finish(session_id: int, duration_min: int, session_rpe: int,
     }
 
     # ── Step 1: Always save core fields (these columns definitely exist) ──────
-    core_parts = ["session_rpe=%s", "duration_min=%s", "session_load=%s"]
-    core_vals  = [session_rpe, duration_min, session_load]
+    core_parts = ["session_rpe=%s", "session_load=%s"]
+    core_vals  = [session_rpe, session_load]
+    if duration_min is not None:
+        core_parts.append("duration_min=%s")
+        core_vals.append(duration_min)
+    if last_completed is not None:
+        core_parts.append("finished_at=%s")
+        core_vals.append(last_completed)
     if session_type:
         core_parts.append("session_type=%s")
         core_vals.append(session_type)

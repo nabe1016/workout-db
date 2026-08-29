@@ -571,6 +571,34 @@ def session_advice(session_id):
     cmp_summary = {"growth": growth_count, "save": save_count,
                    "same": same_count, "new": new_count, "skip": skip_count}
 
+    # ── Time breakdown for result screen ──────────────────────────────────────
+    est_min = None
+    _UNILATERAL = {'ブルガリアンスクワット', 'パロフプレス'}
+    _TYPE_DUR = {'plyometric': 25, 'power': 30, 'core': 40}
+    total_sec = 0
+    for ex in exercises:
+        set_dur = _TYPE_DUR.get(ex.get('exercise_type') or 'strength', 45)
+        if ex.get('exercise_name') in _UNILATERAL:
+            set_dur *= 2
+        total_sec += 3 * set_dur + 2 * 80
+    if len(exercises) > 1:
+        total_sec += (len(exercises) - 1) * 60
+    est_min = round(total_sec / 60)
+
+    started_at = session.get("started_at") if session else None
+    last_completed_at = None
+    if exercises:
+        import operator
+        cmp_vals = [ex.get("completed_at") for ex in exercises if ex.get("completed_at")]
+        if cmp_vals:
+            last_completed_at = max(cmp_vals)
+
+    actual_min = None
+    diff_min = None
+    if started_at and last_completed_at and last_completed_at > started_at:
+        actual_min = max(1, round((last_completed_at - started_at).total_seconds() / 60))
+        diff_min = actual_min - est_min
+
     return render_template("sessions/advice.html",
                            session=session, exercises=exercises,
                            advice=advice, intensity=intensity,
@@ -579,7 +607,12 @@ def session_advice(session_id):
                            volume_metrics=volume_metrics,
                            body_weight=body_weight,
                            comparison=comparison,
-                           cmp_summary=cmp_summary)
+                           cmp_summary=cmp_summary,
+                           est_min=est_min,
+                           actual_min=actual_min,
+                           diff_min=diff_min,
+                           started_at=started_at,
+                           last_completed_at=last_completed_at)
 
 
 # ── Reorder (AJAX) ───────────────────────────────────────────────────────────
@@ -712,12 +745,11 @@ def api_se_quality_pain(se_id):
 @app.route("/api/sessions/<int:session_id>/finish-rpe", methods=["POST"])
 def api_session_finish_rpe(session_id):
     data = request.get_json(force=True) or {}
-    duration_min = _parse_int(data.get("duration_min"))
     session_rpe  = _parse_int(data.get("session_rpe"))
     session_type = data.get("session_type")
     if not session_rpe:
         return jsonify({"error": "session_rpe required"}), 400
-    result = db.record_session_finish(session_id, duration_min, session_rpe, session_type)
+    result = db.record_session_finish(session_id, session_rpe, session_type)
     return jsonify(result)
 
 
