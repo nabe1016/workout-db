@@ -584,23 +584,55 @@
 
           {# Set buttons + quality + complete #}
           {% set is_unilateral = ex.exercise_name in ('ブルガリアンスクワット', 'パロフプレス') %}
+          {% if is_unilateral %}
+          {# ── 片側種目: 2行レイアウト（全6ボタンを最初から表示） ── #}
+          <div class="mt-2">
+            {# 行1: セットボタン(1右 1左 | 2右 2左 | 3右 3左) #}
+            <div class="d-flex align-items-center gap-1 mb-1">
+              {% for i in [1,2,3,4,5,6] %}
+              {% set c = ex.get("set%d_completed" % i) %}
+              {% set _side = '右' if i % 2 == 1 else '左' %}
+              {% set _snum = ((i + 1) // 2) %}
+              <button type="button"
+                      class="set-toggle-btn btn btn-sm fw-bold {% if c %}btn-success{% else %}btn-outline-secondary{% endif %}"
+                      data-se-id="{{ ex.id }}" data-set-num="{{ i }}"
+                      data-completed="{{ 'true' if c else 'false' }}"
+                      style="width:2.5rem;height:2rem;font-size:0.72rem;padding:0;border-radius:6px;{% if i in (3,5) %}margin-left:0.4rem;{% endif %}">
+                {{ _snum }}{{ _side }}
+              </button>
+              {% endfor %}
+            </div>
+            {# 行2: 操作ボタン #}
+            <div class="d-flex align-items-center gap-1">
+              <button type="button"
+                      class="pain-btn btn {% if ex.pain_flag %}btn-danger{% else %}btn-outline-secondary{% endif %}"
+                      data-se-id="{{ ex.id }}" title="痛みあり"
+                      style="width:2.1rem;height:2rem;font-size:0.85rem;padding:0;border-radius:6px;">🩹</button>
+              <button type="button"
+                      class="skip-btn btn {% if ex.skipped %}btn-warning{% else %}btn-outline-secondary{% endif %}"
+                      data-se-id="{{ ex.id }}" title="スキップ"
+                      style="height:2rem;font-size:0.75rem;padding:0 0.5rem;border-radius:6px;">⏭ パス</button>
+              <button type="button"
+                      class="complete-btn btn {% if ex.completed %}btn-success{% else %}btn-outline-secondary{% endif %}"
+                      data-se-id="{{ ex.id }}"
+                      data-exercise-name="{{ ex.exercise_name }}"
+                      data-exercise-type="{{ ex.exercise_type }}"
+                      title="完了"
+                      style="height:2rem;font-size:0.85rem;padding:0 0.6rem;border-radius:6px;font-weight:700;">✓ 完了</button>
+            </div>
+          </div>
+          {% else %}
+          {# ── 通常種目: 1行レイアウト ── #}
           <div class="d-flex align-items-center gap-1 mt-2">
             {% for i in [1,2,3,4,5,6] %}
             {% set c = ex.get("set%d_completed" % i) %}
             {% if i >= 4 %}{% set pc = ex.get("set%d_completed" % (i-1)) %}{% endif %}
-            {% if is_unilateral %}
-              {% set _side = '右' if i % 2 == 1 else '左' %}
-              {% set _snum = ((i + 1) // 2) %}
-              {% set _label = _snum|string + _side %}
-            {% else %}
-              {% set _label = ['①','②','③','④','⑤','⑥'][i-1] %}
-            {% endif %}
             <button type="button"
                     class="set-toggle-btn btn btn-sm fw-bold {% if c %}btn-success{% else %}btn-outline-secondary{% endif %}{% if i >= 4 and not pc and not c %} d-none{% endif %}"
                     data-se-id="{{ ex.id }}" data-set-num="{{ i }}"
                     data-completed="{{ 'true' if c else 'false' }}"
-                    style="{% if is_unilateral %}width:2.5rem;font-size:0.72rem;{% else %}width:2rem;font-size:0.85rem;{% endif %}height:2rem;padding:0;border-radius:6px;">
-              {{ _label }}
+                    style="width:2rem;height:2rem;font-size:0.85rem;padding:0;border-radius:6px;">
+              {{ ['①','②','③','④','⑤','⑥'][i-1] }}
             </button>
             {% endfor %}
             {# Quality selector (plyometric / power のみ、アプローチジャンプは除外) — プルダウン #}
@@ -641,6 +673,7 @@
                       style="height:2rem;font-size:0.85rem;padding:0 0.6rem;border-radius:6px;font-weight:700;">✓ 完了</button>
             </div>
           </div>
+          {% endif %}
 
 
         </div>
