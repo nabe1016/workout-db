@@ -1531,8 +1531,7 @@
         .then(function(r) { return r.json(); })
         .then(function(data) {
           if (data.started_at) {
-            var t = new Date(data.started_at);
-            var hm = ('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2);
+            var hm = data.started_at.substring(11, 16);
             startBtn.closest('button, div').outerHTML =
               '<div class="d-flex align-items-center mb-2" style="font-size:0.75rem;">' +
               '<span style="color:#69f0ae;margin-right:0.4em;">⏱</span>' +

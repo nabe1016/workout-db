@@ -313,7 +313,7 @@ def toggle_complete_exercise(se_id: int) -> dict:
         cur.execute("""
             UPDATE session_exercises
             SET completed = NOT COALESCE(completed, false),
-                completed_at = CASE WHEN NOT COALESCE(completed, false) THEN NOW() ELSE NULL END
+                completed_at = CASE WHEN NOT COALESCE(completed, false) THEN NOW() AT TIME ZONE 'Asia/Tokyo' ELSE NULL END
             WHERE id = %s
             RETURNING completed, completed_at
         """, (se_id,))
@@ -327,7 +327,7 @@ def record_session_start(session_id: int) -> dict:
         cur = conn.cursor()
         cur.execute("""
             UPDATE workout_sessions
-            SET started_at = COALESCE(started_at, NOW())
+            SET started_at = COALESCE(started_at, NOW() AT TIME ZONE 'Asia/Tokyo')
             WHERE id = %s
             RETURNING started_at
         """, (session_id,))
@@ -1196,7 +1196,7 @@ def toggle_set_completion(se_id: int, set_num: int) -> dict:
         if new_val:
             cur.execute(f"""
                 UPDATE session_exercises
-                SET {col} = %s, {at_col} = NOW(), exp_earned = %s
+                SET {col} = %s, {at_col} = NOW() AT TIME ZONE 'Asia/Tokyo', exp_earned = %s
                 WHERE id = %s
             """, (new_val, exp, se_id))
         else:
