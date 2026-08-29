@@ -135,7 +135,17 @@ def get_session_with_exercises(session_id: int):
                           AND se2.one_rep_max IS NOT NULL
                         ORDER BY se2.id DESC LIMIT 1)
                      ) * 0.8)::numeric, 1)
-                   ) AS weight_setting
+                   ) AS weight_setting,
+                   (SELECT se_p.one_rep_max
+                    FROM session_exercises se_p
+                    WHERE se_p.exercise_id = se.exercise_id
+                      AND se_p.session_id != se.session_id
+                      AND se_p.one_rep_max IS NOT NULL
+                    ORDER BY se_p.id DESC LIMIT 1) AS prev_orm,
+                   (SELECT MAX(se_m.one_rep_max)
+                    FROM session_exercises se_m
+                    WHERE se_m.exercise_id = se.exercise_id
+                      AND se_m.one_rep_max IS NOT NULL) AS max_orm
             FROM session_exercises se
             JOIN exercises ex ON ex.id = se.exercise_id
             WHERE se.session_id = %s

@@ -471,12 +471,19 @@
                   </div>
                   {% endif %}
                   {% else %}
-                  <div class="d-flex">
+                  <div class="d-flex align-items-center">
                     <span class="text-secondary" style="width:2.8em;flex-shrink:0;">1RM</span>
                     <span id="orm-val-{{ ex.id }}">
-                      {% if ex.one_rep_max %}: <strong class="text-light">{{ ex.one_rep_max }}kg</strong>
+                      {% if ex.one_rep_max %}
+                        {% set _orm_low = ex.max_orm and ex.one_rep_max < ex.max_orm %}
+                        : <strong {% if _orm_low %}style="color:var(--orange);"{% else %}class="text-light"{% endif %}>{{ ex.one_rep_max }}kg</strong>{% if _orm_low %}<span style="font-size:0.6rem;color:var(--orange);margin-left:0.2em;" title="過去最高より低い">↓</span>{% endif %}
                       {% else %}<span class="text-secondary">: —</span>{% endif %}
                     </span>
+                    {% if ex.prev_orm or ex.max_orm %}
+                    <span style="font-size:0.62rem;color:rgba(255,255,255,0.28);margin-left:0.5em;white-space:nowrap;">
+                      {% if ex.prev_orm %}PREV {{ ex.prev_orm }}{% endif %}{% if ex.prev_orm and ex.max_orm %} · {% endif %}{% if ex.max_orm %}MAX {{ ex.max_orm }}{% endif %}
+                    </span>
+                    {% endif %}
                   </div>
                   {% if ex.needs_bench %}
                   <div class="d-flex">
@@ -532,11 +539,15 @@
                   <div class="d-flex gap-1 align-items-end flex-wrap">
                     {% if ex.exercise_type not in ('plyometric', 'power') %}
                     <div>
-                      <div class="section-label" style="margin-bottom:0.1rem;font-size:0.55rem;">1RM kg</div>
+                      <div class="section-label" style="margin-bottom:0.1rem;font-size:0.55rem;">
+                        1RM kg
+                        {% if ex.max_orm %}<span style="color:rgba(255,255,255,0.3);font-weight:400;margin-left:0.3em;">(MAX {{ ex.max_orm }})</span>{% endif %}
+                      </div>
                       <input type="number" class="form-control form-control-sm adjust-input"
                              data-se-id="{{ ex.id }}" data-field="one_rep_max"
                              value="{{ ex.one_rep_max or '' }}" step="0.5" min="0"
-                             style="width:4rem;font-size:0.75rem;padding:0.15rem 0.3rem;">
+                             style="width:4rem;font-size:0.75rem;padding:0.15rem 0.3rem;"
+                             {% if ex.max_orm %}data-max-orm="{{ ex.max_orm }}"{% endif %}>
                     </div>
                     {% endif %}
                     <div>
@@ -1506,6 +1517,23 @@
 
   // ── Adjust inputs (save on blur) ──────────────────────────────────────────
   document.querySelectorAll('.adjust-input').forEach(function(input) {
+    // 1RM入力: MAXより低い値を入力したら警告ハイライト
+    if (input.dataset.field === 'one_rep_max' && input.dataset.maxOrm) {
+      var maxOrm = parseFloat(input.dataset.maxOrm);
+      function checkOrmVsMax() {
+        var v = parseFloat(input.value);
+        if (!isNaN(v) && v < maxOrm) {
+          input.style.borderColor = 'var(--orange)';
+          input.title = '過去最高(' + maxOrm + 'kg)より低い値です';
+        } else {
+          input.style.borderColor = '';
+          input.title = '';
+        }
+      }
+      input.addEventListener('input', checkOrmVsMax);
+      checkOrmVsMax();
+    }
+
     input.addEventListener('blur', function() {
       var val = parseFloat(input.value);
       if (isNaN(val) || val <= 0) return;
