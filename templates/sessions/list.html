@@ -32,14 +32,17 @@
         </div>
         <span class="badge bg-warning ms-2 flex-shrink-0">{{ "{:,}".format(s.total_exp or 0) }} EXP</span>
       </a>
-      <a href="{{ url_for('session_advice', session_id=s.id) }}"
-         class="d-flex align-items-center justify-content-center flex-shrink-0 px-3"
-         style="border-left:1px solid var(--sep);height:100%;color:var(--teal);font-size:1.1rem;text-decoration:none;"
-         title="結果・アドバイスを見る">📊</a>
-      <a href="{{ url_for('session_time_edit', session_id=s.id) }}"
-         class="d-flex align-items-center justify-content-center flex-shrink-0 px-3"
-         style="border-left:1px solid var(--sep);height:100%;color:var(--txt-2);font-size:1.1rem;text-decoration:none;"
-         title="タイム編集">📝</a>
+      <div class="d-flex flex-column flex-shrink-0"
+           style="border-left:1px solid var(--sep);">
+        <a href="{{ url_for('session_advice', session_id=s.id) }}"
+           class="d-flex align-items-center justify-content-center"
+           style="flex:1;padding:0.35rem 0.75rem;color:var(--teal);font-size:1rem;text-decoration:none;border-bottom:1px solid var(--sep);"
+           title="結果・アドバイス">📊</a>
+        <a href="{{ url_for('session_time_edit', session_id=s.id) }}"
+           class="d-flex align-items-center justify-content-center"
+           style="flex:1;padding:0.35rem 0.75rem;color:var(--txt-2);font-size:1rem;text-decoration:none;"
+           title="タイム編集">📝</a>
+      </div>
     </div>
     {% endfor %}
   </div>
