@@ -4,7 +4,8 @@
 {% block nav_title %}タイム編集{% endblock %}
 
 {% block content %}
-<form method="post">
+<form method="post"
+      style="padding-bottom: calc(var(--tab-h) + env(safe-area-inset-bottom) + 1.5rem);">
 
 {# ── セッション開始時刻 ── #}
 <div class="card mb-3">
@@ -12,10 +13,10 @@
     <div class="section-label mb-2">セッション</div>
     <div class="d-flex align-items-center gap-3">
       <span style="font-size:0.8rem;color:var(--txt-2);white-space:nowrap;">▶ 開始</span>
-      <input type="time" name="started_at_time"
+      <input type="time" step="1" name="started_at_time"
              class="form-control bg-dark text-light border-secondary"
-             style="max-width:8rem;"
-             value="{{ session.started_at.strftime('%H:%M') if session.started_at else '' }}">
+             style="max-width:10rem;"
+             value="{{ session.started_at.strftime('%H:%M:%S') if session.started_at else '' }}">
       {% if not session.started_at %}
       <span style="font-size:0.65rem;color:var(--txt-2);">未記録</span>
       {% endif %}
@@ -39,7 +40,7 @@
         {% if ex.skipped %}<span style="font-size:0.65rem;color:var(--yellow);margin-left:0.4rem;">⏭ スキップ</span>{% endif %}
       </div>
       {% if ex.completed_at %}
-      <span style="font-size:0.65rem;color:var(--txt-2);">完了: {{ ex.completed_at.strftime('%H:%M') }}</span>
+      <span style="font-size:0.65rem;color:var(--txt-2);">完了: {{ ex.completed_at.strftime('%H:%M:%S') }}</span>
       {% endif %}
     </div>
 
@@ -58,14 +59,10 @@
       {% endif %}
       <div class="d-flex align-items-center gap-2">
         <span style="font-size:0.72rem;color:var(--txt-2);width:3.5rem;flex-shrink:0;">{{ label }}</span>
-        <input type="time" name="se_{{ se_id }}_set{{ i }}_at"
-               class="form-control form-control-sm bg-dark text-light border-secondary"
-               style="max-width:7rem;"
-               value="{{ ts.strftime('%H:%M') if ts else '' }}">
-        {% if ts and loop.index > 1 %}
-          {% set prev_i = loop.index0 %}
-          {# Duration hint is shown via JS #}
-        {% endif %}
+        <input type="time" step="1" name="se_{{ se_id }}_set{{ i }}_at"
+               class="form-control form-control-sm bg-dark text-light border-secondary ts-input"
+               style="max-width:10rem;"
+               value="{{ ts.strftime('%H:%M:%S') if ts else '' }}">
       </div>
       {% endif %}
       {% endfor %}
@@ -74,10 +71,10 @@
       {% if ex.completed %}
       <div class="d-flex align-items-center gap-2 mt-1 pt-1" style="border-top:0.5px solid var(--sep);">
         <span style="font-size:0.72rem;color:#69f0ae;width:3.5rem;flex-shrink:0;">✅ 完了</span>
-        <input type="time" name="se_{{ se_id }}_completed_at"
-               class="form-control form-control-sm bg-dark text-light border-secondary"
-               style="max-width:7rem;"
-               value="{{ ex.completed_at.strftime('%H:%M') if ex.completed_at else '' }}">
+        <input type="time" step="1" name="se_{{ se_id }}_completed_at"
+               class="form-control form-control-sm bg-dark text-light border-secondary ts-input"
+               style="max-width:10rem;"
+               value="{{ ex.completed_at.strftime('%H:%M:%S') if ex.completed_at else '' }}">
       </div>
       {% endif %}
     </div>
@@ -95,33 +92,36 @@
 
 <script>
 (function() {
-  // Show delta (minutes) between consecutive time inputs within each card
+  // Show delta between consecutive time inputs within each card
   document.querySelectorAll('.card').forEach(function(card) {
-    var inputs = Array.from(card.querySelectorAll('input[type="time"]'));
-    inputs.forEach(function(inp, idx) {
-      if (idx === 0) return;
-      inp.addEventListener('change', updateDeltas);
-    });
+    var inputs = Array.from(card.querySelectorAll('.ts-input'));
+    function toSec(val) {
+      if (!val) return null;
+      var parts = val.split(':').map(Number);
+      return parts[0] * 3600 + parts[1] * 60 + (parts[2] || 0);
+    }
     function updateDeltas() {
       for (var i = 1; i < inputs.length; i++) {
-        var prev = inputs[i - 1].value, cur = inputs[i].value;
+        var ps = toSec(inputs[i - 1].value), cs = toSec(inputs[i].value);
         var hint = inputs[i].nextElementSibling;
         if (!hint || !hint.classList.contains('time-delta')) {
           hint = document.createElement('span');
           hint.className = 'time-delta';
-          hint.style.cssText = 'font-size:0.6rem;color:rgba(255,255,255,0.28);flex-shrink:0;';
+          hint.style.cssText = 'font-size:0.6rem;color:rgba(255,255,255,0.28);flex-shrink:0;white-space:nowrap;';
           inputs[i].insertAdjacentElement('afterend', hint);
         }
-        if (prev && cur) {
-          var pm = parseInt(prev.split(':')[0]) * 60 + parseInt(prev.split(':')[1]);
-          var cm = parseInt(cur.split(':')[0]) * 60 + parseInt(cur.split(':')[1]);
-          var diff = cm - pm;
-          hint.textContent = diff >= 0 ? '+' + diff + 'm' : diff + 'm';
+        if (ps !== null && cs !== null) {
+          var diff = cs - ps;
+          var sign = diff >= 0 ? '+' : '-';
+          diff = Math.abs(diff);
+          var m = Math.floor(diff / 60), s = diff % 60;
+          hint.textContent = sign + (m > 0 ? m + 'm' : '') + (s > 0 ? s + 's' : (m === 0 ? '0s' : ''));
         } else {
           hint.textContent = '';
         }
       }
     }
+    inputs.forEach(function(inp) { inp.addEventListener('change', updateDeltas); });
     updateDeltas();
   });
 })();

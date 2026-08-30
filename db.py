@@ -2256,8 +2256,9 @@ def update_exercise_timestamps(se_id: int, session_date,
     def _ts(t_str):
         if not t_str:
             return None
-        h, m = map(int, t_str.split(":"))
-        return datetime.datetime.combine(session_date, datetime.time(h, m))
+        parts = t_str.split(":")
+        h, m, s = int(parts[0]), int(parts[1]), int(parts[2]) if len(parts) > 2 else 0
+        return datetime.datetime.combine(session_date, datetime.time(h, m, s))
 
     if completed_at_str is not None:
         sets.append("completed_at = %s"); vals.append(_ts(completed_at_str) if completed_at_str else None)

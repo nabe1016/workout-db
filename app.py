@@ -497,8 +497,9 @@ def session_time_edit(session_id):
         # Update session started_at
         started_at_str = request.form.get("started_at_time", "").strip()
         if started_at_str:
-            h, m = map(int, started_at_str.split(":"))
-            started_at = datetime.datetime.combine(session["session_date"], datetime.time(h, m))
+            parts = started_at_str.split(":")
+            h, m, s = int(parts[0]), int(parts[1]), int(parts[2]) if len(parts) > 2 else 0
+            started_at = datetime.datetime.combine(session["session_date"], datetime.time(h, m, s))
             db.update_session(session_id, session["session_date"],
                               session["start_time"], session["end_time"],
                               session["rep_count"], started_at=started_at)
