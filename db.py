@@ -1247,6 +1247,8 @@ def toggle_set_completion(se_id: int, set_num: int) -> dict:
         cur = conn.cursor()
         cur.execute("SELECT total_exp FROM workout_sessions WHERE id = %s", (session_id,))
         total = cur.fetchone()["total_exp"]
+        cur.execute("SELECT exp_earned FROM session_exercises WHERE id = %s", (se_id,))
+        exp = int(cur.fetchone()["exp_earned"] or 0)
         cur.execute("""
             SELECT ex.body_part, COALESCE(SUM(se.exp_earned), 0) AS cat_exp
             FROM session_exercises se
