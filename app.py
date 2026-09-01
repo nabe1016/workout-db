@@ -616,18 +616,18 @@ def session_advice(session_id):
                    "same": same_count, "new": new_count, "skip": skip_count}
 
     # ── Time breakdown for result screen ──────────────────────────────────────
-    est_min = None
     _UNILATERAL = {'ブルガリアンスクワット', 'パロフプレス'}
-    _TYPE_DUR = {'plyometric': 25, 'power': 30, 'core': 40}
-    total_sec = 0
+    _TYPE_DUR   = {'plyometric': 25, 'power': 30, 'core': 40}
+
+    total_sec_est = 0
     for ex in exercises:
         set_dur = _TYPE_DUR.get(ex.get('exercise_type') or 'strength', 45)
         if ex.get('exercise_name') in _UNILATERAL:
             set_dur *= 2
-        total_sec += 3 * set_dur + 2 * 80
+        total_sec_est += 3 * set_dur + 2 * 80
     if len(exercises) > 1:
-        total_sec += (len(exercises) - 1) * 60
-    est_min = round(total_sec / 60)
+        total_sec_est += (len(exercises) - 1) * 60
+    est_min = round(total_sec_est / 60)
 
     started_at = session.get("started_at") if session else None
     last_completed_at = None
@@ -635,15 +635,27 @@ def session_advice(session_id):
     if cmp_vals:
         last_completed_at = max(cmp_vals)
 
-    # Use stored duration_min (travel-adjusted) if available, else raw calc
+    # Always recalculate from timestamps so edits via time_edit are reflected
     actual_min = None
     diff_min = None
-    stored_dur = session.get("duration_min") if session else None
-    if stored_dur:
-        actual_min = int(stored_dur)
-    elif started_at and last_completed_at and last_completed_at > started_at:
-        actual_min = max(1, round((last_completed_at - started_at).total_seconds() / 60))
-    if actual_min is not None:
+    if started_at and last_completed_at and last_completed_at > started_at:
+        total_sec = (last_completed_at - started_at).total_seconds()
+        # Subtract travel gaps for at_home exercises
+        comp_exs = sorted(
+            [ex for ex in exercises if ex.get("completed_at")],
+            key=lambda e: e["completed_at"]
+        )
+        for i, ex in enumerate(comp_exs):
+            if ex.get("at_home"):
+                prev_ts = comp_exs[i - 1]["completed_at"] if i > 0 else started_at
+                if prev_ts:
+                    gap_sec = (ex["completed_at"] - prev_ts).total_seconds()
+                    set_dur = _TYPE_DUR.get(ex.get("exercise_type") or "strength", 45)
+                    if ex.get("exercise_name") in _UNILATERAL:
+                        set_dur *= 2
+                    travel_sec = max(0, gap_sec - (3 * set_dur + 2 * 80))
+                    total_sec -= travel_sec
+        actual_min = max(1, round(total_sec / 60))
         diff_min = actual_min - est_min
 
     return render_template("sessions/advice.html",
