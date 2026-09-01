@@ -588,6 +588,18 @@
                       </select>
                     </div>
                     {% endif %}
+                    {# 🏠 自宅にてトグル（設定パネル内） #}
+                    <div class="ms-auto">
+                      <div class="section-label" style="margin-bottom:0.1rem;font-size:0.55rem;">場所</div>
+                      <button type="button"
+                              class="at-home-btn btn btn-sm"
+                              data-se-id="{{ ex.id }}"
+                              data-at-home="{{ 'true' if ex.at_home else 'false' }}"
+                              style="height:1.85rem;font-size:0.65rem;padding:0 0.45rem;border-radius:6px;
+                                     {% if ex.at_home %}background:rgba(105,240,174,0.15);border:1px solid rgba(105,240,174,0.5);color:#69f0ae;{% else %}background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.3);{% endif %}">
+                        🏠自宅
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -696,18 +708,6 @@
             </div>
           </div>
           {% endif %}
-
-          {# ── 自宅にてトグル ── #}
-          <div class="mt-2 d-flex justify-content-end">
-            <button type="button"
-                    class="at-home-btn btn btn-sm"
-                    data-se-id="{{ ex.id }}"
-                    data-at-home="{{ 'true' if ex.at_home else 'false' }}"
-                    style="height:1.6rem;font-size:0.65rem;padding:0 0.5rem;border-radius:20px;
-                           {% if ex.at_home %}background:rgba(105,240,174,0.15);border:1px solid rgba(105,240,174,0.5);color:#69f0ae;{% else %}background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.3);{% endif %}">
-              🏠 自宅にて
-            </button>
-          </div>
 
         </div>
       </div>
