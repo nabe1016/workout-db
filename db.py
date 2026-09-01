@@ -374,7 +374,7 @@ def quick_edit_se(se_id: int, one_rep_max=None, reps=None,
     with _conn() as conn:
         cur = conn.cursor()
         cur.execute("""
-            SELECT se.*, ex.bodyweight_ratio
+            SELECT se.*, ex.bodyweight_ratio, ex.one_rep_max AS ex_one_rep_max
             FROM session_exercises se
             JOIN exercises ex ON ex.id = se.exercise_id
             WHERE se.id = %s
@@ -383,7 +383,7 @@ def quick_edit_se(se_id: int, one_rep_max=None, reps=None,
         if se is None:
             return None
 
-        new_orm  = one_rep_max if one_rep_max is not None else se["one_rep_max"]
+        new_orm  = one_rep_max if one_rep_max is not None else (se["one_rep_max"] or se.get("ex_one_rep_max"))
         new_pct  = float(low_load_pct) if low_load_pct is not None \
                    else float(se.get("low_load_pct") or 50)
         new_mode = load_mode if load_mode is not None else (se.get("load_mode") or "high")
@@ -1175,7 +1175,7 @@ def toggle_set_completion(se_id: int, set_num: int) -> dict:
         cur = conn.cursor()
         cur.execute("""
             SELECT se.*, ws.rep_count AS session_rep_count,
-                   ex.bodyweight_ratio
+                   ex.bodyweight_ratio, ex.one_rep_max AS ex_one_rep_max
             FROM session_exercises se
             JOIN workout_sessions ws ON ws.id = se.session_id
             JOIN exercises ex ON ex.id = se.exercise_id
@@ -1192,13 +1192,14 @@ def toggle_set_completion(se_id: int, set_num: int) -> dict:
 
         mode = se.get("load_mode") or "high"
         bw_ratio = se.get("bodyweight_ratio")
-        orm = se.get("one_rep_max")
+        orm = se.get("one_rep_max") or se.get("ex_one_rep_max")
         if orm:
-            # Explicit 1RM takes priority: use stored weight_setting/weight_low_load
+            # 1RM available: use stored weight or compute from ORM
+            low_pct = float(se.get("low_load_pct") or 50)
             if mode == "low":
-                weight = se["weight_low_load"] or se["weight_setting"]
+                weight = se["weight_low_load"] or se["weight_setting"] or round(float(orm) * low_pct / 100, 1)
             else:
-                weight = se["weight_setting"] or se["weight_low_load"]
+                weight = se["weight_setting"] or se["weight_low_load"] or round(float(orm) * 0.8, 1)
         elif bw_ratio:
             bw_row = get_latest_weight()
             body_weight = float(bw_row["weight_kg"]) if bw_row else 65.0
