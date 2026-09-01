@@ -127,7 +127,13 @@ def get_session_with_exercises(session_id: int):
                       ORDER BY se2.id DESC LIMIT 1)
                    ) AS one_rep_max,
                    COALESCE(
-                     se.weight_setting,
+                     CASE
+                       WHEN se.weight_setting IS NOT NULL
+                            AND COALESCE(se.one_rep_max, ex.one_rep_max) IS NOT NULL
+                            AND se.weight_setting > COALESCE(se.one_rep_max, ex.one_rep_max)
+                       THEN NULL
+                       ELSE se.weight_setting
+                     END,
                      ROUND((COALESCE(
                        se.one_rep_max,
                        ex.one_rep_max,
@@ -1130,13 +1136,16 @@ def copy_my_set_to_session(my_set_id: int, session_id: int) -> int:
         cur.execute("DELETE FROM session_exercises WHERE session_id = %s", (session_id,))
 
         for i, ex in enumerate(exercises, 1):
-            weight_pct80 = round(float(ex["one_rep_max"]) * 0.8, 1) if ex["one_rep_max"] else None
-            ratio_pct = (round(float(ex["weight_setting"]) / float(ex["one_rep_max"]) * 100, 1)
-                         if ex["weight_setting"] and ex["one_rep_max"] else None)
+            orm = ex["one_rep_max"]
             low_pct = float(ex.get("low_load_pct") or 50)
+            # Always recalculate from 1RM to avoid stale copied values
+            weight_pct80 = round(float(orm) * 0.8, 1) if orm else None
+            new_ws = weight_pct80 if orm else ex["weight_setting"]
             new_wl = ex["weight_low_load"]
-            if ex["one_rep_max"] and not new_wl:
-                new_wl = round(float(ex["one_rep_max"]) * low_pct / 100, 1)
+            if orm and not new_wl:
+                new_wl = round(float(orm) * low_pct / 100, 1)
+            ratio_pct = (round(float(new_ws) / float(orm) * 100, 1)
+                         if new_ws and orm else None)
             cur.execute("""
                 INSERT INTO session_exercises
                     (session_id, exercise_id, sort_order,
@@ -1147,7 +1156,7 @@ def copy_my_set_to_session(my_set_id: int, session_id: int) -> int:
                 VALUES (%s,%s,%s, %s,%s,%s,%s, %s,%s,%s, %s,%s,%s,%s, %s,%s)
             """, (
                 session_id, ex["exercise_id"], i,
-                ex["one_rep_max"], weight_pct80, ex["weight_setting"], new_wl,
+                orm, weight_pct80, new_ws, new_wl,
                 ex.get("reps") or 8, ex.get("reps_low") or 20, low_pct,
                 ratio_pct, False, False, False, 0, ex["muscle_groups"],
             ))
