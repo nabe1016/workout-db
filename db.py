@@ -1241,25 +1241,11 @@ def toggle_set_completion(se_id: int, set_num: int) -> dict:
 
         session_id = se["session_id"]
 
-    recalculate_session_exp(session_id)
-
-    with _conn() as conn:
-        cur = conn.cursor()
-        cur.execute("SELECT total_exp FROM workout_sessions WHERE id = %s", (session_id,))
-        total = cur.fetchone()["total_exp"]
-        cur.execute("SELECT exp_earned FROM session_exercises WHERE id = %s", (se_id,))
-        exp = int(cur.fetchone()["exp_earned"] or 0)
-        cur.execute("""
-            SELECT ex.body_part, COALESCE(SUM(se.exp_earned), 0) AS cat_exp
-            FROM session_exercises se
-            JOIN exercises ex ON ex.id = se.exercise_id
-            WHERE se.session_id = %s
-            GROUP BY ex.body_part
-        """, (session_id,))
-        category_exp = {"上肢": 0, "下肢": 0, "体幹": 0}
-        for row in cur.fetchall():
-            if row["body_part"] in category_exp:
-                category_exp[row["body_part"]] = int(row["cat_exp"])
+    # recalculate_all_exp uses the full ORM COALESCE SQL to fix each exp_earned
+    recalc = recalculate_all_exp(session_id)
+    total = recalc["session_total_exp"]
+    category_exp = recalc["category_exp"]
+    exp = int(recalc["exercise_exp"].get(str(se_id), 0))
 
     return {
         "set_num": set_num,
@@ -2390,47 +2376,47 @@ def record_session_finish(session_id: int, session_rpe: int,
                     (COALESCE(se.set1_completed::int,0)+COALESCE(se.set2_completed::int,0)+
                      COALESCE(se.set3_completed::int,0)+COALESCE(se.set4_completed::int,0)+
                      COALESCE(se.set5_completed::int,0)+COALESCE(se.set6_completed::int,0))
-                ), 0)
+                ), 0) AS vol
                 FROM session_exercises se
                 JOIN exercises ex ON ex.id = se.exercise_id
                 WHERE se.session_id = %s
                   AND COALESCE(ex.exercise_type,'strength') = 'strength'
             """, (session_id,))
-            strength_vol = float(cur.fetchone()[0] or 0)
+            strength_vol = float(cur.fetchone()["vol"] or 0)
 
             cur.execute("""
                 SELECT COALESCE(SUM(COALESCE(se.contacts, se.reps, 0) *
                     (COALESCE(se.set1_completed::int,0)+COALESCE(se.set2_completed::int,0)+
                      COALESCE(se.set3_completed::int,0)+COALESCE(se.set4_completed::int,0)+
-                     COALESCE(se.set5_completed::int,0)+COALESCE(se.set6_completed::int,0))), 0)
+                     COALESCE(se.set5_completed::int,0)+COALESCE(se.set6_completed::int,0))), 0) AS contacts
                 FROM session_exercises se
                 JOIN exercises ex ON ex.id = se.exercise_id
                 WHERE se.session_id = %s
                   AND COALESCE(ex.exercise_type,'strength') = 'plyometric'
             """, (session_id,))
-            plyo_contacts = int(cur.fetchone()[0] or 0)
+            plyo_contacts = int(cur.fetchone()["contacts"] or 0)
 
             cur.execute("""
                 SELECT COALESCE(SUM(COALESCE(se.throws, se.reps, 0) *
                     (COALESCE(se.set1_completed::int,0)+COALESCE(se.set2_completed::int,0)+
                      COALESCE(se.set3_completed::int,0)+COALESCE(se.set4_completed::int,0)+
-                     COALESCE(se.set5_completed::int,0)+COALESCE(se.set6_completed::int,0))), 0)
+                     COALESCE(se.set5_completed::int,0)+COALESCE(se.set6_completed::int,0))), 0) AS throws
                 FROM session_exercises se
                 JOIN exercises ex ON ex.id = se.exercise_id
                 WHERE se.session_id = %s
                   AND COALESCE(ex.exercise_type,'strength') = 'power'
             """, (session_id,))
-            power_throws = int(cur.fetchone()[0] or 0)
+            power_throws = int(cur.fetchone()["throws"] or 0)
 
             cur.execute("""
-                SELECT AVG(se.quality)
+                SELECT AVG(se.quality) AS avg_q
                 FROM session_exercises se
                 JOIN exercises ex ON ex.id = se.exercise_id
                 WHERE se.session_id = %s
                   AND se.quality IS NOT NULL
                   AND COALESCE(ex.exercise_type,'strength') IN ('plyometric','power')
             """, (session_id,))
-            avg_q_row = cur.fetchone()[0]
+            avg_q_row = cur.fetchone()["avg_q"]
             avg_quality = round(float(avg_q_row), 2) if avg_q_row else None
 
             cur.execute("""
