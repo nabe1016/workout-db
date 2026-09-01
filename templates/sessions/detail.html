@@ -64,6 +64,15 @@
          style="font-size:0.7rem;padding:0.15rem 0.5rem;border-radius:20px;">＋追加</a>
     </div>
     {% endif %}
+    {% if session.session_type == 'DAY_B_OUTDOOR_POWER' %}
+    <form method="post" action="{{ url_for('session_add_support_block', session_id=session.id) }}"
+          class="mb-2">
+      <button type="button" class="btn btn-outline-info btn-sm w-100 fw-bold"
+              onclick="if(confirm('Support Block（補助種目）をこのセッションに追加しますか？')){this.form.submit();}">
+        ＋ Support Block を追加
+      </button>
+    </form>
+    {% endif %}
     <div class="d-flex gap-2">
       <button type="button" class="btn btn-success btn-sm flex-fill fw-bold finish-trigger-btn"
               data-session-id="{{ session.id }}">終了・アドバイス</button>

@@ -16,12 +16,18 @@
     <a href="{{ url_for('my_set_detail', my_set_id=ms.id) }}" class="text-decoration-none list-row">
       <div class="flex-grow-1">
         <div class="d-flex align-items-center gap-2 flex-wrap">
-          <span class="fw-bold" style="color:{{ 'var(--teal)' if ms.location == 'home' else 'var(--yellow)' }};">
-            {{ '🏠 ' if ms.location == 'home' else '' }}{{ ms.name }}
-          </span>
+          {% if ms.location == 'home' %}
+          <span class="fw-bold" style="color:var(--teal);">🏠 {{ ms.name }}</span>
+          {% elif ms.location == 'outdoor' %}
+          <span class="fw-bold" style="color:#69f0ae;">🌳 {{ ms.name }}</span>
+          {% else %}
+          <span class="fw-bold" style="color:var(--yellow);">{{ ms.name }}</span>
+          {% endif %}
         </div>
-        {% if ms.description %}
-        <div style="font-size:0.78rem;color:var(--txt-2);">{{ ms.description }}</div>
+        {% if ms.program_name %}
+        <div style="font-size:0.72rem;color:var(--txt-2);">{{ ms.program_name }}</div>
+        {% elif ms.description %}
+        <div style="font-size:0.72rem;color:var(--txt-2);">{{ ms.description }}</div>
         {% endif %}
       </div>
       <span class="badge bg-secondary">{{ ms.exercise_count }}種目</span>

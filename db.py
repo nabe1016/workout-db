@@ -2442,70 +2442,81 @@ def record_session_finish(session_id: int, session_rpe: int,
 # ── Volleyball Program 3プラン my-set seed ────────────────────────────────────
 
 _VOLLEYBALL_PLANS = [
+    # ── v1.2: 環境適応型プログラム再設計 ──────────────────────────────────────
     {
-        "name":         "DAY A - FORCE",
-        "program_name": "Volleyball Performance v1.0",
-        "session_type": "DAY_A_FORCE",
+        "name":         "DAY A - GYM FORCE",
+        "program_name": "Volleyball Performance v1.2",
+        "session_type": "DAY_A_GYM_FORCE",
         "location":     "gym",
         "exercises": [
             # (exercise_name, reps, target_sets, weight_setting, muscle_groups, note)
-            ("アプローチジャンプ",       2,  3, None, "大腿四頭筋,大臀筋", None),
-            ("ブルガリアンスクワット",   5,  3, 12.0, "大臀筋,大腿四頭筋", None),
-            ("ルーマニアンデッドリフト", 5,  3, 50.0, "ハムストリングス,大臀筋", None),
-            ("インクラインダンベルプレス", 6, 2, 18.0, "大胸筋,三角筋前部,上腕三頭筋", None),
-            ("シーテッドロー",           6,  2, None, "広背筋,僧帽筋", None),
-            ("カーフ&トゥレイズ",        8,  2, None, "カーフ", None),
-            ("パロフプレス",             8,  2, None, "腹斜筋,腹直筋", None),
-            ("アブローラー",             6,  2, None, "腹直筋,腸腰筋", None),
+            ("アプローチジャンプ",           2,  2, None, "大腿四頭筋,大臀筋", None),  # OPTION
+            ("ブルガリアンスクワット",       6,  3, 12.0, "大臀筋,大腿四頭筋", None),  # Main
+            ("ルーマニアンデッドリフト",     5,  2, 50.0, "ハムストリングス,大臀筋", None),  # Skill
+            ("シーテッドレッグカール",       9,  2, None, "ハムストリングス", None),   # Main
+            ("インクラインダンベルプレス",   7,  2, 18.0, "大胸筋,三角筋前部,上腕三頭筋", None),  # Main
+            ("シーテッドロー",               7,  2, None, "広背筋,僧帽筋", None),      # Main
+            ("カーフ&トゥレイズ",           10,  2, None, "カーフ", None),              # Accessory
+            ("パロフプレス",                 8,  2, None, "腹斜筋,腹直筋", None),      # Core
+            ("アブローラー",                 8,  2, None, "腹直筋,腸腰筋", None),      # Core
         ],
     },
     {
-        "name":         "DAY B - POWER GYM",
-        "program_name": "Volleyball Performance v1.0",
-        "session_type": "DAY_B_POWER_GYM",
+        "name":         "DAY B - OUTDOOR POWER",
+        "program_name": "Volleyball Performance v1.2",
+        "session_type": "DAY_B_OUTDOOR_POWER",
+        "location":     "outdoor",
+        "exercises": [
+            ("ポゴジャンプ",                 8,  2, None, "カーフ,大腿四頭筋", None),
+            ("アプローチジャンプ",           2,  3, None, "大腿四頭筋,大臀筋", None),
+            ("スクワットジャンプ",           3,  2, None, "大腿四頭筋,大臀筋", None),
+            ("スプリットスクワット",         7,  2, None, "大臀筋,大腿四頭筋", None),
+            ("サイドプランクローテーション", 6,  2, None, "腹斜筋", None),
+            ("ウォーククールダウン",          1,  1, None, None, None),
+        ],
+    },
+    {
+        "name":         "DAY B - SUPPORT",
+        "program_name": "Volleyball Performance v1.2",
+        "session_type": "DAY_B_SUPPORT",
         "location":     "gym",
         "exercises": [
-            ("ポゴジャンプ",               8,  2, None, "カーフ,大腿四頭筋", None),
-            ("アプローチジャンプ",         2,  4, None, "大腿四頭筋,大臀筋", None),
-            ("スクワットジャンプ",         3,  3, None, "大腿四頭筋,大臀筋", None),
-            ("ロテーショナルMBスロー",     3,  3, 3.0,  "腹斜筋,三角筋", None),
-            ("オーバーヘッドMBスロー",     3,  2, 3.0,  "三角筋前部,体幹", None),
-            ("シーテッドレッグカール",     8,  2, None, "ハムストリングス", None),
-            ("フェイスプル",              10,  2, None, "三角筋後部,菱形筋", None),
-            ("サイドプランクローテーション", 6, 2, None, "腹斜筋", None),
-        ],
-    },
-    {
-        "name":         "DAY B - POWER OUTDOOR",
-        "program_name": "Volleyball Performance v1.0",
-        "session_type": "DAY_B_POWER_OUTDOOR",
-        "location":     "both",
-        "exercises": [
-            ("ポゴジャンプ",               8,  2, None, "カーフ,大腿四頭筋", None),
-            ("アプローチジャンプ",         2,  4, None, "大腿四頭筋,大臀筋", None),
-            ("スクワットジャンプ",         3,  3, None, "大腿四頭筋,大臀筋", None),
-            ("スプリットスクワット",       8,  2, None, "大臀筋,大腿四頭筋", None),
-            ("サイドプランクローテーション", 6, 2, None, "腹斜筋", None),
-            ("ウォーククールダウン",        1,  1, None, None, None),
+            ("シーテッドレッグカール",       9,  2, None, "ハムストリングス", None),
+            ("フェイスプル",                10,  2, None, "三角筋後部,菱形筋", None),
+            ("サイドプランクローテーション", 6,  2, None, "腹斜筋", None),
+            ("パロフプレス",                 8,  2, None, "腹斜筋,腹直筋", None),
+            ("アブローラー",                 8,  2, None, "腹直筋,腸腰筋", None),
         ],
     },
 ]
 
 
 def seed_volleyball_program() -> int:
-    """Create Volleyball Performance v1.0 my-sets if not present. Returns number created."""
+    """Create/update Volleyball Performance v1.2 my-sets. Returns number created."""
     created = 0
+    _V10_LEGACY = {"DAY A - FORCE", "DAY B - POWER GYM", "DAY B - POWER OUTDOOR"}
+
     with _conn() as conn:
         cur = conn.cursor()
+
+        # Archive v1.0 plans that were replaced by v1.2 names
+        for old_name in _V10_LEGACY:
+            cur.execute("SELECT id FROM my_sets WHERE name = %s", (old_name,))
+            row = cur.fetchone()
+            if row:
+                archived = f"[旧] {old_name}"
+                cur.execute(
+                    "UPDATE my_sets SET name=%s WHERE id=%s",
+                    (archived, row["id"])
+                )
+
         for plan in _VOLLEYBALL_PLANS:
-            # Skip if already exists
             cur.execute("SELECT id FROM my_sets WHERE name = %s", (plan["name"],))
             existing = cur.fetchone()
             if existing:
-                # Ensure program_name / session_type are set
                 cur.execute(
-                    "UPDATE my_sets SET program_name=%s, session_type=%s WHERE id=%s",
-                    (plan["program_name"], plan["session_type"], existing["id"])
+                    "UPDATE my_sets SET program_name=%s, session_type=%s, location=%s WHERE id=%s",
+                    (plan["program_name"], plan["session_type"], plan["location"], existing["id"])
                 )
                 ms_id = existing["id"]
             else:
@@ -2516,12 +2527,15 @@ def seed_volleyball_program() -> int:
                 ms_id = cur.fetchone()["id"]
                 created += 1
 
+            # Build set of exercise_ids in this plan version
+            plan_ex_ids = set()
             for i, (ex_name, reps, target_sets, weight, muscles, _note) in enumerate(plan["exercises"], 1):
                 cur.execute("SELECT id FROM exercises WHERE name = %s", (ex_name,))
                 ex_row = cur.fetchone()
                 if not ex_row:
                     continue
                 ex_id = ex_row["id"]
+                plan_ex_ids.add(ex_id)
                 weight_setting = weight
                 weight_low_load = round(weight * 0.30, 1) if weight else None
                 cur.execute("""
@@ -2531,11 +2545,20 @@ def seed_volleyball_program() -> int:
                     VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
                     ON CONFLICT (my_set_id, exercise_id) DO UPDATE
                         SET sort_order=%s, reps=%s, target_sets=%s,
-                            weight_setting=%s, weight_low_load=%s, muscle_groups=%s
+                            weight_setting=EXCLUDED.weight_setting,
+                            weight_low_load=EXCLUDED.weight_low_load,
+                            muscle_groups=%s
                 """, (
                     ms_id, ex_id, i, reps, target_sets,
                     weight_setting, weight_low_load, muscles,
-                    i, reps, target_sets,
-                    weight_setting, weight_low_load, muscles,
+                    i, reps, target_sets, muscles,
                 ))
+
+            # Remove exercises that are no longer in the plan
+            if plan_ex_ids:
+                cur.execute("""
+                    DELETE FROM my_set_exercises
+                    WHERE my_set_id = %s AND exercise_id NOT IN %s
+                """, (ms_id, tuple(plan_ex_ids)))
+
     return created

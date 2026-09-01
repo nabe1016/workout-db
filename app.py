@@ -201,6 +201,18 @@ def my_set_start_now(my_set_id):
     return redirect(url_for("session_detail", session_id=session_id))
 
 
+@app.route("/sessions/<int:session_id>/add-support-block", methods=["POST"])
+def session_add_support_block(session_id):
+    """Append DAY B - SUPPORT exercises to an existing session."""
+    support_ms = db.find_my_set_by_name("DAY B - SUPPORT")
+    if support_ms is None:
+        flash("Support Blockが見つかりません", "error")
+        return redirect(url_for("session_detail", session_id=session_id))
+    count = db.copy_my_set_to_session(support_ms["id"], session_id)
+    flash(f"Support Block ({count}種目) を追加しました", "success")
+    return redirect(url_for("session_detail", session_id=session_id))
+
+
 @app.route("/sessions")
 def sessions_list():
     sessions = db.list_sessions()
