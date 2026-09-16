@@ -64,7 +64,7 @@
          style="font-size:0.7rem;padding:0.15rem 0.5rem;border-radius:20px;">＋追加</a>
     </div>
     {% endif %}
-    {% if session.session_type == 'DAY_B_OUTDOOR_POWER' %}
+    {% if session.session_type == 'DAY_B_ATHLETIC_SUPPORT' %}
     <form method="post" action="{{ url_for('session_add_support_block', session_id=session.id) }}"
           class="mb-2">
       <button type="button" class="btn btn-outline-info btn-sm w-100 fw-bold"
@@ -550,9 +550,9 @@
                   <div class="d-flex gap-1 align-items-end flex-wrap">
                     {% if ex.exercise_type not in ('plyometric', 'power') %}
                     <div>
-                      <div class="section-label" style="margin-bottom:0.1rem;font-size:0.55rem;">
-                        1RM kg
-                        {% if ex.max_orm %}<span style="color:rgba(255,255,255,0.3);font-weight:400;margin-left:0.3em;">(MAX {{ ex.max_orm }})</span>{% endif %}
+                      <div style="margin-bottom:0.1rem;line-height:1.2;">
+                        <div style="font-size:0.55rem;font-weight:700;color:var(--txt-2);letter-spacing:0.04em;text-transform:uppercase;">1RM KG</div>
+                        <div style="font-size:0.52rem;color:rgba(255,255,255,0.3);">MAX <span id="max-1rm-{{ ex.id }}">{{ ex.max_orm or ex.one_rep_max or '—' }}</span></div>
                       </div>
                       <input type="number" class="form-control form-control-sm adjust-input"
                              data-se-id="{{ ex.id }}" data-field="one_rep_max"
@@ -597,8 +597,21 @@
                       </select>
                     </div>
                     {% endif %}
+                    {# MAX重量 computed display #}
+                    <div class="ms-auto d-flex flex-column align-items-end justify-content-end" style="flex-shrink:0;">
+                      <div style="font-size:0.52rem;color:rgba(255,255,255,0.3);margin-bottom:0.1rem;">MAX重量</div>
+                      <div id="max-weight-{{ ex.id }}" style="font-size:0.78rem;font-weight:700;color:var(--yellow);line-height:1.1;">
+                        {%- if ex.exercise_type not in ('plyometric', 'power') -%}
+                          {%- if mode == 'high' -%}
+                            {%- if ex.weight_setting -%}{{ ex.weight_setting }}kg{%- elif ex.one_rep_max -%}{{ (ex.one_rep_max * 0.8)|round(1) }}kg{%- else -%}—{%- endif -%}
+                          {%- else -%}
+                            {%- if ex.weight_low_load -%}{{ ex.weight_low_load }}kg{%- elif ex.one_rep_max -%}{{ (ex.one_rep_max * ((ex.low_load_pct or 50) / 100))|round(1) }}kg{%- else -%}—{%- endif -%}
+                          {%- endif -%}
+                        {%- else -%}—{%- endif -%}
+                      </div>
+                    </div>
                     {# 🏠 自宅にてトグル（設定パネル内） #}
-                    <div class="ms-auto">
+                    <div>
                       <div class="section-label" style="margin-bottom:0.1rem;font-size:0.55rem;">場所</div>
                       <button type="button"
                               class="at-home-btn btn btn-sm"
@@ -1464,6 +1477,17 @@
       crEl.innerHTML = '<strong class="text-light">' + crepVal + '</strong>rep';
     }
 
+    // MAX重量 & MAX 1RM sub-label in adjust panel
+    var mwEl = document.getElementById('max-weight-' + seId);
+    if (mwEl) {
+      var mw = isLow ? data.weight_low_load : data.weight_setting;
+      mwEl.textContent = mw ? mw + 'kg' : '—';
+    }
+    var m1rmEl = document.getElementById('max-1rm-' + seId);
+    if (m1rmEl && data.one_rep_max) {
+      m1rmEl.textContent = data.one_rep_max;
+    }
+
     var rpEl = document.getElementById('rep-progress-' + seId);
     if (rpEl) {
       rpEl.style.display = isLow ? 'none' : 'flex';
@@ -1519,6 +1543,17 @@
       var open = panel.style.display !== 'none';
       panel.style.display = open ? 'none' : '';
       btn.style.color = open ? '' : 'var(--yellow)';
+      if (!open) {
+        setTimeout(function() {
+          var stickyBar = document.querySelector('.sticky-action-bar');
+          var barH = stickyBar ? stickyBar.offsetHeight : 80;
+          var panelBottom = panel.getBoundingClientRect().bottom;
+          var viewH = window.innerHeight;
+          if (panelBottom > viewH - barH) {
+            window.scrollBy({ top: panelBottom - (viewH - barH - 8), behavior: 'smooth' });
+          }
+        }, 50);
+      }
     });
   });
 

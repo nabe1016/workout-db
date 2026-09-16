@@ -2442,65 +2442,60 @@ def record_session_finish(session_id: int, session_rpe: int,
 # ── Volleyball Program 3プラン my-set seed ────────────────────────────────────
 
 _VOLLEYBALL_PLANS = [
-    # ── v1.2: 環境適応型プログラム再設計 ──────────────────────────────────────
+    # ── v1.3: 施設適応・週間スケジュール最適化 ────────────────────────────────
     {
         "name":         "DAY A - GYM FORCE",
-        "program_name": "Volleyball Performance v1.2",
+        "program_name": "Volleyball Performance v1.3",
         "session_type": "DAY_A_GYM_FORCE",
         "location":     "gym",
         "exercises": [
             # (exercise_name, reps, target_sets, weight_setting, muscle_groups, note)
-            ("アプローチジャンプ",           2,  2, None, "大腿四頭筋,大臀筋", None),  # OPTION
-            ("ブルガリアンスクワット",       6,  3, 12.0, "大臀筋,大腿四頭筋", None),  # Main
-            ("ルーマニアンデッドリフト",     5,  2, 50.0, "ハムストリングス,大臀筋", None),  # Skill
-            ("シーテッドレッグカール",       9,  2, None, "ハムストリングス", None),   # Main
-            ("インクラインダンベルプレス",   7,  2, 18.0, "大胸筋,三角筋前部,上腕三頭筋", None),  # Main
-            ("シーテッドロー",               7,  2, None, "広背筋,僧帽筋", None),      # Main
-            ("カーフ&トゥレイズ",           10,  2, None, "カーフ", None),              # Accessory
-            ("パロフプレス",                 8,  2, None, "腹斜筋,腹直筋", None),      # Core
-            ("アブローラー",                 8,  2, None, "腹直筋,腸腰筋", None),      # Core
+            # アプローチジャンプ廃止: 設備不足・毎回スキップにつき正式廃止 (v1.3)
+            ("ブルガリアンスクワット",       6,  3, 12.0, "大臀筋,大腿四頭筋", None),
+            ("ルーマニアンデッドリフト",     5,  2, 50.0, "ハムストリングス,大臀筋", None),  # technique_learning
+            ("シーテッドレッグカール",       9,  2, None, "ハムストリングス", None),
+            ("インクラインダンベルプレス",   7,  2, 18.0, "大胸筋,三角筋前部,上腕三頭筋", None),
+            ("シーテッドロー",               7,  2, None, "広背筋,僧帽筋", None),
+            ("カーフ&トゥレイズ",           10,  2, None, "カーフ", None),
+            ("パロフプレス",                 8,  2, None, "腹斜筋,腹直筋", None),
+            ("アブローラー",                 8,  2, None, "腹直筋,腸腰筋", None),
         ],
     },
     {
-        "name":         "DAY B - OUTDOOR POWER",
-        "program_name": "Volleyball Performance v1.2",
-        "session_type": "DAY_B_OUTDOOR_POWER",
-        "location":     "outdoor",
-        "exercises": [
-            ("ポゴジャンプ",                 8,  2, None, "カーフ,大腿四頭筋", None),
-            ("アプローチジャンプ",           2,  3, None, "大腿四頭筋,大臀筋", None),
-            ("スクワットジャンプ",           3,  2, None, "大腿四頭筋,大臀筋", None),
-            ("スプリットスクワット",         7,  2, None, "大臀筋,大腿四頭筋", None),
-            ("サイドプランクローテーション", 6,  2, None, "腹斜筋", None),
-            ("ウォーククールダウン",          1,  1, None, None, None),
-        ],
-    },
-    {
-        "name":         "DAY B - SUPPORT",
-        "program_name": "Volleyball Performance v1.2",
-        "session_type": "DAY_B_SUPPORT",
+        "name":         "DAY B - ATHLETIC SUPPORT",
+        "program_name": "Volleyball Performance v1.3",
+        "session_type": "DAY_B_ATHLETIC_SUPPORT",
         "location":     "gym",
         "exercises": [
+            # 必須: 補助筋力・体幹
             ("シーテッドレッグカール",       9,  2, None, "ハムストリングス", None),
             ("フェイスプル",                10,  2, None, "三角筋後部,菱形筋", None),
             ("サイドプランクローテーション", 6,  2, None, "腹斜筋", None),
             ("パロフプレス",                 8,  2, None, "腹斜筋,腹直筋", None),
             ("アブローラー",                 8,  2, None, "腹直筋,腸腰筋", None),
+            # 任意: 省スペースPower（環境依存）
+            ("ポゴジャンプ",                 8,  2, None, "カーフ,大腿四頭筋", None),
+            ("スクワットジャンプ",           3,  2, None, "大腿四頭筋,大臀筋", None),
         ],
     },
 ]
 
 
 def seed_volleyball_program() -> int:
-    """Create/update Volleyball Performance v1.2 my-sets. Returns number created."""
+    """Create/update Volleyball Performance v1.3 my-sets. Returns number created."""
     created = 0
-    _V10_LEGACY = {"DAY A - FORCE", "DAY B - POWER GYM", "DAY B - POWER OUTDOOR"}
+    _LEGACY_NAMES = {
+        # v1.0 → v1.2
+        "DAY A - FORCE", "DAY B - POWER GYM", "DAY B - POWER OUTDOOR",
+        # v1.2 → v1.3 (DAY B restructured; OUTDOOR廃止 + SUPPORT統合)
+        "DAY B - OUTDOOR POWER", "DAY B - SUPPORT",
+    }
 
     with _conn() as conn:
         cur = conn.cursor()
 
-        # Archive v1.0 plans that were replaced by v1.2 names
-        for old_name in _V10_LEGACY:
+        # Archive plans replaced by newer versions
+        for old_name in _LEGACY_NAMES:
             cur.execute("SELECT id FROM my_sets WHERE name = %s", (old_name,))
             row = cur.fetchone()
             if row:
