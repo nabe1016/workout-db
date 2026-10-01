@@ -317,3 +317,8 @@ ON CONFLICT (name) DO UPDATE SET exercise_type='strength', measurement_type='rep
 INSERT INTO exercises (name, body_part, needs_bench, primary_muscle, location, exercise_type, measurement_type, is_time_based)
 VALUES ('ウォーククールダウン', '体幹', false, NULL, 'both', 'conditioning', 'seconds', true)
 ON CONFLICT (name) DO UPDATE SET exercise_type='conditioning', measurement_type='seconds', is_time_based=true;
+
+-- ペックフライ（大胸筋マシン種目）
+INSERT INTO exercises (name, body_part, needs_bench, primary_muscle, location, exercise_type, measurement_type)
+VALUES ('ペックフライ', '上肢', false, '大胸筋', 'gym', 'strength', 'reps')
+ON CONFLICT (name) DO UPDATE SET body_part='上肢', needs_bench=false, primary_muscle='大胸筋', location='gym', exercise_type='strength', measurement_type='reps';
