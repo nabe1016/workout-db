@@ -445,9 +445,9 @@
               </button>
             </div>
             {% endif %}
-            {# 左：情報　右：挿絵 #}
-            <div class="d-flex gap-2 align-items-start">
-              <div style="flex:1;min-width:0;">
+            {# 左：情報　右：挿絵（絶対配置でレイアウトに影響しない） #}
+            <div class="d-flex gap-2 align-items-start" style="position:relative;">
+              <div style="flex:1;min-width:0;{% if img_file %}padding-right:68px;{% endif %}">
                 <div style="font-size:0.76rem;line-height:1.7;">
                   {% if ex.exercise_type in ('plyometric', 'power') %}
                   <div class="d-flex align-items-center gap-1">
@@ -625,14 +625,14 @@
                   </div>
                 </div>
               </div>
-              {# 挿絵（詳細情報の右側） #}
+              {# 挿絵（絶対配置・カード右上固定） #}
               {% if img_file %}
-              <div style="flex-shrink:0;">
+              <div style="position:absolute;top:0;right:0;pointer-events:none;">
                 <img src="{{ url_for('static', filename='images/exercises/' + img_file) }}"
                      alt="{{ ex.exercise_name }}"
                      onerror="this.parentElement.style.display='none'"
-                     style="width:72px;height:80px;object-fit:cover;object-position:center;
-                            border-radius:8px;opacity:0.92;">
+                     style="width:64px;height:72px;object-fit:cover;object-position:center;
+                            border-radius:6px;opacity:0.75;">
               </div>
               {% endif %}
             </div>
