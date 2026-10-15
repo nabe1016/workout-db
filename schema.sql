@@ -73,7 +73,7 @@ ALTER TABLE exercises ADD COLUMN IF NOT EXISTS reps_low       INTEGER;
 
 -- Seed known exercise metadata (only when not yet set)
 UPDATE exercises SET body_part='上肢', needs_bench=false, primary_muscle='広背筋'     WHERE name='シーテッドロー'           AND body_part IS NULL;
-UPDATE exercises SET body_part='上肢', needs_bench=false, primary_muscle='広背筋'     WHERE name='ラットアイソレータ'        AND body_part IS NULL;
+UPDATE exercises SET body_part='上肢', needs_bench=false, primary_muscle='広背筋'     WHERE name IN ('ラットアイソレータ', 'ラットプルダウン') AND body_part IS NULL;
 UPDATE exercises SET body_part='下肢', needs_bench=false, primary_muscle='カーフ'     WHERE name='カーフ＆トゥレイズ'        AND body_part IS NULL;
 UPDATE exercises SET body_part='下肢', needs_bench=false, primary_muscle='カーフ'     WHERE name='カーフ&トゥレイズ'         AND body_part IS NULL;
 UPDATE exercises SET body_part='下肢', needs_bench=false, primary_muscle='大腿四頭筋' WHERE name='レッグプレス'              AND body_part IS NULL;
@@ -322,3 +322,15 @@ ON CONFLICT (name) DO UPDATE SET exercise_type='conditioning', measurement_type=
 INSERT INTO exercises (name, body_part, needs_bench, primary_muscle, location, exercise_type, measurement_type)
 VALUES ('ペックフライ', '上肢', false, '大胸筋', 'gym', 'strength', 'reps')
 ON CONFLICT (name) DO UPDATE SET body_part='上肢', needs_bench=false, primary_muscle='大胸筋', location='gym', exercise_type='strength', measurement_type='reps';
+
+-- ラットアイソレータ → ラットプルダウン リネーム
+UPDATE exercises SET name = 'ラットプルダウン' WHERE name = 'ラットアイソレータ';
+
+-- 懸垂・懸垂(アシストマシン)
+INSERT INTO exercises (name, body_part, needs_bench, primary_muscle, location, exercise_type, measurement_type)
+VALUES ('懸垂', '上肢', false, '広背筋', 'gym', 'strength', 'reps')
+ON CONFLICT (name) DO UPDATE SET body_part='上肢', needs_bench=false, primary_muscle='広背筋', location='gym', exercise_type='strength', measurement_type='reps';
+
+INSERT INTO exercises (name, body_part, needs_bench, primary_muscle, location, exercise_type, measurement_type)
+VALUES ('懸垂(アシストマシン)', '上肢', false, '広背筋', 'gym', 'strength', 'reps')
+ON CONFLICT (name) DO UPDATE SET body_part='上肢', needs_bench=false, primary_muscle='広背筋', location='gym', exercise_type='strength', measurement_type='reps';
