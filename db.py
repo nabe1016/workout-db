@@ -612,8 +612,9 @@ def update_exercise_full(exercise_id: int, body_part, needs_bench: bool, primary
 def update_exercise_one_rep_max(exercise_id: int, one_rep_max: float) -> None:
     with _conn() as conn:
         cur = conn.cursor()
-        cur.execute("UPDATE exercises SET one_rep_max = %s WHERE id = %s",
-                    (one_rep_max, exercise_id))
+        cur.execute(
+            "UPDATE exercises SET one_rep_max = %s WHERE id = %s AND (one_rep_max IS NULL OR one_rep_max < %s)",
+            (one_rep_max, exercise_id, one_rep_max))
 
 
 def delete_exercise(exercise_id: int):
@@ -1125,7 +1126,16 @@ def copy_my_set_to_session(my_set_id: int, session_id: int) -> int:
     with _conn() as conn:
         cur = conn.cursor()
         cur.execute("""
-            SELECT mse.*, ex.name
+            SELECT mse.*,
+                   ex.name,
+                   GREATEST(
+                       ex.one_rep_max,
+                       mse.one_rep_max,
+                       (SELECT MAX(se_h.one_rep_max)
+                        FROM session_exercises se_h
+                        WHERE se_h.exercise_id = mse.exercise_id
+                          AND se_h.one_rep_max IS NOT NULL)
+                   ) AS best_orm
             FROM my_set_exercises mse
             JOIN exercises ex ON ex.id = mse.exercise_id
             WHERE mse.my_set_id = %s
@@ -1136,7 +1146,7 @@ def copy_my_set_to_session(my_set_id: int, session_id: int) -> int:
         cur.execute("DELETE FROM session_exercises WHERE session_id = %s", (session_id,))
 
         for i, ex in enumerate(exercises, 1):
-            orm = ex["one_rep_max"]
+            orm = ex["best_orm"]
             low_pct = float(ex.get("low_load_pct") or 50)
             # Always recalculate from 1RM to avoid stale copied values
             weight_pct80 = round(float(orm) * 0.8, 1) if orm else None
