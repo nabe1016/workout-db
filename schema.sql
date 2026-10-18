@@ -334,3 +334,8 @@ ON CONFLICT (name) DO UPDATE SET body_part='上肢', needs_bench=false, primary_
 INSERT INTO exercises (name, body_part, needs_bench, primary_muscle, location, exercise_type, measurement_type)
 VALUES ('懸垂(アシストマシン)', '上肢', false, '広背筋', 'gym', 'strength', 'reps')
 ON CONFLICT (name) DO UPDATE SET body_part='上肢', needs_bench=false, primary_muscle='広背筋', location='gym', exercise_type='strength', measurement_type='reps';
+
+-- ハンマーカール
+INSERT INTO exercises (name, body_part, needs_bench, primary_muscle, location, exercise_type, measurement_type)
+VALUES ('ハンマーカール', '上肢', false, '上腕二頭筋', 'gym', 'strength', 'reps')
+ON CONFLICT (name) DO UPDATE SET body_part='上肢', needs_bench=false, primary_muscle='上腕二頭筋', location='gym', exercise_type='strength', measurement_type='reps';
