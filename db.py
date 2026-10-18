@@ -596,6 +596,23 @@ def update_exercise_meta(exercise_id: int, body_part, needs_bench: bool, primary
         """, (body_part or None, bool(needs_bench), primary_muscle or None, exercise_id))
 
 
+def create_exercise_master(name: str, body_part=None, needs_bench: bool = False,
+                           primary_muscle=None, one_rep_max=None,
+                           reps=None, weight_low_load=None, reps_low=None) -> int:
+    """Insert a new exercise into the master table. Returns the new exercise id."""
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO exercises (name, body_part, needs_bench, primary_muscle,
+                                   one_rep_max, reps, weight_low_load, reps_low,
+                                   location, exercise_type, measurement_type)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'gym', 'strength', 'reps')
+            RETURNING id
+        """, (name.strip(), body_part or None, bool(needs_bench), primary_muscle or None,
+              one_rep_max, reps, weight_low_load, reps_low))
+        return cur.fetchone()["id"]
+
+
 def update_exercise_full(exercise_id: int, body_part, needs_bench: bool, primary_muscle,
                           one_rep_max, reps, weight_low_load, reps_low) -> None:
     with _conn() as conn:

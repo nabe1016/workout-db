@@ -1177,6 +1177,39 @@ def exercises_bulk_edit():
     return render_template("exercises/bulk_edit.html", exercises=exercises, muscles=muscles)
 
 
+@app.route("/exercises/new", methods=["GET", "POST"])
+def exercise_master_new():
+    if request.method == "POST":
+        name = (request.form.get("name") or "").strip()
+        if not name:
+            flash("種目名を入力してください。", "danger")
+            muscles = db.list_muscles()
+            return render_template("exercises/master_new.html", muscles=muscles, form=request.form)
+        selected_muscles = request.form.getlist("primary_muscle")
+        try:
+            exercise_id = db.create_exercise_master(
+                name=name,
+                body_part=request.form.get("body_part") or None,
+                needs_bench=request.form.get("needs_bench") == "on",
+                primary_muscle=",".join(selected_muscles) if selected_muscles else None,
+                one_rep_max=_parse_float(request.form.get("one_rep_max")),
+                reps=_parse_int(request.form.get("reps")),
+                weight_low_load=_parse_float(request.form.get("weight_low_load")),
+                reps_low=_parse_int(request.form.get("reps_low")),
+            )
+        except Exception:
+            flash("同じ名前の種目がすでに存在します。", "danger")
+            muscles = db.list_muscles()
+            return render_template("exercises/master_new.html", muscles=muscles, form=request.form)
+        flash(f"「{name}」を追加しました。", "success")
+        next_url = request.args.get("next")
+        if next_url:
+            return redirect(next_url + f"?exercise_id={exercise_id}")
+        return redirect(url_for("exercises_index"))
+    muscles = db.list_muscles()
+    return render_template("exercises/master_new.html", muscles=muscles, form={})
+
+
 @app.route("/exercises/<int:exercise_id>/edit", methods=["GET", "POST"])
 def exercise_meta_edit(exercise_id):
     exercise = db.get_exercise(exercise_id)

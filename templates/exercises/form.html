@@ -26,6 +26,10 @@
       </option>
       {% endfor %}
     </select>
+    <div class="mt-2 text-end">
+      <a href="{{ url_for('exercise_master_new') }}?next={{ url_for('exercise_new', session_id=session.id) }}"
+         class="text-warning small">＋ リストにない種目を新規作成</a>
+    </div>
   </div>
 
   {% if last_values and not se %}

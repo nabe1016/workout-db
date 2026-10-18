@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% set back_url = url_for('exercises_index') %}
+{% block title %}新しい種目を追加{% endblock %}
+{% block nav_title %}種目追加{% endblock %}
+{% block nav_exercises %}active{% endblock %}
+
+{% block content %}
+<h5 class="mb-1">新しい種目を追加</h5>
+<p class="text-secondary small mb-4">種目名を入力して保存してください。</p>
+
+<form method="post">
+
+  {# ── 種目名 ─────────────────────────────────────────── #}
+  <div class="mb-4">
+    <label class="form-label fw-bold">種目名 <span class="text-danger">*</span></label>
+    <input type="text" class="form-control form-control-lg bg-dark text-light border-secondary"
+           name="name" value="{{ form.get('name', '') }}"
+           placeholder="例：ケーブルカール" autocomplete="off" autofocus required>
+  </div>
+
+  {# ── カテゴリ ──────────────────────────────────────── #}
+  <div class="mb-4">
+    <label class="form-label fw-bold">カテゴリ</label>
+    <div class="d-flex gap-3 flex-wrap">
+      {% for bp in ['上肢', '下肢', '体幹'] %}
+      <div class="form-check form-check-inline">
+        <input class="form-check-input" type="radio" name="body_part"
+               id="bp_{{ bp }}" value="{{ bp }}"
+               {% if form.get('body_part') == bp %}checked{% endif %}>
+        <label class="form-check-label" for="bp_{{ bp }}">{{ bp }}</label>
+      </div>
+      {% endfor %}
+      <div class="form-check form-check-inline">
+        <input class="form-check-input" type="radio" name="body_part"
+               id="bp_none" value=""
+               {% if not form.get('body_part') %}checked{% endif %}>
+        <label class="form-check-label text-secondary" for="bp_none">未設定</label>
+      </div>
+    </div>
+  </div>
+
+  {# ── 主導筋 ──────────────────────────────────────── #}
+  <div class="mb-4">
+    <label class="form-label fw-bold">主導筋 <span class="text-secondary small">（複数選択可）</span></label>
+    {% set selected_muscles = form.getlist('primary_muscle') if form.getlist is defined else [] %}
+    <div class="d-flex flex-wrap gap-2">
+      {% for m in muscles %}
+      <div class="form-check mb-0">
+        <input class="form-check-input" type="checkbox"
+               name="primary_muscle" value="{{ m.name }}"
+               id="pm_{{ m.id }}"
+               {% if m.name in selected_muscles %}checked{% endif %}>
+        <label class="form-check-label small" for="pm_{{ m.id }}">{{ m.name }}</label>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  {# ── ベンチ台 ─────────────────────────────────────── #}
+  <div class="mb-4">
+    <div class="form-check form-switch">
+      <input class="form-check-input" type="checkbox" role="switch"
+             id="needs_bench" name="needs_bench"
+             {% if form.get('needs_bench') == 'on' %}checked{% endif %}>
+      <label class="form-check-label fw-bold" for="needs_bench">
+        🪑 ベンチ台が必要
+      </label>
+    </div>
+  </div>
+
+  {# ── 1RM ──────────────────────────────────────────── #}
+  <div class="mb-3">
+    <label class="form-label fw-bold">1RM <span class="text-secondary fw-normal">(kg)　任意</span></label>
+    <input type="number" class="form-control bg-dark text-light border-secondary"
+           name="one_rep_max" inputmode="decimal" step="0.1" min="0"
+           value="{{ form.get('one_rep_max', '') }}"
+           placeholder="例: 80.0">
+  </div>
+
+  {# ── 高負荷rep ─────────────────────────────────────── #}
+  <div class="mb-3">
+    <label class="form-label fw-bold">高負荷rep数　<span class="text-secondary fw-normal small">任意・未設定=8</span></label>
+    <input type="number" class="form-control bg-dark text-light border-secondary"
+           name="reps" inputmode="numeric" min="1" max="200"
+           value="{{ form.get('reps', '') }}"
+           placeholder="8">
+  </div>
+
+  {# ── 低負荷 ───────────────────────────────────────── #}
+  <div class="row g-2 mb-4">
+    <div class="col-6">
+      <label class="form-label fw-bold">低負荷ウェイト <span class="text-secondary fw-normal">(kg)　任意</span></label>
+      <input type="number" class="form-control bg-dark text-light border-secondary"
+             name="weight_low_load" inputmode="decimal" step="0.1" min="0"
+             value="{{ form.get('weight_low_load', '') }}"
+             placeholder="未設定 = 1RM×50%">
+    </div>
+    <div class="col-6">
+      <label class="form-label fw-bold">低負荷rep数　<span class="text-secondary fw-normal small">任意・未設定=20</span></label>
+      <input type="number" class="form-control bg-dark text-light border-secondary"
+             name="reps_low" inputmode="numeric" min="1" max="200"
+             value="{{ form.get('reps_low', '') }}"
+             placeholder="20">
+    </div>
+  </div>
+
+  <button type="submit" class="btn btn-warning btn-lg w-100 fw-bold">追加する</button>
+</form>
+{% endblock %}
