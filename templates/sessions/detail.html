@@ -547,7 +547,8 @@
                 {# Inline adjust panel #}
                 <div class="adjust-panel mt-1 px-1 py-1" id="adjust-{{ ex.id }}"
                      style="background:rgba(255,255,255,0.05);border-radius:7px;">
-                  <div class="d-flex gap-1 align-items-end flex-wrap">
+                  {# 行1: 1RM / REPS / % / MAX重量 / 場所 #}
+                  <div class="d-flex gap-1 align-items-end">
                     {% if ex.exercise_type not in ('plyometric', 'power') %}
                     <div>
                       <div style="margin-bottom:0.1rem;line-height:1.2;">
@@ -580,23 +581,6 @@
                              style="width:2.8rem;font-size:0.75rem;padding:0.15rem 0.3rem;{% if mode == 'high' %}opacity:0.5;{% endif %}">
                     </div>
                     {% endif %}
-                    {% if ex.needs_bench %}
-                    <div>
-                      <div class="section-label" style="margin-bottom:0.1rem;font-size:0.55rem;">角度°</div>
-                      <select class="form-select form-select-sm adjust-select"
-                              data-se-id="{{ ex.id }}" data-field="bench_angle"
-                              style="width:4.8rem;min-width:0;font-size:0.72rem;padding:0.15rem 0.2rem;">
-                        <option value="">— なし</option>
-                        <option value="-60" {% if ex.bench_angle == -60 %}selected{% endif %}>-60°</option>
-                        <option value="-15" {% if ex.bench_angle == -15 %}selected{% endif %}>-15°</option>
-                        <option value="0"   {% if ex.bench_angle is not none and ex.bench_angle|int == 0 %}selected{% endif %}>0° フラット</option>
-                        <option value="15"  {% if ex.bench_angle == 15 %}selected{% endif %}>15°</option>
-                        <option value="30"  {% if ex.bench_angle == 30 %}selected{% endif %}>30°</option>
-                        <option value="45"  {% if ex.bench_angle == 45 %}selected{% endif %}>45°</option>
-                        <option value="60"  {% if ex.bench_angle == 60 %}selected{% endif %}>60°</option>
-                      </select>
-                    </div>
-                    {% endif %}
                     {# MAX重量 computed display #}
                     <div class="ms-auto d-flex flex-column align-items-end justify-content-end" style="flex-shrink:0;">
                       <div style="font-size:0.52rem;color:rgba(255,255,255,0.3);margin-bottom:0.1rem;">MAX重量</div>
@@ -623,6 +607,26 @@
                       </button>
                     </div>
                   </div>
+                  {# 行2: 角度°（ベンチ台が必要な種目のみ） #}
+                  {% if ex.needs_bench %}
+                  <div class="d-flex gap-1 align-items-end mt-1">
+                    <div>
+                      <div class="section-label" style="margin-bottom:0.1rem;font-size:0.55rem;">角度°</div>
+                      <select class="form-select form-select-sm adjust-select"
+                              data-se-id="{{ ex.id }}" data-field="bench_angle"
+                              style="width:7rem;min-width:0;font-size:0.72rem;padding:0.15rem 0.3rem;">
+                        <option value="">— なし</option>
+                        <option value="-60" {% if ex.bench_angle == -60 %}selected{% endif %}>-60°</option>
+                        <option value="-15" {% if ex.bench_angle == -15 %}selected{% endif %}>-15°</option>
+                        <option value="0"   {% if ex.bench_angle is not none and ex.bench_angle|int == 0 %}selected{% endif %}>0° フラット</option>
+                        <option value="15"  {% if ex.bench_angle == 15 %}selected{% endif %}>15°</option>
+                        <option value="30"  {% if ex.bench_angle == 30 %}selected{% endif %}>30°</option>
+                        <option value="45"  {% if ex.bench_angle == 45 %}selected{% endif %}>45°</option>
+                        <option value="60"  {% if ex.bench_angle == 60 %}selected{% endif %}>60°</option>
+                      </select>
+                    </div>
+                  </div>
+                  {% endif %}
                 </div>
               </div>
               {# 挿絵（絶対配置・カード右上固定） #}
