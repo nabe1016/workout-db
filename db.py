@@ -434,6 +434,11 @@ def quick_edit_se(se_id: int, one_rep_max=None, reps=None,
             cur.execute("UPDATE session_exercises SET bench_angle=%s WHERE id=%s",
                         (bench_angle, se_id))
         session_id = se["session_id"]
+        exercise_id = se["exercise_id"]
+
+    # Propagate new 1RM to master if it's a personal best
+    if one_rep_max is not None and new_orm:
+        update_exercise_one_rep_max(exercise_id, new_orm)
 
     recalculate_session_exp(session_id)
     with _conn() as conn:
@@ -1147,11 +1152,7 @@ def copy_my_set_to_session(my_set_id: int, session_id: int) -> int:
                    ex.name,
                    GREATEST(
                        ex.one_rep_max,
-                       mse.one_rep_max,
-                       (SELECT MAX(se_h.one_rep_max)
-                        FROM session_exercises se_h
-                        WHERE se_h.exercise_id = mse.exercise_id
-                          AND se_h.one_rep_max IS NOT NULL)
+                       mse.one_rep_max
                    ) AS best_orm
             FROM my_set_exercises mse
             JOIN exercises ex ON ex.id = mse.exercise_id
