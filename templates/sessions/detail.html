@@ -446,7 +446,7 @@
             </div>
             {% endif %}
             {# 左：情報　右：挿絵（絶対配置でレイアウトに影響しない） #}
-            <div class="d-flex gap-2 align-items-start" style="position:relative;">
+            <div class="d-flex gap-2 align-items-start" style="position:relative;overflow-x:hidden;">
               <div style="flex:1;min-width:0;{% if img_file %}padding-right:68px;{% endif %}">
                 <div style="font-size:0.76rem;line-height:1.7;">
                   {% if ex.exercise_type in ('plyometric', 'power') %}
@@ -585,7 +585,7 @@
                       <div class="section-label" style="margin-bottom:0.1rem;font-size:0.55rem;">角度°</div>
                       <select class="form-select form-select-sm adjust-select"
                               data-se-id="{{ ex.id }}" data-field="bench_angle"
-                              style="width:4.8rem;font-size:0.72rem;padding:0.15rem 0.2rem;">
+                              style="width:4.8rem;min-width:0;font-size:0.72rem;padding:0.15rem 0.2rem;">
                         <option value="">— なし</option>
                         <option value="-60" {% if ex.bench_angle == -60 %}selected{% endif %}>-60°</option>
                         <option value="-15" {% if ex.bench_angle == -15 %}selected{% endif %}>-15°</option>
@@ -679,7 +679,7 @@
           </div>
           {% else %}
           {# ── 通常種目: 1行レイアウト ── #}
-          <div class="d-flex align-items-center gap-1 mt-2">
+          <div class="d-flex align-items-center gap-1 mt-2 flex-wrap">
             {% for i in [1,2,3,4,5,6] %}
             {% set c = ex.get("set%d_completed" % i) %}
             {% if i >= 4 %}{% set pc = ex.get("set%d_completed" % (i-1)) %}{% endif %}
