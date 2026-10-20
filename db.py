@@ -71,6 +71,12 @@ def ensure_schema():
         "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS set5_at TIMESTAMP",
         "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS set6_at TIMESTAMP",
         "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS at_home BOOLEAN DEFAULT false",
+        # bodyweight / assisted pull-up support
+        "ALTER TABLE exercises ADD COLUMN IF NOT EXISTS is_assisted BOOLEAN DEFAULT FALSE",
+        "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS assist_weight FLOAT",
+        # set bodyweight_ratio for 懸垂, is_assisted for 懸垂(アシストマシン)
+        "UPDATE exercises SET bodyweight_ratio = 1.0 WHERE name = '懸垂' AND bodyweight_ratio IS NULL",
+        "UPDATE exercises SET is_assisted = TRUE WHERE name = '懸垂(アシストマシン)'",
     ]
     with _conn() as conn:
         cur = conn.cursor()
@@ -114,7 +120,7 @@ def get_session_with_exercises(session_id: int):
         cur.execute("""
             SELECT se.*, ex.name AS exercise_name,
                    ex.body_part, ex.needs_bench, ex.primary_muscle,
-                   ex.bodyweight_ratio, ex.is_time_based,
+                   ex.bodyweight_ratio, ex.is_assisted, ex.is_time_based,
                    ex.lvup_high, ex.lvup_low,
                    COALESCE(ex.exercise_type, 'strength') AS exercise_type,
                    COALESCE(ex.measurement_type, 'reps')  AS measurement_type,
@@ -369,12 +375,12 @@ _MISSING = object()
 
 def quick_edit_se(se_id: int, one_rep_max=None, reps=None,
                   low_load_pct=None, load_mode=None,
-                  bench_angle=_MISSING) -> dict | None:
-    """Inline update of 1RM / reps / low_load_pct / load_mode / bench_angle. Recalculates weights and EXP."""
+                  bench_angle=_MISSING, assist_weight=_MISSING) -> dict | None:
+    """Inline update of 1RM / reps / low_load_pct / load_mode / bench_angle / assist_weight. Recalculates weights and EXP."""
     with _conn() as conn:
         cur = conn.cursor()
         cur.execute("""
-            SELECT se.*, ex.bodyweight_ratio, ex.one_rep_max AS ex_one_rep_max
+            SELECT se.*, ex.bodyweight_ratio, ex.is_assisted, ex.one_rep_max AS ex_one_rep_max
             FROM session_exercises se
             JOIN exercises ex ON ex.id = se.exercise_id
             WHERE se.id = %s
@@ -404,13 +410,28 @@ def quick_edit_se(se_id: int, one_rep_max=None, reps=None,
         display_reps = new_reps_low if new_mode == "low" else new_reps_high
 
         bw_ratio = se.get("bodyweight_ratio")
-        if new_orm:
+        is_assisted = se.get("is_assisted")
+        # Determine current assist_weight
+        new_assist = None
+        if assist_weight is not _MISSING:
+            new_assist = float(assist_weight) if assist_weight is not None else None
+        else:
+            new_assist = se.get("assist_weight")
+
+        bw_row = get_latest_weight()
+        body_weight = float(bw_row["weight_kg"]) if bw_row else 65.0
+
+        if is_assisted:
+            # Effective weight = body_weight - assist_weight (assisted pull-up machine)
+            eff_weight = round(body_weight - (new_assist or 0), 1)
+            eff_weight = max(eff_weight, 1)
+            new_ws = eff_weight
+            new_wl = eff_weight
+        elif new_orm:
             # Explicit 1RM always takes priority over bodyweight ratio
             new_ws = round(float(new_orm) * 0.8, 1)
             new_wl = round(float(new_orm) * new_pct / 100, 1)
         elif bw_ratio:
-            bw_row = get_latest_weight()
-            body_weight = float(bw_row["weight_kg"]) if bw_row else 65.0
             eff_weight = round(body_weight * bw_ratio, 1)
             new_ws = eff_weight
             new_wl = eff_weight
@@ -433,6 +454,9 @@ def quick_edit_se(se_id: int, one_rep_max=None, reps=None,
         if bench_angle is not _MISSING:
             cur.execute("UPDATE session_exercises SET bench_angle=%s WHERE id=%s",
                         (bench_angle, se_id))
+        if assist_weight is not _MISSING:
+            cur.execute("UPDATE session_exercises SET assist_weight=%s WHERE id=%s",
+                        (new_assist, se_id))
         session_id = se["session_id"]
         exercise_id = se["exercise_id"]
 
@@ -460,6 +484,8 @@ def quick_edit_se(se_id: int, one_rep_max=None, reps=None,
     }
     if bench_angle is not _MISSING:
         result["bench_angle"] = bench_angle
+    if assist_weight is not _MISSING:
+        result["assist_weight"] = new_assist
     return result
 
 
@@ -1203,7 +1229,7 @@ def toggle_set_completion(se_id: int, set_num: int) -> dict:
         cur = conn.cursor()
         cur.execute("""
             SELECT se.*, ws.rep_count AS session_rep_count,
-                   ex.bodyweight_ratio, ex.one_rep_max AS ex_one_rep_max
+                   ex.bodyweight_ratio, ex.is_assisted, ex.one_rep_max AS ex_one_rep_max
             FROM session_exercises se
             JOIN workout_sessions ws ON ws.id = se.session_id
             JOIN exercises ex ON ex.id = se.exercise_id
@@ -1220,8 +1246,15 @@ def toggle_set_completion(se_id: int, set_num: int) -> dict:
 
         mode = se.get("load_mode") or "high"
         bw_ratio = se.get("bodyweight_ratio")
+        is_assisted = se.get("is_assisted")
         orm = se.get("one_rep_max") or se.get("ex_one_rep_max")
-        if orm:
+        bw_row = get_latest_weight()
+        body_weight = float(bw_row["weight_kg"]) if bw_row else 65.0
+        if is_assisted:
+            # Effective weight = body_weight - assist_weight
+            assist = float(se.get("assist_weight") or 0)
+            weight = max(round(body_weight - assist, 1), 1)
+        elif orm:
             # 1RM available: use stored weight or compute from ORM
             low_pct = float(se.get("low_load_pct") or 50)
             if mode == "low":
@@ -1229,8 +1262,6 @@ def toggle_set_completion(se_id: int, set_num: int) -> dict:
             else:
                 weight = se["weight_setting"] or se["weight_low_load"] or round(float(orm) * 0.8, 1)
         elif bw_ratio:
-            bw_row = get_latest_weight()
-            body_weight = float(bw_row["weight_kg"]) if bw_row else 65.0
             weight = round(body_weight * bw_ratio, 1)
         elif mode == "low":
             weight = se["weight_low_load"] if se["weight_low_load"] else se["weight_setting"]

@@ -275,9 +275,12 @@ def session_detail(session_id):
             ex["prev_low_weight"]  = prev.get("weight_low_load")
             ex["prev_low_reps"]    = prev_low_reps
         merged.append(ex)
+    bw_row = db.get_latest_weight()
+    latest_body_weight = float(bw_row["weight_kg"]) if bw_row else None
     return render_template("sessions/detail.html",
                            session=session, exercises=merged,
-                           category_exp=category_exp)
+                           category_exp=category_exp,
+                           latest_body_weight=latest_body_weight)
 
 
 @app.route("/sessions/<int:session_id>/edit", methods=["GET", "POST"])
@@ -765,10 +768,29 @@ def api_quick_edit_se(se_id):
     )
     if "bench_angle" in data:
         kwargs["bench_angle"] = data.get("bench_angle")
+    if "assist_weight" in data:
+        kwargs["assist_weight"] = data.get("assist_weight")
     result = db.quick_edit_se(se_id, **kwargs)
     if result is None:
         return jsonify({"error": "not found"}), 404
     return jsonify(result)
+
+
+@app.route("/api/body-weight", methods=["POST"])
+def api_save_body_weight():
+    data = request.get_json(force=True) or {}
+    weight_kg = data.get("weight_kg")
+    if weight_kg is None:
+        return jsonify({"error": "weight_kg required"}), 400
+    try:
+        weight_kg = float(weight_kg)
+    except (TypeError, ValueError):
+        return jsonify({"error": "invalid weight_kg"}), 400
+    import datetime as _dt
+    today = _dt.datetime.now(_dt.timezone(
+        _dt.timedelta(hours=9))).date()
+    db.upsert_weight(today, weight_kg, "")
+    return jsonify({"weight_kg": weight_kg})
 
 
 @app.route("/api/sessions/<int:session_id>/apply-overload-tip", methods=["POST"])

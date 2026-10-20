@@ -73,6 +73,20 @@
       </button>
     </form>
     {% endif %}
+    {# ── 体重入力（懸垂・アシスト種目の基準値） ── #}
+    <div class="d-flex align-items-center gap-2 mb-2 mt-1"
+         style="background:rgba(255,255,255,0.04);border-radius:7px;padding:0.35rem 0.6rem;">
+      <span style="font-size:0.72rem;color:var(--txt-2);white-space:nowrap;flex-shrink:0;">体重</span>
+      <input type="number" id="body-weight-input"
+             class="form-control form-control-sm bg-dark text-light border-secondary"
+             style="width:5.5rem;font-size:0.85rem;padding:0.15rem 0.4rem;"
+             step="0.1" min="30" max="200"
+             value="{{ latest_body_weight or '' }}"
+             placeholder="kg">
+      <span style="font-size:0.72rem;color:var(--txt-2);">kg</span>
+      <span id="body-weight-status" style="font-size:0.65rem;color:rgba(105,240,174,0.7);display:none;">✓ 保存</span>
+      <span style="font-size:0.62rem;color:rgba(255,255,255,0.25);margin-left:auto;">懸垂・アシスト種目の基準</span>
+    </div>
     <div class="d-flex gap-2">
       <button type="button" class="btn btn-success btn-sm flex-fill fw-bold finish-trigger-btn"
               data-session-id="{{ session.id }}">終了・アドバイス</button>
@@ -397,7 +411,13 @@
                 {% if mode == 'low' %}低{% else %}高{% endif %}
               </span>
               <span id="collapsed-weight-{{ ex.id }}">
-                {% if mode == 'low' %}
+                {% if ex.is_assisted %}
+                  {% set eff = (latest_body_weight or 65) - (ex.assist_weight or 0) %}
+                  <strong style="color:var(--blue);" class="bw-eff-weight" data-se-id="{{ ex.id }}" data-assist="{{ ex.assist_weight or 0 }}">{{ eff|round(1) }}kg</strong>
+                {% elif ex.bodyweight_ratio %}
+                  {% set eff = (latest_body_weight or 65) * ex.bodyweight_ratio %}
+                  <strong style="color:var(--blue);" class="bw-weight">{{ eff|round(1) }}kg</strong>
+                {% elif mode == 'low' %}
                   {% set wl = ex.weight_low_load or (((ex.one_rep_max or 0) * ((ex.low_load_pct or 30) / 100))|round(1) if ex.one_rep_max else none) %}
                   {% if wl %}<strong style="color:var(--orange);">{{ wl }}kg</strong><span class="text-secondary">({{ (ex.low_load_pct or 30)|int }}%)</span>
                   {% else %}<span class="text-secondary">重量未設定</span>{% endif %}
@@ -483,6 +503,14 @@
                   {% endif %}
                   {% else %}
                   <div class="d-flex align-items-center">
+                    {% if ex.is_assisted %}
+                    <span class="text-secondary" style="width:2.8em;flex-shrink:0;">体重</span>
+                    <span id="orm-val-{{ ex.id }}">: <strong class="text-light">{{ latest_body_weight or '—' }}kg</strong></span>
+                    <span style="font-size:0.62rem;color:rgba(255,255,255,0.28);margin-left:0.5em;">ニュートラル基準</span>
+                    {% elif ex.bodyweight_ratio %}
+                    <span class="text-secondary" style="width:2.8em;flex-shrink:0;">体重</span>
+                    <span id="orm-val-{{ ex.id }}">: <strong class="text-light">{{ latest_body_weight or '—' }}kg</strong></span>
+                    {% else %}
                     <span class="text-secondary" style="width:2.8em;flex-shrink:0;">1RM</span>
                     <span id="orm-val-{{ ex.id }}">
                       {% if ex.one_rep_max %}
@@ -494,6 +522,7 @@
                     <span style="font-size:0.62rem;color:rgba(255,255,255,0.28);margin-left:0.5em;white-space:nowrap;">
                       {% if ex.prev_orm %}PREV {{ ex.prev_orm }}{% endif %}{% if ex.prev_orm and ex.max_orm %} · {% endif %}{% if ex.max_orm %}MAX {{ ex.max_orm }}{% endif %}
                     </span>
+                    {% endif %}
                     {% endif %}
                   </div>
                   {% if ex.needs_bench %}
@@ -509,7 +538,17 @@
                   <div class="d-flex align-items-center gap-1">
                     <span class="text-secondary" style="width:2.8em;flex-shrink:0;">重量</span>
                     <span id="weight-val-{{ ex.id }}">
-                      {% if mode == 'low' %}
+                      {% if ex.is_assisted %}
+                        {# アシストマシン: 体重 - アシスト重量 #}
+                        {% set eff = (latest_body_weight or 65) - (ex.assist_weight or 0) %}
+                        : <strong style="color:var(--blue);" class="bw-eff-weight" data-se-id="{{ ex.id }}" data-assist="{{ ex.assist_weight or 0 }}">{{ eff|round(1) }}kg</strong>
+                        <span class="text-secondary" style="font-size:0.65rem;">(体重-アシスト)</span>
+                      {% elif ex.bodyweight_ratio %}
+                        {# 自重種目: 体重 × ratio #}
+                        {% set eff = (latest_body_weight or 65) * ex.bodyweight_ratio %}
+                        : <strong style="color:var(--blue);" class="bw-weight">{{ eff|round(1) }}kg</strong>
+                        <span class="text-secondary" style="font-size:0.65rem;">(体重)</span>
+                      {% elif mode == 'low' %}
                         {% set wl = ex.weight_low_load or (((ex.one_rep_max or 0) * ((ex.low_load_pct or 30) / 100))|round(1) if ex.one_rep_max else none) %}
                         {% if wl %}: <strong style="color:var(--orange);">{{ wl }}kg</strong><span class="text-secondary" style="font-size:0.65rem;"> ({{ (ex.low_load_pct or 30)|int }}%)</span>
                         {% else %}<span class="text-secondary">: —</span>{% endif %}
@@ -517,7 +556,7 @@
                         : <strong style="color:var(--blue);">{{ ex.weight_setting }}kg</strong><span class="text-secondary" style="font-size:0.65rem;"> (80%)</span>
                       {% else %}<span class="text-secondary">: —</span>{% endif %}
                     </span>
-                    {% if not ex.one_rep_max and ex.exercise_type in ('strength', None, '') %}
+                    {% if not ex.one_rep_max and not ex.bodyweight_ratio and not ex.is_assisted and ex.exercise_type in ('strength', None, '') %}
                     <span style="font-size:0.58rem;padding:0.05rem 0.25rem;border-radius:3px;background:rgba(255,120,0,0.18);border:1px solid rgba(255,120,0,0.35);color:#ff9944;">1RM未設定</span>
                     {% endif %}
                   </div>
@@ -549,7 +588,7 @@
                      style="background:rgba(255,255,255,0.05);border-radius:7px;">
                   {# 行1: 1RM / REPS / % / MAX重量 / 場所 #}
                   <div class="d-flex gap-1 align-items-end">
-                    {% if ex.exercise_type not in ('plyometric', 'power') %}
+                    {% if ex.exercise_type not in ('plyometric', 'power') and not ex.bodyweight_ratio and not ex.is_assisted %}
                     <div>
                       <div style="margin-bottom:0.1rem;line-height:1.2;">
                         <div style="font-size:0.55rem;font-weight:700;color:var(--txt-2);letter-spacing:0.04em;text-transform:uppercase;">1RM KG</div>
@@ -569,7 +608,7 @@
                              value="{{ (ex.reps_low if mode == 'low' else ex.reps) or '' }}" step="1" min="1"
                              style="width:2.8rem;font-size:0.75rem;padding:0.15rem 0.3rem;">
                     </div>
-                    {% if ex.exercise_type not in ('plyometric', 'power') %}
+                    {% if ex.exercise_type not in ('plyometric', 'power') and not ex.bodyweight_ratio and not ex.is_assisted %}
                     <div>
                       <div class="section-label" id="pct-label-{{ ex.id }}"
                            style="margin-bottom:0.1rem;font-size:0.55rem;">{% if mode == 'high' %}高%{% else %}低%{% endif %}</div>
@@ -585,7 +624,11 @@
                     <div class="ms-auto d-flex flex-column align-items-end justify-content-end" style="flex-shrink:0;">
                       <div style="font-size:0.52rem;color:rgba(255,255,255,0.3);margin-bottom:0.1rem;">MAX重量</div>
                       <div id="max-weight-{{ ex.id }}" style="font-size:0.78rem;font-weight:700;color:var(--yellow);line-height:1.1;">
-                        {%- if ex.exercise_type not in ('plyometric', 'power') -%}
+                        {%- if ex.is_assisted -%}
+                          {{ ((latest_body_weight or 65) - (ex.assist_weight or 0))|round(1) }}kg
+                        {%- elif ex.bodyweight_ratio -%}
+                          {{ ((latest_body_weight or 65) * ex.bodyweight_ratio)|round(1) }}kg
+                        {%- elif ex.exercise_type not in ('plyometric', 'power') -%}
                           {%- if mode == 'high' -%}
                             {%- if ex.weight_setting -%}{{ ex.weight_setting }}kg{%- elif ex.one_rep_max -%}{{ (ex.one_rep_max * 0.8)|round(1) }}kg{%- else -%}—{%- endif -%}
                           {%- else -%}
@@ -607,9 +650,10 @@
                       </button>
                     </div>
                   </div>
-                  {# 行2: 角度°（ベンチ台が必要な種目のみ） #}
-                  {% if ex.needs_bench %}
-                  <div class="d-flex gap-1 align-items-end mt-1">
+                  {# 行2: 角度°（ベンチ台が必要な種目）/ アシスト重量（アシストマシン） #}
+                  {% if ex.needs_bench or ex.is_assisted %}
+                  <div class="d-flex gap-2 align-items-end mt-1">
+                    {% if ex.needs_bench %}
                     <div>
                       <div class="section-label" style="margin-bottom:0.1rem;font-size:0.55rem;">角度°</div>
                       <select class="form-select form-select-sm adjust-select"
@@ -625,6 +669,24 @@
                         <option value="60"  {% if ex.bench_angle == 60 %}selected{% endif %}>60°</option>
                       </select>
                     </div>
+                    {% endif %}
+                    {% if ex.is_assisted %}
+                    <div>
+                      <div style="font-size:0.55rem;font-weight:700;color:var(--txt-2);letter-spacing:0.04em;margin-bottom:0.1rem;">アシスト重量 KG</div>
+                      <div style="font-size:0.5rem;color:rgba(255,255,255,0.3);margin-bottom:0.15rem;">負荷 = 体重 - 入力値</div>
+                      <input type="number" class="form-control form-control-sm adjust-input"
+                             data-se-id="{{ ex.id }}" data-field="assist_weight"
+                             value="{{ ex.assist_weight or '' }}" step="0.5" min="0"
+                             placeholder="0"
+                             style="width:5rem;font-size:0.75rem;padding:0.15rem 0.3rem;">
+                    </div>
+                    <div class="d-flex flex-column align-items-start justify-content-end" style="flex-shrink:0;">
+                      <div style="font-size:0.5rem;color:rgba(255,255,255,0.3);margin-bottom:0.1rem;">実負荷</div>
+                      <div id="assist-eff-weight-{{ ex.id }}" style="font-size:0.78rem;font-weight:700;color:var(--yellow);line-height:1.1;">
+                        {% set eff = (latest_body_weight or 65) - (ex.assist_weight or 0) %}{{ eff|round(1) }}kg
+                      </div>
+                    </div>
+                    {% endif %}
                   </div>
                   {% endif %}
                 </div>
@@ -1582,9 +1644,12 @@
 
     input.addEventListener('blur', function() {
       var val = parseFloat(input.value);
-      if (isNaN(val) || val <= 0) return;
+      var field = input.dataset.field;
+      // assist_weight allows 0; other fields require > 0
+      if (isNaN(val) || (val <= 0 && field !== 'assist_weight')) return;
+      if (field === 'assist_weight' && isNaN(val)) return;
       var payload = {};
-      payload[input.dataset.field] = val;
+      payload[field] = val;
       fetch('/api/se/' + input.dataset.seId + '/quick-edit', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -1860,6 +1925,63 @@
 
   // ── Init: first dot active ─────────────────────────────────────────────
   activateDot(0);
+
+  // ── Body weight input ────────────────────────────────────────────────────
+  var bodyWeightInput = document.getElementById('body-weight-input');
+  var bodyWeightStatus = document.getElementById('body-weight-status');
+  var bodyWeightTimer = null;
+  if (bodyWeightInput) {
+    bodyWeightInput.addEventListener('input', function() {
+      clearTimeout(bodyWeightTimer);
+      bodyWeightStatus.style.display = 'none';
+      var bw = parseFloat(bodyWeightInput.value);
+      if (isNaN(bw) || bw <= 0) return;
+      // Update all bodyweight-derived displays immediately
+      document.querySelectorAll('.bw-weight').forEach(function(el) {
+        var ratio = parseFloat(el.dataset.ratio || 1);
+        el.textContent = (bw * ratio).toFixed(1) + 'kg';
+      });
+      document.querySelectorAll('.bw-eff-weight').forEach(function(el) {
+        var assist = parseFloat(el.dataset.assist || 0);
+        var eff = Math.max(bw - assist, 0.1);
+        el.textContent = eff.toFixed(1) + 'kg';
+        var seId = el.dataset.seId;
+        var effDisp = document.getElementById('assist-eff-weight-' + seId);
+        if (effDisp) effDisp.textContent = eff.toFixed(1) + 'kg';
+      });
+      // Debounce save
+      bodyWeightTimer = setTimeout(function() {
+        fetch('/api/body-weight', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ weight_kg: bw })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function() {
+          bodyWeightStatus.style.display = '';
+          setTimeout(function() { bodyWeightStatus.style.display = 'none'; }, 2000);
+        })
+        .catch(function() {});
+      }, 800);
+    });
+  }
+
+  // ── Assist weight input live update ─────────────────────────────────────
+  document.querySelectorAll('.adjust-input[data-field="assist_weight"]').forEach(function(input) {
+    input.addEventListener('input', function() {
+      var bw = parseFloat((bodyWeightInput && bodyWeightInput.value) || {{ latest_body_weight or 65 }});
+      var assist = parseFloat(input.value) || 0;
+      var eff = Math.max(bw - assist, 0.1);
+      var seId = input.dataset.seId;
+      // Update eff weight display
+      var effDisp = document.getElementById('assist-eff-weight-' + seId);
+      if (effDisp) effDisp.textContent = eff.toFixed(1) + 'kg';
+      // Update weight-val display
+      document.querySelectorAll('.bw-eff-weight[data-se-id="' + seId + '"]').forEach(function(el) {
+        el.dataset.assist = assist;
+        el.textContent = eff.toFixed(1) + 'kg';
+      });
+    });
+  });
 
 })();
 </script>
