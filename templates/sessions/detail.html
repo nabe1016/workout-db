@@ -411,18 +411,25 @@
                 {% if mode == 'low' %}低{% else %}高{% endif %}
               </span>
               <span id="collapsed-weight-{{ ex.id }}">
+                {% set _col_pure_bw = ex.bodyweight_ratio and ex.bodyweight_ratio|float >= 1.0 %}
                 {% if ex.is_assisted %}
                   {% set eff = (latest_body_weight or 65) - (ex.assist_weight or 0) %}
                   <strong style="color:var(--blue);" class="bw-eff-weight" data-se-id="{{ ex.id }}" data-assist="{{ ex.assist_weight or 0 }}">{{ eff|round(1) }}kg</strong>
-                {% elif ex.bodyweight_ratio %}
+                {% elif _col_pure_bw %}
                   {% set eff = (latest_body_weight or 65) * ex.bodyweight_ratio %}
                   <strong style="color:var(--blue);" class="bw-weight">{{ eff|round(1) }}kg</strong>
                 {% elif mode == 'low' %}
                   {% set wl = ex.weight_low_load or (((ex.one_rep_max or 0) * ((ex.low_load_pct or 30) / 100))|round(1) if ex.one_rep_max else none) %}
                   {% if wl %}<strong style="color:var(--orange);">{{ wl }}kg</strong><span class="text-secondary">({{ (ex.low_load_pct or 30)|int }}%)</span>
+                  {% elif ex.bodyweight_ratio %}
+                    {% set eff = (latest_body_weight or 65) * ex.bodyweight_ratio %}
+                    <strong style="color:var(--blue);">{{ eff|round(1) }}kg</strong>
                   {% else %}<span class="text-secondary">重量未設定</span>{% endif %}
                 {% elif ex.weight_setting %}
                   <strong style="color:var(--blue);">{{ ex.weight_setting }}kg</strong><span class="text-secondary">(80%)</span>
+                {% elif ex.bodyweight_ratio %}
+                  {% set eff = (latest_body_weight or 65) * ex.bodyweight_ratio %}
+                  <strong style="color:var(--blue);">{{ eff|round(1) }}kg</strong>
                 {% else %}
                   <span class="text-secondary">重量未設定</span>
                 {% endif %}
@@ -502,12 +509,14 @@
                   </div>
                   {% endif %}
                   {% else %}
+                  {# pure_bw = bodyweight_ratio == 1.0 (懸垂など純自重) #}
+                  {% set is_pure_bw = ex.bodyweight_ratio and ex.bodyweight_ratio|float >= 1.0 %}
                   <div class="d-flex align-items-center">
                     {% if ex.is_assisted %}
                     <span class="text-secondary" style="width:2.8em;flex-shrink:0;">体重</span>
                     <span id="orm-val-{{ ex.id }}">: <strong class="text-light">{{ latest_body_weight or '—' }}kg</strong></span>
                     <span style="font-size:0.62rem;color:rgba(255,255,255,0.28);margin-left:0.5em;">ニュートラル基準</span>
-                    {% elif ex.bodyweight_ratio %}
+                    {% elif is_pure_bw %}
                     <span class="text-secondary" style="width:2.8em;flex-shrink:0;">体重</span>
                     <span id="orm-val-{{ ex.id }}">: <strong class="text-light">{{ latest_body_weight or '—' }}kg</strong></span>
                     {% else %}
@@ -538,25 +547,36 @@
                   <div class="d-flex align-items-center gap-1">
                     <span class="text-secondary" style="width:2.8em;flex-shrink:0;">重量</span>
                     <span id="weight-val-{{ ex.id }}">
+                      {% set is_pure_bw2 = ex.bodyweight_ratio and ex.bodyweight_ratio|float >= 1.0 %}
                       {% if ex.is_assisted %}
                         {# アシストマシン: 体重 - アシスト重量 #}
                         {% set eff = (latest_body_weight or 65) - (ex.assist_weight or 0) %}
                         : <strong style="color:var(--blue);" class="bw-eff-weight" data-se-id="{{ ex.id }}" data-assist="{{ ex.assist_weight or 0 }}">{{ eff|round(1) }}kg</strong>
                         <span class="text-secondary" style="font-size:0.65rem;">(体重-アシスト)</span>
-                      {% elif ex.bodyweight_ratio %}
-                        {# 自重種目: 体重 × ratio #}
+                      {% elif is_pure_bw2 %}
+                        {# 純自重種目（懸垂など）: 体重 × ratio #}
                         {% set eff = (latest_body_weight or 65) * ex.bodyweight_ratio %}
                         : <strong style="color:var(--blue);" class="bw-weight">{{ eff|round(1) }}kg</strong>
                         <span class="text-secondary" style="font-size:0.65rem;">(体重)</span>
                       {% elif mode == 'low' %}
                         {% set wl = ex.weight_low_load or (((ex.one_rep_max or 0) * ((ex.low_load_pct or 30) / 100))|round(1) if ex.one_rep_max else none) %}
                         {% if wl %}: <strong style="color:var(--orange);">{{ wl }}kg</strong><span class="text-secondary" style="font-size:0.65rem;"> ({{ (ex.low_load_pct or 30)|int }}%)</span>
-                        {% else %}<span class="text-secondary">: —</span>{% endif %}
+                        {% else %}
+                          {# 自重フォールバック(ratio<1.0)で1RMなし #}
+                          {% if ex.bodyweight_ratio %}
+                            {% set eff = (latest_body_weight or 65) * ex.bodyweight_ratio %}
+                            : <strong style="color:var(--blue);">{{ eff|round(1) }}kg</strong><span class="text-secondary" style="font-size:0.65rem;">(体重×{{ (ex.bodyweight_ratio * 100)|int }}%)</span>
+                          {% else %}<span class="text-secondary">: —</span>{% endif %}
+                        {% endif %}
                       {% elif ex.weight_setting %}
                         : <strong style="color:var(--blue);">{{ ex.weight_setting }}kg</strong><span class="text-secondary" style="font-size:0.65rem;"> (80%)</span>
+                      {% elif ex.bodyweight_ratio %}
+                        {# 自重フォールバック(ratio<1.0)で1RMなし #}
+                        {% set eff = (latest_body_weight or 65) * ex.bodyweight_ratio %}
+                        : <strong style="color:var(--blue);">{{ eff|round(1) }}kg</strong><span class="text-secondary" style="font-size:0.65rem;">(体重×{{ (ex.bodyweight_ratio * 100)|int }}%)</span>
                       {% else %}<span class="text-secondary">: —</span>{% endif %}
                     </span>
-                    {% if not ex.one_rep_max and not ex.bodyweight_ratio and not ex.is_assisted and ex.exercise_type in ('strength', None, '') %}
+                    {% if not ex.one_rep_max and not ex.is_assisted and not is_pure_bw2 and ex.exercise_type in ('strength', None, '') %}
                     <span style="font-size:0.58rem;padding:0.05rem 0.25rem;border-radius:3px;background:rgba(255,120,0,0.18);border:1px solid rgba(255,120,0,0.35);color:#ff9944;">1RM未設定</span>
                     {% endif %}
                   </div>
@@ -588,7 +608,8 @@
                      style="background:rgba(255,255,255,0.05);border-radius:7px;">
                   {# 行1: 1RM / REPS / % / MAX重量 / 場所 #}
                   <div class="d-flex gap-1 align-items-end">
-                    {% if ex.exercise_type not in ('plyometric', 'power') and not ex.bodyweight_ratio and not ex.is_assisted %}
+                    {% set _adj_pure_bw = ex.bodyweight_ratio and ex.bodyweight_ratio|float >= 1.0 %}
+                    {% if ex.exercise_type not in ('plyometric', 'power') and not _adj_pure_bw and not ex.is_assisted %}
                     <div>
                       <div style="margin-bottom:0.1rem;line-height:1.2;">
                         <div style="font-size:0.55rem;font-weight:700;color:var(--txt-2);letter-spacing:0.04em;text-transform:uppercase;">1RM KG</div>
@@ -608,7 +629,7 @@
                              value="{{ (ex.reps_low if mode == 'low' else ex.reps) or '' }}" step="1" min="1"
                              style="width:2.8rem;font-size:0.75rem;padding:0.15rem 0.3rem;">
                     </div>
-                    {% if ex.exercise_type not in ('plyometric', 'power') and not ex.bodyweight_ratio and not ex.is_assisted %}
+                    {% if ex.exercise_type not in ('plyometric', 'power') and not _adj_pure_bw and not ex.is_assisted %}
                     <div>
                       <div class="section-label" id="pct-label-{{ ex.id }}"
                            style="margin-bottom:0.1rem;font-size:0.55rem;">{% if mode == 'high' %}高%{% else %}低%{% endif %}</div>
@@ -624,9 +645,10 @@
                     <div class="ms-auto d-flex flex-column align-items-end justify-content-end" style="flex-shrink:0;">
                       <div style="font-size:0.52rem;color:rgba(255,255,255,0.3);margin-bottom:0.1rem;">MAX重量</div>
                       <div id="max-weight-{{ ex.id }}" style="font-size:0.78rem;font-weight:700;color:var(--yellow);line-height:1.1;">
+                        {%- set _mw_pure_bw = ex.bodyweight_ratio and ex.bodyweight_ratio|float >= 1.0 -%}
                         {%- if ex.is_assisted -%}
                           {{ ((latest_body_weight or 65) - (ex.assist_weight or 0))|round(1) }}kg
-                        {%- elif ex.bodyweight_ratio -%}
+                        {%- elif _mw_pure_bw -%}
                           {{ ((latest_body_weight or 65) * ex.bodyweight_ratio)|round(1) }}kg
                         {%- elif ex.exercise_type not in ('plyometric', 'power') -%}
                           {%- if mode == 'high' -%}
