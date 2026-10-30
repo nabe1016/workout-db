@@ -73,20 +73,15 @@
       </button>
     </form>
     {% endif %}
-    {# ── 体重入力（懸垂・アシスト種目の基準値） ── #}
+    {# ── 体重表示（懸垂・アシスト種目の基準値） ── #}
+    {% if latest_body_weight %}
     <div class="d-flex align-items-center gap-2 mb-2 mt-1"
          style="background:rgba(255,255,255,0.04);border-radius:7px;padding:0.35rem 0.6rem;">
       <span style="font-size:0.72rem;color:var(--txt-2);white-space:nowrap;flex-shrink:0;">体重</span>
-      <input type="number" id="body-weight-input"
-             class="form-control form-control-sm bg-dark text-light border-secondary"
-             style="width:5.5rem;font-size:0.85rem;padding:0.15rem 0.4rem;"
-             step="0.1" min="30" max="200"
-             value="{{ latest_body_weight or '' }}"
-             placeholder="kg">
-      <span style="font-size:0.72rem;color:var(--txt-2);">kg</span>
-      <span id="body-weight-status" style="font-size:0.65rem;color:rgba(105,240,174,0.7);display:none;">✓ 保存</span>
-      <span style="font-size:0.62rem;color:rgba(255,255,255,0.25);margin-left:auto;">懸垂・アシスト種目の基準</span>
+      <span style="font-size:0.85rem;font-weight:600;color:rgba(255,255,255,0.85);">{{ latest_body_weight }}kg</span>
+      <a href="{{ url_for('weight_log') }}" style="font-size:0.62rem;color:rgba(105,240,174,0.5);margin-left:auto;text-decoration:none;">体組成管理 →</a>
     </div>
+    {% endif %}
     <div class="d-flex gap-2">
       <button type="button" class="btn btn-success btn-sm flex-fill fw-bold finish-trigger-btn"
               data-session-id="{{ session.id }}">終了・アドバイス</button>
@@ -1974,49 +1969,11 @@
   // ── Init: first dot active ─────────────────────────────────────────────
   activateDot(0);
 
-  // ── Body weight input ────────────────────────────────────────────────────
-  var bodyWeightInput = document.getElementById('body-weight-input');
-  var bodyWeightStatus = document.getElementById('body-weight-status');
-  var bodyWeightTimer = null;
-  if (bodyWeightInput) {
-    bodyWeightInput.addEventListener('input', function() {
-      clearTimeout(bodyWeightTimer);
-      bodyWeightStatus.style.display = 'none';
-      var bw = parseFloat(bodyWeightInput.value);
-      if (isNaN(bw) || bw <= 0) return;
-      // Update all bodyweight-derived displays immediately
-      document.querySelectorAll('.bw-weight').forEach(function(el) {
-        var ratio = parseFloat(el.dataset.ratio || 1);
-        el.textContent = (bw * ratio).toFixed(1) + 'kg';
-      });
-      document.querySelectorAll('.bw-eff-weight').forEach(function(el) {
-        var assist = parseFloat(el.dataset.assist || 0);
-        var eff = Math.max(bw - assist, 0.1);
-        el.textContent = eff.toFixed(1) + 'kg';
-        var seId = el.dataset.seId;
-        var effDisp = document.getElementById('assist-eff-weight-' + seId);
-        if (effDisp) effDisp.textContent = eff.toFixed(1) + 'kg';
-      });
-      // Debounce save
-      bodyWeightTimer = setTimeout(function() {
-        fetch('/api/body-weight', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ weight_kg: bw })
-        })
-        .then(function(r) { return r.json(); })
-        .then(function() {
-          bodyWeightStatus.style.display = '';
-          setTimeout(function() { bodyWeightStatus.style.display = 'none'; }, 2000);
-        })
-        .catch(function() {});
-      }, 800);
-    });
-  }
-
   // ── Assist weight input live update ─────────────────────────────────────
+  var _serverBodyWeight = {{ latest_body_weight or 65 }};
   document.querySelectorAll('.adjust-input[data-field="assist_weight"]').forEach(function(input) {
     input.addEventListener('input', function() {
-      var bw = parseFloat((bodyWeightInput && bodyWeightInput.value) || {{ latest_body_weight or 65 }});
+      var bw = _serverBodyWeight;
       var assist = parseFloat(input.value) || 0;
       var eff = Math.max(bw - assist, 0.1);
       var seId = input.dataset.seId;
