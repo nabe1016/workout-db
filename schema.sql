@@ -344,3 +344,8 @@ ON CONFLICT (name) DO UPDATE SET body_part='上肢', needs_bench=false, primary_
 INSERT INTO exercises (name, body_part, needs_bench, primary_muscle, location, exercise_type, measurement_type)
 VALUES ('バイセップカール', '上肢', false, '上腕二頭筋', 'gym', 'strength', 'reps')
 ON CONFLICT (name) DO UPDATE SET body_part='上肢', needs_bench=false, primary_muscle='上腕二頭筋', location='gym', exercise_type='strength', measurement_type='reps';
+
+-- スクワットマシン（カーフ）
+INSERT INTO exercises (name, body_part, needs_bench, primary_muscle, location, exercise_type, measurement_type)
+VALUES ('スクワットマシン', '下肢', false, 'カーフ', 'gym', 'strength', 'reps')
+ON CONFLICT (name) DO UPDATE SET body_part='下肢', needs_bench=false, primary_muscle='カーフ', location='gym', exercise_type='strength', measurement_type='reps';

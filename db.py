@@ -77,6 +77,8 @@ def ensure_schema():
         # set bodyweight_ratio for 懸垂, is_assisted for 懸垂(アシストマシン)
         "UPDATE exercises SET bodyweight_ratio = 1.0 WHERE name = '懸垂' AND bodyweight_ratio IS NULL",
         "UPDATE exercises SET is_assisted = TRUE WHERE name = '懸垂(アシストマシン)'",
+        # スクワットマシン（カーフ）
+        "INSERT INTO exercises (name, body_part, needs_bench, primary_muscle, location, exercise_type, measurement_type) VALUES ('スクワットマシン', '下肢', false, 'カーフ', 'gym', 'strength', 'reps') ON CONFLICT (name) DO NOTHING",
     ]
     with _conn() as conn:
         cur = conn.cursor()
