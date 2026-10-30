@@ -27,8 +27,51 @@
       {% endfor %}
     </select>
     <div class="mt-2 text-end">
-      <a href="{{ url_for('exercise_master_new') }}?next={{ url_for('exercise_new', session_id=session.id) }}"
-         class="text-warning small">＋ リストにない種目を新規作成</a>
+      <button type="button" class="btn btn-outline-warning btn-sm"
+              data-bs-toggle="modal" data-bs-target="#quickCreateModal">
+        ＋ 新規追加
+      </button>
+    </div>
+  </div>
+
+  {# ── Quick-create exercise modal ── #}
+  <div class="modal fade" id="quickCreateModal" tabindex="-1" aria-labelledby="quickCreateModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content bg-dark text-light border-secondary">
+        <div class="modal-header border-secondary py-2">
+          <h6 class="modal-title" id="quickCreateModalLabel">種目を新規追加</h6>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label" style="font-size:0.85rem;">種目名 <span class="text-danger">*</span></label>
+            <input type="text" id="qc-name" class="form-control bg-dark text-light border-secondary"
+                   placeholder="例: ケーブルロウ" autocomplete="off">
+            <div id="qc-name-error" class="text-danger mt-1" style="font-size:0.78rem;display:none;"></div>
+          </div>
+          <div class="mb-2">
+            <label class="form-label" style="font-size:0.85rem;">主動筋（複数選択可）</label>
+            <div style="max-height:11rem;overflow-y:auto;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:0.5rem 0.75rem;">
+              {% if muscles %}
+              {% for m in muscles %}
+              <div class="form-check">
+                <input class="form-check-input qc-muscle" type="checkbox"
+                       value="{{ m.name }}" id="qcm-{{ m.id }}">
+                <label class="form-check-label" for="qcm-{{ m.id }}"
+                       style="font-size:0.82rem;">{{ m.name }}</label>
+              </div>
+              {% endfor %}
+              {% else %}
+              <div style="font-size:0.8rem;color:var(--txt-2);">筋肉データがありません</div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer border-secondary py-2">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">キャンセル</button>
+          <button type="button" class="btn btn-warning btn-sm fw-bold" id="qc-submit-btn">追加する</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -128,6 +171,65 @@
 
 <script>
 (function () {
+  // ── Quick-create exercise ────────────────────────────────────────────────
+  var qcSubmit = document.getElementById('qc-submit-btn');
+  if (qcSubmit) {
+    qcSubmit.addEventListener('click', function () {
+      var nameEl = document.getElementById('qc-name');
+      var errEl  = document.getElementById('qc-name-error');
+      var name   = (nameEl.value || '').trim();
+      errEl.style.display = 'none';
+      if (!name) {
+        errEl.textContent = '種目名を入力してください';
+        errEl.style.display = '';
+        return;
+      }
+      var muscles = [];
+      document.querySelectorAll('.qc-muscle:checked').forEach(function(cb) {
+        muscles.push(cb.value);
+      });
+      qcSubmit.disabled = true;
+      qcSubmit.textContent = '追加中…';
+      fetch('/api/exercises/quick-create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name, muscles: muscles })
+      })
+      .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+      .then(function(res) {
+        if (!res.ok) {
+          errEl.textContent = res.data.error || '作成に失敗しました';
+          errEl.style.display = '';
+          qcSubmit.disabled = false;
+          qcSubmit.textContent = '追加する';
+          return;
+        }
+        // Add to select and choose it
+        var sel = document.getElementById('exercise_select');
+        var opt = document.createElement('option');
+        opt.value = res.data.id;
+        opt.textContent = res.data.name;
+        opt.selected = true;
+        sel.appendChild(opt);
+        // Reset modal
+        nameEl.value = '';
+        document.querySelectorAll('.qc-muscle:checked').forEach(function(cb) { cb.checked = false; });
+        qcSubmit.disabled = false;
+        qcSubmit.textContent = '追加する';
+        // Close modal and jump to prefill URL with new id
+        var modal = bootstrap.Modal.getInstance(document.getElementById('quickCreateModal'));
+        if (modal) modal.hide();
+        location.href = '?exercise_id=' + res.data.id;
+      })
+      .catch(function() {
+        errEl.textContent = '通信エラーが発生しました';
+        errEl.style.display = '';
+        qcSubmit.disabled = false;
+        qcSubmit.textContent = '追加する';
+      });
+    });
+  }
+
   function calcExp() {
     const orm      = parseFloat(document.getElementById('one_rep_max').value) || 0;
     const lowLoad  = parseFloat(document.getElementById('weight_low_load').value);

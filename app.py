@@ -337,6 +337,7 @@ def exercise_new(session_id):
         return redirect(url_for("sessions_list"))
 
     exercises = db.list_exercises()
+    muscles = db.list_muscles()
 
     if request.method == "POST":
         exercise_id = _parse_int(request.form.get("exercise_id"))
@@ -344,7 +345,7 @@ def exercise_new(session_id):
             flash("種目を選択してください。", "danger")
             return render_template("exercises/form.html",
                                    session=session, se=None, exercises=exercises,
-                                   last_values=None)
+                                   muscles=muscles, last_values=None)
         one_rep_max = _parse_float(request.form.get("one_rep_max"))
         db.create_session_exercise(
             session_id=session_id,
@@ -368,6 +369,7 @@ def exercise_new(session_id):
     last_values = db.get_last_exercise_values(prefill_id, exclude_session_id=session_id) if prefill_id else None
     return render_template("exercises/form.html",
                            session=session, se=None, exercises=exercises,
+                           muscles=muscles,
                            last_values=last_values, prefill_exercise_id=prefill_id)
 
 
@@ -858,6 +860,24 @@ def api_session_finish_rpe(session_id):
 def api_seed_volleyball():
     created = db.seed_volleyball_program()
     return jsonify({"created": created})
+
+
+@app.route("/api/exercises/quick-create", methods=["POST"])
+def api_exercises_quick_create():
+    data = request.get_json(force=True) or {}
+    name = (data.get("name") or "").strip()
+    if not name:
+        return jsonify({"error": "種目名を入力してください"}), 400
+    muscles = data.get("muscles") or []
+    primary_muscle = ",".join(m.strip() for m in muscles if m.strip()) or None
+    try:
+        exercise_id = db.create_exercise_master(
+            name=name,
+            primary_muscle=primary_muscle,
+        )
+    except Exception:
+        return jsonify({"error": "同じ名前の種目がすでに存在します"}), 409
+    return jsonify({"id": exercise_id, "name": name})
 
 
 @app.route("/api/exercise/<int:exercise_id>/clear-lvup", methods=["POST"])
