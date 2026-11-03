@@ -127,10 +127,12 @@
 
 {# ── 本日のメニュー一覧（アコーディオン） ── #}
 {% if exercises %}
+{# パス済みを除いた有効種目リスト #}
+{% set active_exercises = exercises | rejectattr('skipped') | list %}
 {# 所要時間概算: セット間80秒インターバル、種目間60秒移動。片側ずつ種目(ブルガリアンスクワット/パロフプレス)は倍。 #}
 {# エキセントリック収縮重視テンポ想定: strength=45秒/set, power=30秒/set, plyometric=25秒/set, core=40秒/set #}
 {% set ns_time = namespace(total_sec=0) %}
-{% for ex in exercises %}
+{% for ex in active_exercises %}
   {% set n_sets = 3 %}
   {% if ex.exercise_type == 'plyometric' %}
     {% set set_dur = 25 %}
@@ -146,8 +148,8 @@
   {% endif %}
   {% set ns_time.total_sec = ns_time.total_sec + n_sets * set_dur + (n_sets - 1) * 80 %}
 {% endfor %}
-{% if exercises | length > 1 %}
-  {% set ns_time.total_sec = ns_time.total_sec + (exercises | length - 1) * 60 %}
+{% if active_exercises | length > 1 %}
+  {% set ns_time.total_sec = ns_time.total_sec + (active_exercises | length - 1) * 60 %}
 {% endif %}
 {% set est_min = (ns_time.total_sec / 60) | round | int %}
 <div class="card mb-2" style="border:1px solid rgba(255,255,255,0.12);">
@@ -158,7 +160,7 @@
         <span style="font-size:1rem;line-height:1;">📋</span>
         <div>
           <div style="font-size:0.6rem;font-weight:900;color:var(--txt-2);letter-spacing:0.06em;text-transform:uppercase;">TODAY'S MENU</div>
-          <div style="font-size:0.82rem;font-weight:700;">本日のメニュー（{{ exercises|length }}種目）<span style="font-size:0.72rem;color:var(--txt-2);font-weight:400;margin-left:0.5em;">約{{ est_min }}分</span></div>
+          <div style="font-size:0.82rem;font-weight:700;">本日のメニュー（{{ active_exercises|length }}種目）<span style="font-size:0.72rem;color:var(--txt-2);font-weight:400;margin-left:0.5em;">約{{ est_min }}分</span></div>
         </div>
       </div>
       <span class="ml-arrow" style="color:var(--txt-2);font-size:0.7rem;">▶</span>
@@ -183,11 +185,14 @@
       {% if ex.exercise_name in ('ブルガリアンスクワット', 'パロフプレス') %}{% set _ens.sd = _ens.sd * 2 %}{% endif %}
       {% set _emin = ((3 * _ens.sd + 2 * 80) / 60) | round | int %}
       <li style="font-size:0.8rem;line-height:1.7;
-                 color:{% if ex.completed %}rgba(255,255,255,0.35){% else %}var(--txt-1){% endif %};">
-        {% if ex.completed %}<s>{{ ex.exercise_name }}</s>{% else %}{{ ex.exercise_name }}{% endif %}
+                 color:{% if ex.skipped %}rgba(255,255,255,0.2){% elif ex.completed %}rgba(255,255,255,0.35){% else %}var(--txt-1){% endif %};">
+        {% if ex.skipped %}<s>{{ ex.exercise_name }}</s> <span style="font-size:0.65rem;color:rgba(255,255,255,0.3);">パス</span>
+        {% elif ex.completed %}<s>{{ ex.exercise_name }}</s>
+        {% else %}{{ ex.exercise_name }}
         <span style="font-size:0.65rem;color:var(--txt-2);margin-left:0.3em;">約{{ _emin }}分</span>
         {% if ex.weight_setting %}
         <span style="font-size:0.68rem;color:var(--txt-2);margin-left:0.3em;">{{ ex.weight_setting }}kg</span>
+        {% endif %}
         {% endif %}
       </li>
     {% if loop.last %}</ul>{% endif %}
