@@ -438,8 +438,9 @@ def quick_edit_se(se_id: int, one_rep_max=None, reps=None,
             new_wl = eff_weight
         elif new_orm:
             # Explicit 1RM always takes priority over bodyweight ratio
-            new_ws = round(float(new_orm) * 0.8, 1)
-            new_wl = round(float(new_orm) * new_pct / 100, 1)
+            # Round weights to nearest integer (working weight → 1RM flow)
+            new_ws = round(float(new_orm) * 0.8)
+            new_wl = round(float(new_orm) * new_pct / 100)
         elif bw_ratio:
             eff_weight = round(body_weight * bw_ratio, 1)
             new_ws = eff_weight

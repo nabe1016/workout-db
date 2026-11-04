@@ -2094,7 +2094,7 @@
       var pctInput = card ? card.querySelector('[data-field="low_load_pct"]') : null;
       var pct = pctInput ? parseFloat(pctInput.value) : parseFloat(sel.dataset.pct || 80);
       if (!pct || pct <= 0) pct = 80;
-      var orm = Math.round(w / (pct / 100));
+      var orm = Math.round(w / (pct / 100) * 10) / 10;
       var ormDispEl = document.getElementById('orm-display-' + seId);
       if (ormDispEl) ormDispEl.textContent = orm;
       fetch('/api/se/' + seId + '/quick-edit', {
@@ -2131,7 +2131,7 @@
     var pct = _wormMode === 'high' ? _wormPctHigh : _wormPctLow;
     var prev = document.getElementById('worm-orm-preview');
     if (prev && w > 0 && pct > 0) {
-      var orm = Math.round(w / (pct / 100));
+      var orm = Math.round(w / (pct / 100) * 10) / 10;
       prev.textContent = orm + 'kg';
       prev.dataset.ormVal = orm;
       var formulaEl = document.getElementById('worm-formula');

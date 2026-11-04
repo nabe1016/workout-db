@@ -889,7 +889,7 @@ def api_weight_to_orm(se_id):
     pct = _parse_float(data.get("pct")) or 80.0
     if not weight or weight <= 0:
         return jsonify({"error": "weight required"}), 400
-    orm = round(float(weight) / (pct / 100))
+    orm = round(float(weight) / (pct / 100), 1)
     result = db.quick_edit_se(se_id, one_rep_max=orm)
     if result is None:
         return jsonify({"error": "not found"}), 404
