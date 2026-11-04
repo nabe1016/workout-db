@@ -274,6 +274,15 @@ def session_detail(session_id):
             ex["prev_high_reps"]   = prev_high_reps
             ex["prev_low_weight"]  = prev.get("weight_low_load")
             ex["prev_low_reps"]    = prev_low_reps
+            # Previous per-set actual reps (shows "12 / 11 / 10" in UI)
+            target_rep = prev_low_reps if prev_mode == "low" else prev_high_reps
+            prev_parts = []
+            for _i in range(1, 7):
+                if prev.get(f"set{_i}_completed"):
+                    act = prev.get(f"set{_i}_reps_actual")
+                    prev_parts.append(str(act) if act is not None else str(target_rep))
+            if prev_parts:
+                ex["prev_set_reps"] = " / ".join(prev_parts)
         merged.append(ex)
     bw_row = db.get_latest_weight()
     latest_body_weight = float(bw_row["weight_kg"]) if bw_row else None
@@ -860,6 +869,31 @@ def api_session_finish_rpe(session_id):
 def api_seed_volleyball():
     created = db.seed_volleyball_program()
     return jsonify({"created": created})
+
+
+@app.route("/api/se/<int:se_id>/set-reps", methods=["POST"])
+def api_set_reps_actual(se_id):
+    data = request.get_json(force=True) or {}
+    set_num = data.get("set_num")
+    reps_actual = data.get("reps_actual")
+    if not isinstance(set_num, int) or set_num not in range(1, 7):
+        return jsonify({"error": "invalid set_num"}), 400
+    db.save_set_reps_actual(se_id, set_num, reps_actual)
+    return jsonify({"ok": True})
+
+
+@app.route("/api/se/<int:se_id>/weight-to-orm", methods=["POST"])
+def api_weight_to_orm(se_id):
+    data = request.get_json(force=True) or {}
+    weight = _parse_float(data.get("weight"))
+    pct = _parse_float(data.get("pct")) or 80.0
+    if not weight or weight <= 0:
+        return jsonify({"error": "weight required"}), 400
+    orm = round(float(weight) / (pct / 100))
+    result = db.quick_edit_se(se_id, one_rep_max=orm)
+    if result is None:
+        return jsonify({"error": "not found"}), 404
+    return jsonify(result)
 
 
 @app.route("/api/exercises/quick-create", methods=["POST"])

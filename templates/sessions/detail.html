@@ -584,6 +584,12 @@
                     <span class="text-secondary" style="width:2.8em;flex-shrink:0;">rep</span>
                     <span id="rep-val-{{ ex.id }}">: <strong class="text-light">{% if mode == 'low' %}{{ ex.reps_low or 20 }}{% else %}{{ ex.reps or 8 }}{% endif %}</strong></span>
                   </div>
+                  {% if ex.prev_set_reps is defined and ex.prev_set_reps %}
+                  <div class="d-flex">
+                    <span class="text-secondary" style="width:2.8em;flex-shrink:0;font-size:0.68rem;">前回</span>
+                    <span style="font-size:0.68rem;color:rgba(255,255,255,0.38);">{{ ex.prev_set_reps }}</span>
+                  </div>
+                  {% endif %}
                   {% endif %}
                 </div>
                 <div class="d-flex align-items-center gap-2 mt-1">
@@ -622,12 +628,26 @@
                              {% if ex.max_orm %}data-max-orm="{{ ex.max_orm }}"{% endif %}>
                     </div>
                     {% endif %}
+                    {% if ex.exercise_type not in ('plyometric', 'power') and not _adj_pure_bw and not ex.is_assisted %}
+                    <button type="button" class="orm-from-weight-btn btn"
+                            data-se-id="{{ ex.id }}"
+                            data-mode="{{ mode }}"
+                            data-pct="{{ 80 if mode == 'high' else (ex.low_load_pct or 50)|int }}"
+                            style="height:1.85rem;font-size:0.58rem;padding:0 0.3rem;border-radius:6px;
+                                   align-self:flex-end;white-space:nowrap;flex-shrink:0;
+                                   background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.3);
+                                   color:rgba(255,215,0,0.8);">🏋️→1RM</button>
+                    {% endif %}
                     <div>
                       <div class="section-label" style="margin-bottom:0.1rem;font-size:0.55rem;">Reps</div>
-                      <input type="number" class="form-control form-control-sm adjust-input"
-                             data-se-id="{{ ex.id }}" data-field="reps"
-                             value="{{ (ex.reps_low if mode == 'low' else ex.reps) or '' }}" step="1" min="1"
-                             style="width:2.8rem;font-size:0.75rem;padding:0.15rem 0.3rem;">
+                      <select class="form-select form-select-sm adjust-select"
+                              data-se-id="{{ ex.id }}" data-field="reps"
+                              style="width:3.4rem;font-size:0.75rem;padding:0.15rem 0.25rem;min-width:0;">
+                        {% set _cur_reps = (ex.reps_low if mode == 'low' else ex.reps) or 0 %}
+                        {% for r in range(1, 31) %}
+                        <option value="{{ r }}" {% if _cur_reps == r %}selected{% endif %}>{{ r }}</option>
+                        {% endfor %}
+                      </select>
                     </div>
                     {% if ex.exercise_type not in ('plyometric', 'power') and not _adj_pure_bw and not ex.is_assisted %}
                     <div>
@@ -817,6 +837,39 @@
                       style="height:2rem;font-size:0.85rem;padding:0 0.6rem;border-radius:6px;font-weight:700;">✓ 完了</button>
             </div>
           </div>
+          {# ── セット毎 rep 増減 (通常種目のみ) ── #}
+          {% if ex.exercise_type not in ('plyometric', 'power') %}
+          {% set _treps = ex.reps_low if mode == 'low' else (ex.reps or 8) %}
+          <div class="set-reps-adj-row d-flex gap-1 mt-1 flex-wrap"
+               data-se-id="{{ ex.id }}" data-target-reps="{{ _treps }}">
+            {% for i in [1,2,3,4,5,6] %}
+            {% set _done = ex.get('set%d_completed' % i) %}
+            {% set _act  = ex.get('set%d_reps_actual' % i) %}
+            <div class="set-rep-cell d-flex align-items-center gap-1"
+                 id="set-rep-cell-{{ ex.id }}-{{ i }}"
+                 style="display:{% if _done %}flex{% else %}none{% endif %} !important;
+                        background:rgba(255,255,255,0.05);border-radius:5px;
+                        padding:0.1rem 0.25rem;">
+              <span style="font-size:0.52rem;color:var(--txt-2);">{{ ['①','②','③','④','⑤','⑥'][i-1] }}</span>
+              <button type="button" class="rep-adj-btn btn p-0"
+                      data-se-id="{{ ex.id }}" data-set-num="{{ i }}" data-delta="-1"
+                      style="font-size:0.65rem;width:1.1rem;height:1.15rem;line-height:1;
+                             border:1px solid rgba(255,80,80,0.35);border-radius:3px;
+                             background:rgba(255,0,0,0.1);color:rgba(255,130,130,0.9);">−</button>
+              <span class="rep-actual-display" id="rep-actual-{{ ex.id }}-{{ i }}"
+                    style="font-size:0.72rem;font-weight:700;min-width:1.3rem;text-align:center;
+                           color:{% if _act is not none and _act < _treps %}var(--orange){% elif _act is not none and _act > _treps %}#69f0ae{% else %}rgba(255,255,255,0.75){% endif %};">
+                {{ _act if _act is not none else _treps }}
+              </span>
+              <button type="button" class="rep-adj-btn btn p-0"
+                      data-se-id="{{ ex.id }}" data-set-num="{{ i }}" data-delta="1"
+                      style="font-size:0.65rem;width:1.1rem;height:1.15rem;line-height:1;
+                             border:1px solid rgba(80,200,80,0.35);border-radius:3px;
+                             background:rgba(0,180,0,0.1);color:rgba(100,220,100,0.9);">＋</button>
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
           {% endif %}
 
         </div>
@@ -1173,6 +1226,32 @@
               var el = document.getElementById('cat-exp-' + cat);
               if (el) el.textContent = data.category_exp[cat].toLocaleString();
             });
+          }
+
+          // セット毎 rep セルの表示制御
+          var repCell = document.getElementById('set-rep-cell-' + seId + '-' + setNum);
+          if (repCell) {
+            repCell.style.display = data.completed ? 'flex' : 'none';
+            if (data.completed) {
+              var adjRow = document.querySelector('.set-reps-adj-row[data-se-id="' + seId + '"]');
+              var targetR = adjRow ? (parseInt(adjRow.dataset.targetReps) || 8) : 8;
+              var dispEl = document.getElementById('rep-actual-' + seId + '-' + setNum);
+              if (dispEl && dispEl.textContent === '' || dispEl && parseInt(dispEl.textContent) <= 0) {
+                dispEl.textContent = targetR;
+              }
+            } else {
+              // セット未完了時は actual reps をクリア
+              fetch('/api/se/' + seId + '/set-reps', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ set_num: parseInt(setNum), reps_actual: null })
+              }).catch(function() {});
+              var dispEl2 = document.getElementById('rep-actual-' + seId + '-' + setNum);
+              var adjRow2 = document.querySelector('.set-reps-adj-row[data-se-id="' + seId + '"]');
+              if (dispEl2 && adjRow2) {
+                dispEl2.textContent = adjRow2.dataset.targetReps || 8;
+                dispEl2.style.color = 'rgba(255,255,255,0.75)';
+              }
+            }
           }
 
           if (data.exercise_id) {
@@ -1624,7 +1703,13 @@
       var ormEl = document.getElementById('orm-val-' + seId);
       if (ormEl) ormEl.innerHTML = ': <strong class="text-light">' + data.one_rep_max + 'kg</strong>';
     }
-    if (data.reps       != null) { var ri = card.querySelector('[data-field="reps"]');        if (ri) ri.value = data.reps; updateContactsVal(seId); }
+    if (data.reps       != null) {
+      var ri = card.querySelector('[data-field="reps"]');
+      if (ri) ri.value = data.reps;
+      var adjRow = card.querySelector('.set-reps-adj-row');
+      if (adjRow) adjRow.dataset.targetReps = data.reps;
+      updateContactsVal(seId);
+    }
     var pctLblEl = document.getElementById('pct-label-' + seId);
     var pi = card.querySelector('[data-field="low_load_pct"]');
     if (pctLblEl) pctLblEl.textContent = isLow ? '低%' : '高%';
@@ -1974,6 +2059,141 @@
   // ── Init: first dot active ─────────────────────────────────────────────
   activateDot(0);
 
+  // ── Reps select (adjust panel) ───────────────────────────────────────────
+  document.querySelectorAll('.adjust-select[data-field="reps"]').forEach(function(sel) {
+    sel.addEventListener('change', function() {
+      var seId = sel.dataset.seId;
+      var newReps = parseInt(sel.value);
+      // Update target-reps on the rep-adj row
+      var adjRow = document.querySelector('.set-reps-adj-row[data-se-id="' + seId + '"]');
+      if (adjRow) adjRow.dataset.targetReps = newReps;
+      fetch('/api/se/' + seId + '/quick-edit', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reps: newReps })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) { applyQuickEdit(seId, data); })
+      .catch(function() {});
+    });
+  });
+
+  // ── 🏋️→1RM modal ─────────────────────────────────────────────────────────
+  var _wormSeId = null;
+  var _wormMode = 'high';
+  var _wormPctHigh = 80;
+  var _wormPctLow  = 50;
+
+  // Build weight options (2.5kg increments, 2.5→200kg)
+  (function() {
+    var sel = document.getElementById('worm-weight-sel');
+    if (!sel) return;
+    for (var w = 2.5; w <= 200.001; w = Math.round((w + 2.5) * 10) / 10) {
+      var opt = document.createElement('option');
+      opt.value = w;
+      opt.textContent = w + 'kg';
+      sel.appendChild(opt);
+    }
+  })();
+
+  function _wormCalcOrm() {
+    var sel = document.getElementById('worm-weight-sel');
+    var w = parseFloat(sel ? sel.value : 0);
+    var pct = _wormMode === 'high' ? _wormPctHigh : _wormPctLow;
+    var prev = document.getElementById('worm-orm-preview');
+    if (prev && w > 0 && pct > 0) {
+      var orm = Math.round(w / (pct / 100));
+      prev.textContent = orm + 'kg';
+      prev.dataset.ormVal = orm;
+      var formulaEl = document.getElementById('worm-formula');
+      if (formulaEl) formulaEl.textContent = w + 'kg ÷ ' + pct + '% = ' + orm + 'kg';
+    }
+  }
+
+  function _wormSetMode(m) {
+    _wormMode = m;
+    var hBtn = document.getElementById('worm-btn-high');
+    var lBtn = document.getElementById('worm-btn-low');
+    if (hBtn) { hBtn.style.background = m === 'high' ? 'var(--blue)' : 'rgba(255,255,255,0.04)'; hBtn.style.color = m === 'high' ? '#fff' : 'var(--txt-2)'; }
+    if (lBtn) { lBtn.style.background = m === 'low'  ? 'var(--orange)' : 'rgba(255,255,255,0.04)'; lBtn.style.color = m === 'low' ? '#000' : 'var(--txt-2)'; }
+    _wormCalcOrm();
+  }
+
+  document.querySelectorAll('.orm-from-weight-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      _wormSeId   = btn.dataset.seId;
+      _wormMode   = btn.dataset.mode || 'high';
+      _wormPctHigh = 80;
+      _wormPctLow  = parseFloat(btn.dataset.pct) || 50;
+      // Set weight selector to current working weight
+      var sel = document.getElementById('worm-weight-sel');
+      if (sel) {
+        var card = document.getElementById('ex-card-' + _wormSeId);
+        var ormInput = card ? card.querySelector('[data-field="one_rep_max"]') : null;
+        var orm = ormInput ? parseFloat(ormInput.value) : 0;
+        var curPct = _wormMode === 'high' ? _wormPctHigh : _wormPctLow;
+        var curW = orm > 0 ? Math.round(orm * curPct / 100 / 2.5) * 2.5 : 20;
+        sel.value = curW;
+        if (!sel.value) sel.value = 20;
+      }
+      _wormSetMode(_wormMode);
+      var modal = new bootstrap.Modal(document.getElementById('weightToOrmModal'));
+      modal.show();
+    });
+  });
+
+  var _wormWeightSel = document.getElementById('worm-weight-sel');
+  if (_wormWeightSel) _wormWeightSel.addEventListener('change', _wormCalcOrm);
+  var _wormBtnH = document.getElementById('worm-btn-high');
+  var _wormBtnL = document.getElementById('worm-btn-low');
+  if (_wormBtnH) _wormBtnH.addEventListener('click', function() { _wormSetMode('high'); });
+  if (_wormBtnL) _wormBtnL.addEventListener('click', function() { _wormSetMode('low'); });
+
+  var _wormApplyBtn = document.getElementById('worm-apply-btn');
+  if (_wormApplyBtn) {
+    _wormApplyBtn.addEventListener('click', function() {
+      var prev = document.getElementById('worm-orm-preview');
+      var orm = prev ? parseInt(prev.dataset.ormVal) : NaN;
+      if (isNaN(orm) || !_wormSeId) return;
+      var pct = _wormMode === 'high' ? _wormPctHigh : _wormPctLow;
+      _wormApplyBtn.disabled = true;
+      fetch('/api/se/' + _wormSeId + '/weight-to-orm', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ weight: parseFloat(document.getElementById('worm-weight-sel').value), pct: pct })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        applyQuickEdit(_wormSeId, data);
+        var modal = bootstrap.Modal.getInstance(document.getElementById('weightToOrmModal'));
+        if (modal) modal.hide();
+      })
+      .catch(function() {})
+      .finally(function() { _wormApplyBtn.disabled = false; });
+    });
+  }
+
+  // ── セット毎 rep 増減 ─────────────────────────────────────────────────────
+  document.addEventListener('click', function(e) {
+    var btn = e.target.closest('.rep-adj-btn');
+    if (!btn) return;
+    var seId   = btn.dataset.seId;
+    var setNum = parseInt(btn.dataset.setNum);
+    var delta  = parseInt(btn.dataset.delta);
+    var disp = document.getElementById('rep-actual-' + seId + '-' + setNum);
+    if (!disp) return;
+    var adjRow = document.querySelector('.set-reps-adj-row[data-se-id="' + seId + '"]');
+    var target = adjRow ? parseInt(adjRow.dataset.targetReps) || 1 : 1;
+    var cur = parseInt(disp.textContent) || target;
+    var newVal = Math.max(1, cur + delta);
+    disp.textContent = newVal;
+    if (newVal < target) { disp.style.color = 'var(--orange)'; }
+    else if (newVal > target) { disp.style.color = '#69f0ae'; }
+    else { disp.style.color = 'rgba(255,255,255,0.75)'; }
+    fetch('/api/se/' + seId + '/set-reps', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ set_num: setNum, reps_actual: newVal })
+    }).catch(function() {});
+  });
+
   // ── Assist weight input live update ─────────────────────────────────────
   var _serverBodyWeight = {{ latest_body_weight or 65 }};
   document.querySelectorAll('.adjust-input[data-field="assist_weight"]').forEach(function(input) {
@@ -1995,4 +2215,48 @@
 
 })();
 </script>
+
+{# ── 🏋️→1RM モーダル ── #}
+<div class="modal fade" id="weightToOrmModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content bg-dark text-light border-secondary">
+      <div class="modal-header border-secondary py-2">
+        <h6 class="modal-title fw-bold">🏋️ kg → 1RM 反映</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body pb-2">
+        {# ❶ 高負荷 / 低負荷 切り替え #}
+        <div class="mb-3">
+          <div style="font-size:0.72rem;color:var(--txt-2);margin-bottom:0.3rem;">❶ 負荷選択</div>
+          <div class="d-flex" style="border:1.5px solid var(--sep);border-radius:7px;overflow:hidden;">
+            <button type="button" id="worm-btn-high"
+                    style="flex:1;border:none;border-radius:0;font-size:0.8rem;height:2.2rem;font-weight:700;
+                           background:var(--blue);color:#fff;">高負荷</button>
+            <div style="width:1.5px;background:var(--sep);flex-shrink:0;"></div>
+            <button type="button" id="worm-btn-low"
+                    style="flex:1;border:none;border-radius:0;font-size:0.8rem;height:2.2rem;font-weight:700;
+                           background:rgba(255,255,255,0.04);color:var(--txt-2);">低負荷</button>
+          </div>
+        </div>
+        {# ❷ 扱うウェイト #}
+        <div class="mb-3">
+          <div style="font-size:0.72rem;color:var(--txt-2);margin-bottom:0.3rem;">❷ 扱うウェイト</div>
+          <select id="worm-weight-sel" class="form-select bg-dark text-light border-secondary"
+                  style="font-size:0.9rem;"></select>
+        </div>
+        {# 1RM プレビュー #}
+        <div class="text-center py-2 mb-1" style="background:rgba(255,255,255,0.05);border-radius:7px;">
+          <div style="font-size:0.6rem;color:var(--txt-2);margin-bottom:0.2rem;">算出 1RM</div>
+          <div id="worm-orm-preview" style="font-size:1.8rem;font-weight:800;color:var(--yellow);"
+               data-orm-val="">— kg</div>
+          <div id="worm-formula" style="font-size:0.62rem;color:rgba(255,255,255,0.3);">ウェイト ÷ 負荷% = 1RM</div>
+        </div>
+      </div>
+      <div class="modal-footer border-secondary py-2">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">キャンセル</button>
+        <button type="button" class="btn btn-warning btn-sm fw-bold" id="worm-apply-btn">❸ 1RMに反映</button>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}

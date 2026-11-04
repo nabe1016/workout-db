@@ -79,6 +79,13 @@ def ensure_schema():
         "UPDATE exercises SET is_assisted = TRUE WHERE name = '懸垂(アシストマシン)'",
         # スクワットマシン（カーフ）
         "INSERT INTO exercises (name, body_part, needs_bench, primary_muscle, location, exercise_type, measurement_type) VALUES ('スクワットマシン', '下肢', false, 'カーフ', 'gym', 'strength', 'reps') ON CONFLICT (name) DO NOTHING",
+        # per-set actual reps tracking
+        "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS set1_reps_actual INTEGER",
+        "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS set2_reps_actual INTEGER",
+        "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS set3_reps_actual INTEGER",
+        "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS set4_reps_actual INTEGER",
+        "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS set5_reps_actual INTEGER",
+        "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS set6_reps_actual INTEGER",
     ]
     with _conn() as conn:
         cur = conn.cursor()
@@ -1517,6 +1524,10 @@ def get_prev_exercise_values_batch(session_id: int) -> dict:
                    prev.exercise_id,
                    prev.one_rep_max, prev.weight_setting, prev.weight_low_load,
                    prev.reps, prev.reps_low, prev.load_mode, prev.low_load_pct,
+                   prev.set1_completed, prev.set2_completed, prev.set3_completed,
+                   prev.set4_completed, prev.set5_completed, prev.set6_completed,
+                   prev.set1_reps_actual, prev.set2_reps_actual, prev.set3_reps_actual,
+                   prev.set4_reps_actual, prev.set5_reps_actual, prev.set6_reps_actual,
                    (COALESCE(prev.set1_completed::int,0) + COALESCE(prev.set2_completed::int,0) +
                     COALESCE(prev.set3_completed::int,0) + COALESCE(prev.set4_completed::int,0) +
                     COALESCE(prev.set5_completed::int,0) + COALESCE(prev.set6_completed::int,0)) AS sets_done,
@@ -1530,6 +1541,17 @@ def get_prev_exercise_values_batch(session_id: int) -> dict:
             ORDER BY prev.exercise_id, ws.session_date DESC
         """, (session_id, session_id))
         return {row["exercise_id"]: row for row in cur.fetchall()}
+
+
+def save_set_reps_actual(se_id: int, set_num: int, reps_actual) -> None:
+    """Save the actual rep count for one set. reps_actual=None clears it."""
+    if set_num not in range(1, 7):
+        return
+    col = f"set{set_num}_reps_actual"
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(f"UPDATE session_exercises SET {col} = %s WHERE id = %s",
+                    (reps_actual, se_id))
 
 
 def get_last_exercise_values(exercise_id: int, exclude_session_id: int = None):
