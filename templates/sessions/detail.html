@@ -529,7 +529,7 @@
                     </span>
                     {% if ex.prev_orm or ex.max_orm %}
                     <span style="font-size:0.62rem;color:rgba(255,255,255,0.28);margin-left:0.5em;white-space:nowrap;">
-                      {% if ex.prev_orm %}PREV {{ ex.prev_orm }}{% endif %}{% if ex.prev_orm and ex.max_orm %} · {% endif %}{% if ex.max_orm %}MAX {{ ex.max_orm }}{% endif %}
+                      {% if ex.prev_orm %}前回 {{ ex.prev_orm }}kg{% endif %}{% if ex.prev_orm and ex.max_orm %} · {% endif %}{% if ex.max_orm %}自己最高 {{ ex.max_orm }}kg{% endif %}
                     </span>
                     {% endif %}
                     {% endif %}
