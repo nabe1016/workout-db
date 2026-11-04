@@ -618,14 +618,20 @@
                     {% if ex.exercise_type not in ('plyometric', 'power') and not _adj_pure_bw and not ex.is_assisted %}
                     <div>
                       <div style="margin-bottom:0.1rem;line-height:1.2;">
-                        <div style="font-size:0.55rem;font-weight:700;color:var(--txt-2);letter-spacing:0.04em;text-transform:uppercase;">1RM KG</div>
-                        <div style="font-size:0.52rem;color:rgba(255,255,255,0.3);">MAX <span id="max-1rm-{{ ex.id }}">{{ ex.max_orm or ex.one_rep_max or '—' }}</span></div>
+                        <div style="font-size:0.55rem;font-weight:700;color:var(--txt-2);letter-spacing:0.04em;text-transform:uppercase;">扱うウェイト</div>
+                        <div style="font-size:0.52rem;color:rgba(255,255,255,0.3);">1RM: <span id="orm-display-{{ ex.id }}">{{ ex.one_rep_max|int if ex.one_rep_max else '—' }}</span>kg</div>
                       </div>
-                      <input type="number" class="form-control form-control-sm adjust-input"
-                             data-se-id="{{ ex.id }}" data-field="one_rep_max"
-                             value="{{ ex.one_rep_max or '' }}" step="0.5" min="0"
-                             style="width:4rem;font-size:0.75rem;padding:0.15rem 0.3rem;"
-                             {% if ex.max_orm %}data-max-orm="{{ ex.max_orm }}"{% endif %}>
+                      {% set _ww = ((ex.weight_setting if mode == 'high' else ex.weight_low_load) or 0)|round(0)|int %}
+                      <select class="form-select form-select-sm bg-dark text-light border-secondary working-weight-select"
+                              data-se-id="{{ ex.id }}"
+                              data-mode="{{ mode }}"
+                              data-pct="{{ 80 if mode == 'high' else (ex.low_load_pct or 50)|int }}"
+                              style="width:4.5rem;font-size:0.75rem;padding:0.15rem 0.25rem;min-width:0;">
+                        <option value="">—</option>
+                        {% for w in range(1, 151) %}
+                        <option value="{{ w }}" {% if _ww == w %}selected{% endif %}>{{ w }}</option>
+                        {% endfor %}
+                      </select>
                     </div>
                     {% endif %}
                     {% if ex.exercise_type not in ('plyometric', 'power') and not _adj_pure_bw and not ex.is_assisted %}
@@ -1670,15 +1676,22 @@
       crEl.innerHTML = '<strong class="text-light">' + crepVal + '</strong>rep';
     }
 
-    // MAX重量 & MAX 1RM sub-label in adjust panel
+    // MAX重量 in adjust panel
     var mwEl = document.getElementById('max-weight-' + seId);
     if (mwEl) {
       var mw = isLow ? data.weight_low_load : data.weight_setting;
       mwEl.textContent = mw ? mw + 'kg' : '—';
     }
-    var m1rmEl = document.getElementById('max-1rm-' + seId);
-    if (m1rmEl && data.one_rep_max) {
-      m1rmEl.textContent = data.one_rep_max;
+    // Update working weight select to match new computed weight
+    var wwSel = card.querySelector('.working-weight-select');
+    if (wwSel && data.one_rep_max != null) {
+      var newWw = isLow ? data.weight_low_load : data.weight_setting;
+      if (newWw) {
+        var newWwInt = Math.round(newWw);
+        if (newWwInt >= 1 && newWwInt <= 150) wwSel.value = newWwInt;
+      }
+      wwSel.dataset.pct = isLow ? Math.round(data.low_load_pct || 50) : 80;
+      wwSel.dataset.mode = isLow ? 'low' : 'high';
     }
 
     var rpEl = document.getElementById('rep-progress-' + seId);
@@ -1698,8 +1711,8 @@
     if (totalEl && data.session_total_exp !== undefined) totalEl.textContent = data.session_total_exp.toLocaleString();
 
     if (data.one_rep_max != null) {
-      var oi = card.querySelector('[data-field="one_rep_max"]');
-      if (oi) oi.value = data.one_rep_max;
+      var ormDispEl = document.getElementById('orm-display-' + seId);
+      if (ormDispEl) ormDispEl.textContent = data.one_rep_max;
       var ormEl = document.getElementById('orm-val-' + seId);
       if (ormEl) ormEl.innerHTML = ': <strong class="text-light">' + data.one_rep_max + 'kg</strong>';
     }
@@ -1716,6 +1729,17 @@
     if (pi) {
       if (isLow) { pi.value = data.low_load_pct != null ? Math.round(data.low_load_pct) : 50; pi.readOnly = false; pi.style.opacity = ''; }
       else { pi.value = 80; pi.readOnly = true; pi.style.opacity = '0.5'; }
+    }
+    // Keep working-weight-select in sync with mode switch
+    var wwSel2 = card.querySelector('.working-weight-select');
+    if (wwSel2) {
+      wwSel2.dataset.mode = isLow ? 'low' : 'high';
+      wwSel2.dataset.pct  = isLow ? Math.round(data.low_load_pct || 50) : 80;
+      var newWw2 = isLow ? data.weight_low_load : data.weight_setting;
+      if (newWw2) {
+        var newWwInt2 = Math.round(newWw2);
+        if (newWwInt2 >= 1 && newWwInt2 <= 150) wwSel2.value = newWwInt2;
+      }
     }
   }
 
@@ -1758,23 +1782,6 @@
 
   // ── Adjust inputs (save on blur) ──────────────────────────────────────────
   document.querySelectorAll('.adjust-input').forEach(function(input) {
-    // 1RM入力: MAXより低い値を入力したら警告ハイライト
-    if (input.dataset.field === 'one_rep_max' && input.dataset.maxOrm) {
-      var maxOrm = parseFloat(input.dataset.maxOrm);
-      function checkOrmVsMax() {
-        var v = parseFloat(input.value);
-        if (!isNaN(v) && v < maxOrm) {
-          input.style.borderColor = 'var(--orange)';
-          input.title = '過去最高(' + maxOrm + 'kg)より低い値です';
-        } else {
-          input.style.borderColor = '';
-          input.title = '';
-        }
-      }
-      input.addEventListener('input', checkOrmVsMax);
-      checkOrmVsMax();
-    }
-
     input.addEventListener('blur', function() {
       var val = parseFloat(input.value);
       var field = input.dataset.field;
@@ -2077,6 +2084,29 @@
     });
   });
 
+  // ── 扱うウェイト select → back-calculate 1RM ─────────────────────────────
+  document.querySelectorAll('.working-weight-select').forEach(function(sel) {
+    sel.addEventListener('change', function() {
+      var seId = sel.dataset.seId;
+      var w = parseFloat(sel.value);
+      if (!w || w <= 0) return;
+      var card = document.getElementById('ex-card-' + seId);
+      var pctInput = card ? card.querySelector('[data-field="low_load_pct"]') : null;
+      var pct = pctInput ? parseFloat(pctInput.value) : parseFloat(sel.dataset.pct || 80);
+      if (!pct || pct <= 0) pct = 80;
+      var orm = Math.round(w / (pct / 100));
+      var ormDispEl = document.getElementById('orm-display-' + seId);
+      if (ormDispEl) ormDispEl.textContent = orm;
+      fetch('/api/se/' + seId + '/quick-edit', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ one_rep_max: orm })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) { applyQuickEdit(seId, data); })
+      .catch(function() {});
+    });
+  });
+
   // ── 🏋️→1RM modal ─────────────────────────────────────────────────────────
   var _wormSeId = null;
   var _wormMode = 'high';
@@ -2128,10 +2158,10 @@
       var sel = document.getElementById('worm-weight-sel');
       if (sel) {
         var card = document.getElementById('ex-card-' + _wormSeId);
-        var ormInput = card ? card.querySelector('[data-field="one_rep_max"]') : null;
-        var orm = ormInput ? parseFloat(ormInput.value) : 0;
+        var wwSelEl = card ? card.querySelector('.working-weight-select') : null;
+        var curWw = wwSelEl ? parseFloat(wwSelEl.value) : 0;
         var curPct = _wormMode === 'high' ? _wormPctHigh : _wormPctLow;
-        var curW = orm > 0 ? Math.round(orm * curPct / 100 / 2.5) * 2.5 : 20;
+        var curW = curWw > 0 ? Math.round(curWw / 2.5) * 2.5 : 20;
         sel.value = curW;
         if (!sel.value) sel.value = 20;
       }

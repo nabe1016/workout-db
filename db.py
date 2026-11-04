@@ -469,10 +469,6 @@ def quick_edit_se(se_id: int, one_rep_max=None, reps=None,
         session_id = se["session_id"]
         exercise_id = se["exercise_id"]
 
-    # Propagate new 1RM to master if it's a personal best
-    if one_rep_max is not None and new_orm:
-        update_exercise_one_rep_max(exercise_id, new_orm)
-
     recalculate_session_exp(session_id)
     with _conn() as conn:
         cur = conn.cursor()
@@ -1885,8 +1881,23 @@ def get_dashboard_stats() -> dict:
 
 # ── Session finish & advice ───────────────────────────────────────────────────
 
+def flush_session_orm_to_master(session_id: int) -> None:
+    """Push each session_exercise's one_rep_max to master exercises table if it's a PB."""
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT se.exercise_id, se.one_rep_max
+            FROM session_exercises se
+            WHERE se.session_id = %s AND se.one_rep_max IS NOT NULL
+        """, (session_id,))
+        rows = cur.fetchall()
+    for row in rows:
+        update_exercise_one_rep_max(row["exercise_id"], row["one_rep_max"])
+
+
 def finish_session(session_id: int, post_notes: str) -> None:
     import datetime
+    flush_session_orm_to_master(session_id)
     with _conn() as conn:
         cur = conn.cursor()
         cur.execute("""
@@ -2519,6 +2530,7 @@ def record_session_finish(session_id: int, session_rpe: int,
         import traceback
         traceback.print_exc()
 
+    flush_session_orm_to_master(session_id)
     return result
 
 
