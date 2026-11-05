@@ -431,6 +431,21 @@
            placeholder="例: 広背筋,大腿四頭筋">
   </div>
 
+  {# Unilateral type #}
+  <div class="mb-4">
+    <label class="form-label">左右セット方式</label>
+    {% set _ut_val = se.unilateral_type if se else (last_values.unilateral_type if last_values and last_values.unilateral_type else (prefill_ex.unilateral_type if prefill_ex else None)) %}
+    <div class="d-flex gap-2">
+      <button type="button" class="unilateral-btn btn btn-sm flex-fill {% if not _ut_val %}btn-secondary{% else %}btn-outline-secondary{% endif %}"
+              data-value="" style="font-size:0.9rem;padding:0.5rem;">両方同時</button>
+      <button type="button" class="unilateral-btn btn btn-sm flex-fill {% if _ut_val == 'foot' %}btn-warning{% else %}btn-outline-secondary{% endif %}"
+              data-value="foot" style="font-size:0.9rem;padding:0.5rem;">片足毎 🦶</button>
+      <button type="button" class="unilateral-btn btn btn-sm flex-fill {% if _ut_val == 'hand' %}btn-warning{% else %}btn-outline-secondary{% endif %}"
+              data-value="hand" style="font-size:0.9rem;padding:0.5rem;">片手毎 ✋</button>
+    </div>
+    <input type="hidden" name="unilateral_type" id="unilateral_type" value="{{ _ut_val or '' }}">
+  </div>
+
   <button type="submit" class="btn btn-warning btn-lg w-100">保存</button>
 </form>
 
@@ -530,6 +545,19 @@
   });
 
   calcExp();
+
+  // ── Unilateral toggle ───────────────────────────────────────────────────
+  document.querySelectorAll('.unilateral-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.unilateral-btn').forEach(function(b) {
+        b.classList.remove('btn-secondary', 'btn-warning');
+        b.classList.add('btn-outline-secondary');
+      });
+      btn.classList.remove('btn-outline-secondary');
+      btn.classList.add(btn.dataset.value ? 'btn-warning' : 'btn-secondary');
+      document.getElementById('unilateral_type').value = btn.dataset.value;
+    });
+  });
 })();
 </script>
 {% endblock %}

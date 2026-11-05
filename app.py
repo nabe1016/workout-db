@@ -368,6 +368,7 @@ def exercise_new(session_id):
             set3=_parse_bool(request.form.get("set3_completed", "false")),
             exp_earned=_parse_int(request.form.get("exp_earned")) or 0,
             muscle_groups=request.form.get("muscle_groups") or None,
+            unilateral_type=request.form.get("unilateral_type") or None,
         )
         if one_rep_max:
             db.update_exercise_one_rep_max(exercise_id, one_rep_max)
@@ -376,10 +377,13 @@ def exercise_new(session_id):
 
     prefill_id = _parse_int(request.args.get("exercise_id"))
     last_values = db.get_last_exercise_values(prefill_id, exclude_session_id=session_id) if prefill_id else None
+    # Provide master exercise unilateral_type for pre-selecting the toggle
+    prefill_ex = next((e for e in exercises if e["id"] == prefill_id), None) if prefill_id else None
     return render_template("exercises/form.html",
                            session=session, se=None, exercises=exercises,
                            muscles=muscles,
-                           last_values=last_values, prefill_exercise_id=prefill_id)
+                           last_values=last_values, prefill_exercise_id=prefill_id,
+                           prefill_ex=prefill_ex)
 
 
 @app.route("/sessions/<int:session_id>/exercises/<int:se_id>/edit", methods=["GET", "POST"])

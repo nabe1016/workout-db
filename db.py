@@ -86,6 +86,10 @@ def ensure_schema():
         "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS set4_reps_actual INTEGER",
         "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS set5_reps_actual INTEGER",
         "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS set6_reps_actual INTEGER",
+        # unilateral exercise support
+        "ALTER TABLE exercises ADD COLUMN IF NOT EXISTS unilateral_type TEXT",
+        "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS unilateral_type TEXT",
+        "UPDATE exercises SET unilateral_type = 'foot' WHERE name IN ('ブルガリアンスクワット', 'パロフプレス') AND unilateral_type IS NULL",
     ]
     with _conn() as conn:
         cur = conn.cursor()
@@ -256,7 +260,8 @@ def _next_sort_order(cur, session_id: int) -> int:
 
 def create_session_exercise(session_id, exercise_id, one_rep_max,
                              weight_setting, weight_low_load, reps,
-                             set1, set2, set3, exp_earned, muscle_groups) -> int:
+                             set1, set2, set3, exp_earned, muscle_groups,
+                             unilateral_type=None) -> int:
     weight_pct80 = round(float(one_rep_max) * 0.8, 1) if one_rep_max else None
     if not weight_low_load and one_rep_max:
         weight_low_load = round(float(one_rep_max) * 0.30, 1)
@@ -270,24 +275,25 @@ def create_session_exercise(session_id, exercise_id, one_rep_max,
                 (session_id, exercise_id, sort_order,
                  one_rep_max, weight_pct80, weight_setting, weight_low_load, reps,
                  ratio_pct, set1_completed, set2_completed, set3_completed,
-                 exp_earned, muscle_groups)
-            VALUES (%s,%s,%s, %s,%s,%s,%s,%s, %s,%s,%s,%s, %s,%s)
+                 exp_earned, muscle_groups, unilateral_type)
+            VALUES (%s,%s,%s, %s,%s,%s,%s,%s, %s,%s,%s,%s, %s,%s,%s)
             ON CONFLICT (session_id, exercise_id) DO UPDATE
                 SET sort_order=%s, one_rep_max=%s, weight_pct80=%s,
                     weight_setting=%s, weight_low_load=%s, reps=%s,
                     ratio_pct=%s, set1_completed=%s, set2_completed=%s,
-                    set3_completed=%s, exp_earned=%s, muscle_groups=%s
+                    set3_completed=%s, exp_earned=%s, muscle_groups=%s,
+                    unilateral_type=%s
             RETURNING id
         """, (
             session_id, exercise_id, sort_order,
             one_rep_max, weight_pct80, weight_setting, weight_low_load or None, reps or None,
             ratio_pct, set1, set2, set3,
-            exp_earned or 0, muscle_groups or None,
+            exp_earned or 0, muscle_groups or None, unilateral_type or None,
             # ON CONFLICT values
             sort_order, one_rep_max, weight_pct80,
             weight_setting, weight_low_load or None, reps or None,
             ratio_pct, set1, set2, set3,
-            exp_earned or 0, muscle_groups or None,
+            exp_earned or 0, muscle_groups or None, unilateral_type or None,
         ))
         new_id = cur.fetchone()["id"]
     recalculate_session_exp(session_id)
@@ -536,7 +542,8 @@ def list_exercises() -> list:
         cur.execute("""
             SELECT id, name, body_part, needs_bench,
                    COALESCE(primary_muscle, 'その他') AS primary_muscle,
-                   one_rep_max, exercise_type, location, bodyweight_ratio, is_assisted
+                   one_rep_max, exercise_type, location, bodyweight_ratio, is_assisted,
+                   unilateral_type
             FROM exercises ORDER BY primary_muscle NULLS LAST, name
         """)
         return cur.fetchall()
