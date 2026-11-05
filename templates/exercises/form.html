@@ -5,8 +5,25 @@
 
 {% block content %}
 <style>
-.ex-row:hover { background: rgba(255,255,255,0.07) !important; }
+.ex-row:hover { background: rgba(255,255,255,0.08) !important; }
 #ex-search:focus { border-color: rgba(255,215,0,0.5) !important; }
+.muscle-card { border-radius:10px;overflow:hidden;margin-bottom:1rem;border:1px solid rgba(255,255,255,0.09); }
+.muscle-sticker {
+  display:inline-flex;align-items:center;gap:0.35rem;
+  font-size:0.72rem;font-weight:800;letter-spacing:0.05em;
+  padding:0.3rem 0.9rem 0.3rem 0.7rem;
+  border-radius:0 0 10px 0;
+  position:relative;
+}
+.muscle-sticker::after {
+  content:'';position:absolute;right:-6px;top:0;
+  border-top:6px solid transparent;
+  border-bottom:0 solid transparent;
+}
+.muscle-sticker-wrap {
+  padding:0.45rem 0 0 0;
+  margin-bottom:0.1rem;
+}
 </style>
 <h5 class="mb-3">{% if se %}種目を編集{% else %}種目を追加{% endif %}</h5>
 
@@ -50,43 +67,71 @@
              style="width:100%;padding:0.5rem 0.75rem;border-radius:8px;border:1px solid rgba(255,255,255,0.2);
                     background:rgba(255,255,255,0.06);color:#fff;font-size:0.85rem;margin-bottom:0.75rem;outline:none;">
 
-      {# 主導筋グループ別リスト #}
-      <div id="ex-list" style="max-height:60vh;overflow-y:auto;border-radius:8px;border:1px solid rgba(255,255,255,0.1);">
+      {# カテゴリカラーマップ（主動筋 → 色） #}
+      {%- set _cmap = {
+        '大腿四頭筋':  ('#4fc3f7','rgba(79,195,247,0.12)'),
+        '大臀筋':      ('#4fc3f7','rgba(79,195,247,0.12)'),
+        'ハムストリングス': ('#4dd0e1','rgba(77,208,225,0.12)'),
+        'カーフ':      ('#4dd0e1','rgba(77,208,225,0.12)'),
+        '広背筋':      ('#81c784','rgba(129,199,132,0.12)'),
+        '僧帽筋':      ('#a5d6a7','rgba(165,214,167,0.12)'),
+        '大胸筋':      ('#ce93d8','rgba(206,147,216,0.12)'),
+        '三角筋前部':  ('#b39ddb','rgba(179,157,219,0.12)'),
+        '三角筋':      ('#b39ddb','rgba(179,157,219,0.12)'),
+        '上腕二頭筋':  ('#ffb74d','rgba(255,183,77,0.12)'),
+        '上腕三頭筋':  ('#ffa726','rgba(255,167,38,0.12)'),
+        '腹直筋':      ('#f06292','rgba(240,98,146,0.12)'),
+        '脊柱起立筋':  ('#f06292','rgba(240,98,146,0.12)'),
+        'その他':      ('#90a4ae','rgba(144,164,174,0.10)')
+      } -%}
+
+      {# 主導筋グループ別カード #}
+      <div id="ex-list" style="max-height:62vh;overflow-y:auto;padding:0.25rem 0.1rem 0.5rem;">
         {% for muscle, group in exercises | groupby('primary_muscle') %}
-        <div class="ex-muscle-group" data-muscle="{{ muscle }}">
-          <div style="font-size:0.65rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;
-                      color:rgba(255,255,255,0.4);background:rgba(255,255,255,0.04);
-                      padding:0.3rem 0.75rem;border-bottom:1px solid rgba(255,255,255,0.07);
-                      position:sticky;top:0;">
-            {{ muscle or 'その他' }}
+        {%- set _clr = _cmap.get(muscle, _cmap['その他']) -%}
+        <div class="ex-muscle-group muscle-card" data-muscle="{{ muscle }}"
+             style="background:{{ _clr[1] }};border-color:{{ _clr[0] }}22;">
+          {# シールラベル #}
+          <div class="muscle-sticker-wrap">
+            <span class="muscle-sticker"
+                  style="background:{{ _clr[0] }};color:#111;">
+              {{ muscle or 'その他' }}
+            </span>
           </div>
+          {# 種目リスト #}
           {% for ex in group %}
           <a href="?exercise_id={{ ex.id }}"
              class="ex-row d-block text-decoration-none"
              data-name="{{ ex.name }}" data-muscle="{{ ex.primary_muscle or '' }}"
-             style="padding:0.55rem 0.75rem;border-bottom:1px solid rgba(255,255,255,0.05);
-                    {% if _sel_id == ex.id %}background:rgba(255,215,0,0.08);{% endif %}
+             style="padding:0.6rem 0.85rem;
+                    border-top:1px solid rgba(255,255,255,0.05);
+                    {% if _sel_id == ex.id %}background:rgba(255,215,0,0.12);{% endif %}
                     color:inherit;transition:background 0.15s;">
             <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
-              <span style="font-size:0.88rem;font-weight:{% if _sel_id == ex.id %}700{% else %}500{% endif %};
-                           color:{% if _sel_id == ex.id %}var(--yellow){% else %}rgba(255,255,255,0.88){% endif %};flex:1;min-width:0;">
-                {{ ex.name }}
+              <span style="font-size:0.9rem;
+                           font-weight:{% if _sel_id == ex.id %}700{% else %}500{% endif %};
+                           color:{% if _sel_id == ex.id %}var(--yellow){% else %}rgba(255,255,255,0.9){% endif %};
+                           flex:1;min-width:0;line-height:1.3;">
+                {% if _sel_id == ex.id %}✓ {% endif %}{{ ex.name }}
               </span>
-              {# バッジ群 #}
-              {% if ex.body_part %}
-              <span style="font-size:0.6rem;background:rgba(100,160,255,0.15);color:rgba(100,160,255,0.9);
-                           border-radius:3px;padding:0.08rem 0.35rem;white-space:nowrap;">{{ ex.body_part }}</span>
-              {% endif %}
-              {% if ex.exercise_type and ex.exercise_type not in ('strength',) %}
-              <span style="font-size:0.6rem;background:rgba(255,150,50,0.15);color:rgba(255,150,50,0.9);
-                           border-radius:3px;padding:0.08rem 0.35rem;white-space:nowrap;">{{ ex.exercise_type }}</span>
-              {% endif %}
-              {% if ex.one_rep_max %}
-              <span style="font-size:0.6rem;color:rgba(255,215,0,0.6);white-space:nowrap;">1RM {{ ex.one_rep_max }}kg</span>
-              {% endif %}
-              {% if ex.location == 'home' %}
-              <span style="font-size:0.6rem;color:rgba(105,240,174,0.7);">🏠</span>
-              {% endif %}
+              <span style="display:flex;gap:0.3rem;flex-shrink:0;align-items:center;flex-wrap:wrap;">
+                {% if ex.body_part %}
+                <span style="font-size:0.58rem;background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.55);
+                             border-radius:3px;padding:0.05rem 0.3rem;white-space:nowrap;">{{ ex.body_part }}</span>
+                {% endif %}
+                {% if ex.exercise_type and ex.exercise_type not in ('strength',) %}
+                <span style="font-size:0.58rem;background:rgba(255,150,50,0.2);color:rgba(255,180,80,0.9);
+                             border-radius:3px;padding:0.05rem 0.3rem;white-space:nowrap;">{{ ex.exercise_type }}</span>
+                {% endif %}
+                {% if ex.one_rep_max %}
+                <span style="font-size:0.62rem;color:{{ _clr[0] }};opacity:0.85;white-space:nowrap;font-weight:600;">
+                  1RM {{ ex.one_rep_max }}kg
+                </span>
+                {% endif %}
+                {% if ex.location == 'home' %}
+                <span style="font-size:0.65rem;">🏠</span>
+                {% endif %}
+              </span>
             </div>
           </a>
           {% endfor %}
