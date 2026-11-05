@@ -4,35 +4,136 @@
 {% block nav_title %}{% if se %}編集{% else %}追加{% endif %}{% endblock %}
 
 {% block content %}
+<style>
+.ex-row:hover { background: rgba(255,255,255,0.07) !important; }
+#ex-search:focus { border-color: rgba(255,215,0,0.5) !important; }
+</style>
 <h5 class="mb-3">{% if se %}種目を編集{% else %}種目を追加{% endif %}</h5>
 
 {# Pass session rep_count to JS #}
 <input type="hidden" id="session_rep_count" value="{{ session.rep_count or 0 }}">
 
 <form method="post" id="ex-form">
-  {# Exercise select #}
+  {# Exercise picker #}
   <div class="mb-3">
-    <label class="form-label">種目 <span class="text-danger">*</span></label>
-    <select class="form-select form-select-lg bg-dark text-light border-secondary"
-            name="exercise_id" id="exercise_select" required
-            onchange="if(this.value) location.href='?exercise_id='+this.value">
-      <option value="">選択してください</option>
-      {% for ex in exercises %}
-      <option value="{{ ex.id }}"
-              {% if se and se.exercise_id == ex.id %}selected
-              {% elif prefill_exercise_id and prefill_exercise_id == ex.id %}selected
-              {% endif %}>
-        {{ ex.name }}
-      </option>
-      {% endfor %}
-    </select>
-    <div class="mt-2 text-end">
-      <button type="button" class="btn btn-outline-warning btn-sm"
-              data-bs-toggle="modal" data-bs-target="#quickCreateModal">
-        ＋ 新規追加
-      </button>
+    <input type="hidden" name="exercise_id" id="exercise_id_input"
+           value="{{ (se.exercise_id if se else prefill_exercise_id) or '' }}" required>
+
+    {# ── 選択済み表示 ── #}
+    {% set _sel_id = se.exercise_id if se else prefill_exercise_id %}
+    {% if _sel_id %}
+      {% set _sel_ex = exercises | selectattr('id', 'equalto', _sel_id) | first %}
+      {% if _sel_ex %}
+      <div id="selected-ex-bar"
+           style="display:flex;align-items:center;gap:0.5rem;padding:0.55rem 0.75rem;
+                  background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.4);
+                  border-radius:8px;margin-bottom:0.5rem;">
+        <span style="font-size:0.95rem;font-weight:700;color:var(--yellow);flex:1;">{{ _sel_ex.name }}</span>
+        {% if _sel_ex.primary_muscle %}
+        <span style="font-size:0.65rem;background:rgba(255,255,255,0.1);border-radius:4px;padding:0.1rem 0.4rem;color:rgba(255,255,255,0.6);">{{ _sel_ex.primary_muscle }}</span>
+        {% endif %}
+        {% if not se %}
+        <button type="button" id="change-ex-btn"
+                style="font-size:0.7rem;padding:0.15rem 0.5rem;border-radius:5px;
+                       background:transparent;border:1px solid rgba(255,255,255,0.25);color:rgba(255,255,255,0.5);">変更</button>
+        {% endif %}
+      </div>
+      {% endif %}
+    {% endif %}
+
+    {# ── 種目ピッカー ── #}
+    <div id="ex-picker" {% if _sel_id %}style="display:none;"{% endif %}>
+      {# 検索ボックス #}
+      <input type="text" id="ex-search"
+             placeholder="🔍 種目名で絞り込み…"
+             autocomplete="off"
+             style="width:100%;padding:0.5rem 0.75rem;border-radius:8px;border:1px solid rgba(255,255,255,0.2);
+                    background:rgba(255,255,255,0.06);color:#fff;font-size:0.85rem;margin-bottom:0.75rem;outline:none;">
+
+      {# 主導筋グループ別リスト #}
+      <div id="ex-list" style="max-height:60vh;overflow-y:auto;border-radius:8px;border:1px solid rgba(255,255,255,0.1);">
+        {% for muscle, group in exercises | groupby('primary_muscle') %}
+        <div class="ex-muscle-group" data-muscle="{{ muscle }}">
+          <div style="font-size:0.65rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;
+                      color:rgba(255,255,255,0.4);background:rgba(255,255,255,0.04);
+                      padding:0.3rem 0.75rem;border-bottom:1px solid rgba(255,255,255,0.07);
+                      position:sticky;top:0;">
+            {{ muscle or 'その他' }}
+          </div>
+          {% for ex in group %}
+          <a href="?exercise_id={{ ex.id }}"
+             class="ex-row d-block text-decoration-none"
+             data-name="{{ ex.name }}" data-muscle="{{ ex.primary_muscle or '' }}"
+             style="padding:0.55rem 0.75rem;border-bottom:1px solid rgba(255,255,255,0.05);
+                    {% if _sel_id == ex.id %}background:rgba(255,215,0,0.08);{% endif %}
+                    color:inherit;transition:background 0.15s;">
+            <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+              <span style="font-size:0.88rem;font-weight:{% if _sel_id == ex.id %}700{% else %}500{% endif %};
+                           color:{% if _sel_id == ex.id %}var(--yellow){% else %}rgba(255,255,255,0.88){% endif %};flex:1;min-width:0;">
+                {{ ex.name }}
+              </span>
+              {# バッジ群 #}
+              {% if ex.body_part %}
+              <span style="font-size:0.6rem;background:rgba(100,160,255,0.15);color:rgba(100,160,255,0.9);
+                           border-radius:3px;padding:0.08rem 0.35rem;white-space:nowrap;">{{ ex.body_part }}</span>
+              {% endif %}
+              {% if ex.exercise_type and ex.exercise_type not in ('strength',) %}
+              <span style="font-size:0.6rem;background:rgba(255,150,50,0.15);color:rgba(255,150,50,0.9);
+                           border-radius:3px;padding:0.08rem 0.35rem;white-space:nowrap;">{{ ex.exercise_type }}</span>
+              {% endif %}
+              {% if ex.one_rep_max %}
+              <span style="font-size:0.6rem;color:rgba(255,215,0,0.6);white-space:nowrap;">1RM {{ ex.one_rep_max }}kg</span>
+              {% endif %}
+              {% if ex.location == 'home' %}
+              <span style="font-size:0.6rem;color:rgba(105,240,174,0.7);">🏠</span>
+              {% endif %}
+            </div>
+          </a>
+          {% endfor %}
+        </div>
+        {% endfor %}
+      </div>
+
+      <div class="mt-2 text-end">
+        <button type="button" class="btn btn-outline-warning btn-sm"
+                data-bs-toggle="modal" data-bs-target="#quickCreateModal">
+          ＋ 新規追加
+        </button>
+      </div>
     </div>
   </div>
+
+  {# ── 種目検索JS ── #}
+  <script>
+  (function() {
+    var searchEl = document.getElementById('ex-search');
+    var changeBtn = document.getElementById('change-ex-btn');
+    var picker = document.getElementById('ex-picker');
+
+    if (changeBtn) {
+      changeBtn.addEventListener('click', function() {
+        document.getElementById('selected-ex-bar').style.display = 'none';
+        picker.style.display = '';
+        if (searchEl) searchEl.focus();
+      });
+    }
+
+    if (searchEl) {
+      searchEl.addEventListener('input', function() {
+        var q = searchEl.value.trim().toLowerCase();
+        document.querySelectorAll('.ex-row').forEach(function(row) {
+          var name = (row.dataset.name || '').toLowerCase();
+          var muscle = (row.dataset.muscle || '').toLowerCase();
+          row.style.display = (!q || name.includes(q) || muscle.includes(q)) ? '' : 'none';
+        });
+        document.querySelectorAll('.ex-muscle-group').forEach(function(g) {
+          var visible = Array.from(g.querySelectorAll('.ex-row')).some(function(r) { return r.style.display !== 'none'; });
+          g.style.display = visible ? '' : 'none';
+        });
+      });
+    }
+  })();
+  </script>
 
   {# ── Quick-create exercise modal ── #}
   <div class="modal fade" id="quickCreateModal" tabindex="-1" aria-labelledby="quickCreateModalLabel" aria-hidden="true">

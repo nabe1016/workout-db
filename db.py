@@ -534,8 +534,9 @@ def list_exercises() -> list:
     with _conn() as conn:
         cur = conn.cursor()
         cur.execute("""
-            SELECT id, name, body_part, needs_bench, primary_muscle
-            FROM exercises ORDER BY name
+            SELECT id, name, body_part, needs_bench, primary_muscle,
+                   one_rep_max, exercise_type, location, bodyweight_ratio, is_assisted
+            FROM exercises ORDER BY primary_muscle NULLS LAST, name
         """)
         return cur.fetchall()
 
