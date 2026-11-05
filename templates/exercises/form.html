@@ -60,6 +60,25 @@
 
     {# ── 種目ピッカー ── #}
     <div id="ex-picker" {% if _sel_id %}style="display:none;"{% endif %}>
+
+      {# ── 筋肉図ナビ ── #}
+      <div style="margin-bottom:0.6rem;">
+        <button type="button" id="bodymap-toggle"
+                style="width:100%;padding:0.4rem 0.75rem;border-radius:8px;font-size:0.78rem;font-weight:600;
+                       background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15);
+                       color:rgba(255,255,255,0.65);text-align:left;display:flex;align-items:center;gap:0.4rem;">
+          <span>🗺</span><span>筋肉図から選ぶ</span>
+          <span id="bodymap-arrow" style="margin-left:auto;transition:transform 0.2s;">▼</span>
+        </button>
+        <div id="bodymap-panel" style="display:none;position:relative;margin-top:0.4rem;border-radius:10px;overflow:hidden;">
+          <img src="{{ url_for('static', filename='images/body_map.png') }}"
+               id="body-map-img"
+               style="width:100%;display:block;" alt="筋肉図">
+          {# JS がオーバーレイボタンを描画する #}
+          <div id="bodymap-overlay" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;"></div>
+        </div>
+      </div>
+
       {# 検索ボックス #}
       <input type="text" id="ex-search"
              placeholder="🔍 種目名で絞り込み…"
@@ -175,6 +194,102 @@
           var visible = Array.from(g.querySelectorAll('.ex-row')).some(function(r) { return r.style.display !== 'none'; });
           g.style.display = visible ? '' : 'none';
         });
+      });
+    }
+
+    // ── 筋肉図トグル ───────────────────────────────────────────────────────
+    var toggleBtn  = document.getElementById('bodymap-toggle');
+    var panel      = document.getElementById('bodymap-panel');
+    var arrowEl    = document.getElementById('bodymap-arrow');
+    var mapImg     = document.getElementById('body-map-img');
+    var overlayDiv = document.getElementById('bodymap-overlay');
+    var mapOpen    = false;
+
+    // ラベル定義：{text, muscle, x%, y%, align}
+    // x/y は画像全体に対するパーセンテージ
+    var LABELS = [
+      // 正面 左列
+      { t:'三角筋',       m:'三角筋',       x:11, y:30.5, a:'left'  },
+      { t:'大胸筋',       m:'大胸筋',       x:11, y:37.5, a:'left'  },
+      { t:'上腕\n二頭筋', m:'上腕二頭筋',   x:11, y:44.5, a:'left'  },
+      { t:'腹直筋',       m:'腹直筋',       x:11, y:52,   a:'left'  },
+      { t:'腹斜筋',       m:'腹斜筋',       x:11, y:58.5, a:'left'  },
+      { t:'大腿\n四頭筋', m:'大腿四頭筋',   x:11, y:67,   a:'left'  },
+      { t:'カーフ',       m:'カーフ',       x:11, y:81,   a:'left'  },
+      // 背面 右列
+      { t:'三角筋',       m:'三角筋',       x:89, y:30,   a:'right' },
+      { t:'上腕\n三頭筋', m:'上腕三頭筋',   x:89, y:37,   a:'right' },
+      { t:'広背筋',       m:'広背筋',       x:89, y:45.5, a:'right' },
+      { t:'脊柱\n起立筋', m:'脊柱起立筋',   x:89, y:52.5, a:'right' },
+      { t:'大臀筋',       m:'大臀筋',       x:89, y:62,   a:'right' },
+      { t:'ハムスト\nリングス', m:'ハムストリングス', x:89, y:71, a:'right' },
+      { t:'カーフ',       m:'カーフ',       x:89, y:81,   a:'right' },
+    ];
+
+    function buildOverlay() {
+      if (!overlayDiv) return;
+      overlayDiv.innerHTML = '';
+      overlayDiv.style.pointerEvents = 'auto';
+      LABELS.forEach(function(lb) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.style.cssText = [
+          'position:absolute',
+          'top:' + lb.y + '%',
+          lb.a === 'left' ? 'left:' + lb.x + '%' : 'right:' + (100 - lb.x) + '%',
+          lb.a === 'left' ? 'transform:translateY(-50%)' : 'transform:translateY(-50%)',
+          'font-size:0.6rem','font-weight:800','line-height:1.25',
+          'white-space:pre','text-align:center',
+          'padding:0.2rem 0.45rem','border-radius:6px',
+          'border:1.5px solid rgba(255,255,255,0.55)',
+          'background:rgba(20,20,30,0.72)',
+          'color:#fff','cursor:pointer',
+          'backdrop-filter:blur(2px)',
+          'transition:background 0.15s,transform 0.1s',
+          'z-index:10'
+        ].join(';');
+        btn.textContent = lb.t;
+        btn.addEventListener('click', function(e) {
+          e.preventDefault();
+          scrollToMuscle(lb.m);
+          // 閉じる
+          panel.style.display = 'none';
+          mapOpen = false;
+          if (arrowEl) arrowEl.style.transform = '';
+        });
+        btn.addEventListener('touchstart', function() { btn.style.background = 'rgba(255,215,0,0.5)'; }, {passive:true});
+        btn.addEventListener('touchend',   function() { btn.style.background = 'rgba(20,20,30,0.72)'; }, {passive:true});
+        overlayDiv.appendChild(btn);
+      });
+    }
+
+    function scrollToMuscle(muscle) {
+      var list = document.getElementById('ex-list');
+      if (!list) return;
+      // 検索クリア
+      if (searchEl) { searchEl.value = ''; searchEl.dispatchEvent(new Event('input')); }
+      var target = list.querySelector('.ex-muscle-group[data-muscle="' + muscle + '"]');
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // ハイライト一瞬
+        target.style.outline = '2px solid rgba(255,215,0,0.6)';
+        setTimeout(function() { target.style.outline = ''; }, 1200);
+      }
+    }
+
+    if (toggleBtn) {
+      toggleBtn.addEventListener('click', function() {
+        mapOpen = !mapOpen;
+        panel.style.display = mapOpen ? '' : 'none';
+        if (arrowEl) arrowEl.style.transform = mapOpen ? 'rotate(180deg)' : '';
+        if (mapOpen && overlayDiv && overlayDiv.children.length === 0) {
+          // 画像読み込み後にオーバーレイ生成
+          if (mapImg && mapImg.complete) {
+            buildOverlay();
+          } else if (mapImg) {
+            mapImg.addEventListener('load', buildOverlay, { once: true });
+          }
+        }
       });
     }
   })();
