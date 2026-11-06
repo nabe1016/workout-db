@@ -333,6 +333,18 @@
               {% endif %}
             </div>
           </div>
+          <div class="mb-1">
+            <label class="form-label" style="font-size:0.85rem;">左右セット方式</label>
+            <div class="d-flex gap-2">
+              <button type="button" class="qc-unilateral-btn btn btn-sm flex-fill btn-secondary"
+                      data-value="" style="font-size:0.8rem;">両方同時</button>
+              <button type="button" class="qc-unilateral-btn btn btn-sm flex-fill btn-outline-secondary"
+                      data-value="foot" style="font-size:0.8rem;">片足毎 🦶</button>
+              <button type="button" class="qc-unilateral-btn btn btn-sm flex-fill btn-outline-secondary"
+                      data-value="hand" style="font-size:0.8rem;">片手毎 ✋</button>
+            </div>
+            <input type="hidden" id="qc-unilateral-type" value="">
+          </div>
         </div>
         <div class="modal-footer border-secondary py-2">
           <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">キャンセル</button>
@@ -470,12 +482,13 @@
       document.querySelectorAll('.qc-muscle:checked').forEach(function(cb) {
         muscles.push(cb.value);
       });
+      var uniType = document.getElementById('qc-unilateral-type').value || null;
       qcSubmit.disabled = true;
       qcSubmit.textContent = '追加中…';
       fetch('/api/exercises/quick-create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name, muscles: muscles })
+        body: JSON.stringify({ name: name, muscles: muscles, unilateral_type: uniType })
       })
       .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
       .then(function(res) {
@@ -496,6 +509,13 @@
         // Reset modal
         nameEl.value = '';
         document.querySelectorAll('.qc-muscle:checked').forEach(function(cb) { cb.checked = false; });
+        // reset unilateral toggle
+        document.getElementById('qc-unilateral-type').value = '';
+        document.querySelectorAll('.qc-unilateral-btn').forEach(function(b) {
+          b.classList.remove('btn-secondary','btn-warning');
+          b.classList.add('btn-outline-secondary');
+        });
+        document.querySelector('.qc-unilateral-btn[data-value=""]').classList.replace('btn-outline-secondary','btn-secondary');
         qcSubmit.disabled = false;
         qcSubmit.textContent = '追加する';
         // Close modal and jump to prefill URL with new id
@@ -548,7 +568,7 @@
 
   calcExp();
 
-  // ── Unilateral toggle ───────────────────────────────────────────────────
+  // ── Unilateral toggle (フォーム内) ──────────────────────────────────────
   document.querySelectorAll('.unilateral-btn').forEach(function(btn) {
     btn.addEventListener('click', function() {
       document.querySelectorAll('.unilateral-btn').forEach(function(b) {
@@ -558,6 +578,19 @@
       btn.classList.remove('btn-outline-secondary');
       btn.classList.add(btn.dataset.value ? 'btn-warning' : 'btn-secondary');
       document.getElementById('unilateral_type').value = btn.dataset.value;
+    });
+  });
+
+  // ── Unilateral toggle (モーダル内) ───────────────────────────────────────
+  document.querySelectorAll('.qc-unilateral-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.qc-unilateral-btn').forEach(function(b) {
+        b.classList.remove('btn-secondary', 'btn-warning');
+        b.classList.add('btn-outline-secondary');
+      });
+      btn.classList.remove('btn-outline-secondary');
+      btn.classList.add(btn.dataset.value ? 'btn-warning' : 'btn-secondary');
+      document.getElementById('qc-unilateral-type').value = btn.dataset.value;
     });
   });
 })();

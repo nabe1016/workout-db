@@ -908,10 +908,12 @@ def api_exercises_quick_create():
         return jsonify({"error": "種目名を入力してください"}), 400
     muscles = data.get("muscles") or []
     primary_muscle = ",".join(m.strip() for m in muscles if m.strip()) or None
+    unilateral_type = (data.get("unilateral_type") or "").strip() or None
     try:
         exercise_id = db.create_exercise_master(
             name=name,
             primary_muscle=primary_muscle,
+            unilateral_type=unilateral_type,
         )
     except Exception:
         return jsonify({"error": "同じ名前の種目がすでに存在します"}), 409
