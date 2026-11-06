@@ -158,13 +158,15 @@
         {% endfor %}
       </div>
 
-      <div class="mt-2 text-end">
-        <button type="button" class="btn btn-outline-warning btn-sm"
-                data-bs-toggle="modal" data-bs-target="#quickCreateModal">
-          ＋ 新規追加
-        </button>
-      </div>
     </div>
+  </div>
+
+  {# 新規追加ボタン — 常時表示 #}
+  <div class="mb-3 text-end">
+    <button type="button" class="btn btn-outline-warning btn-sm"
+            data-bs-toggle="modal" data-bs-target="#quickCreateModal">
+      ＋ 新規追加
+    </button>
   </div>
 
   {# ── 種目検索JS ── #}
@@ -206,24 +208,24 @@
     var mapOpen    = false;
 
     // ラベル定義：{text, muscle, x%, y%, align}
-    // x/y は画像全体に対するパーセンテージ
+    // 新しい画像に合わせた座標（タイトル行が全体の約15%を占める）
     var LABELS = [
       // 正面 左列
-      { t:'三角筋',       m:'三角筋',       x:11, y:30.5, a:'left'  },
-      { t:'大胸筋',       m:'大胸筋',       x:11, y:37.5, a:'left'  },
-      { t:'上腕\n二頭筋', m:'上腕二頭筋',   x:11, y:44.5, a:'left'  },
-      { t:'腹直筋',       m:'腹直筋',       x:11, y:52,   a:'left'  },
-      { t:'腹斜筋',       m:'腹斜筋',       x:11, y:58.5, a:'left'  },
-      { t:'大腿\n四頭筋', m:'大腿四頭筋',   x:11, y:67,   a:'left'  },
-      { t:'カーフ',       m:'カーフ',       x:11, y:81,   a:'left'  },
+      { t:'三角筋',         m:'三角筋',         x:14, y:33,   a:'left'  },
+      { t:'大胸筋',         m:'大胸筋',         x:14, y:40,   a:'left'  },
+      { t:'上腕二頭筋',     m:'上腕二頭筋',     x:14, y:47,   a:'left'  },
+      { t:'腹直筋',         m:'腹直筋',         x:14, y:54,   a:'left'  },
+      { t:'腹斜筋',         m:'腹斜筋',         x:14, y:61,   a:'left'  },
+      { t:'大腿四頭筋',     m:'大腿四頭筋',     x:14, y:70,   a:'left'  },
+      { t:'カーフ',         m:'カーフ',         x:14, y:84,   a:'left'  },
       // 背面 右列
-      { t:'三角筋',       m:'三角筋',       x:89, y:30,   a:'right' },
-      { t:'上腕\n三頭筋', m:'上腕三頭筋',   x:89, y:37,   a:'right' },
-      { t:'広背筋',       m:'広背筋',       x:89, y:45.5, a:'right' },
-      { t:'脊柱\n起立筋', m:'脊柱起立筋',   x:89, y:52.5, a:'right' },
-      { t:'大臀筋',       m:'大臀筋',       x:89, y:62,   a:'right' },
-      { t:'ハムスト\nリングス', m:'ハムストリングス', x:89, y:71, a:'right' },
-      { t:'カーフ',       m:'カーフ',       x:89, y:81,   a:'right' },
+      { t:'三角筋',         m:'三角筋',         x:86, y:33,   a:'right' },
+      { t:'上腕三頭筋',     m:'上腕三頭筋',     x:86, y:40,   a:'right' },
+      { t:'広背筋',         m:'広背筋',         x:86, y:47,   a:'right' },
+      { t:'脊柱起立筋',     m:'脊柱起立筋',     x:86, y:55,   a:'right' },
+      { t:'大臀筋',         m:'大臀筋',         x:86, y:64,   a:'right' },
+      { t:'ハムストリングス', m:'ハムストリングス', x:86, y:72, a:'right' },
+      { t:'カーフ',         m:'カーフ',         x:86, y:84,   a:'right' },
     ];
 
     function buildOverlay() {
