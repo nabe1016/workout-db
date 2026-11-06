@@ -499,13 +499,6 @@
           qcSubmit.textContent = '追加する';
           return;
         }
-        // Add to select and choose it
-        var sel = document.getElementById('exercise_select');
-        var opt = document.createElement('option');
-        opt.value = res.data.id;
-        opt.textContent = res.data.name;
-        opt.selected = true;
-        sel.appendChild(opt);
         // Reset modal
         nameEl.value = '';
         document.querySelectorAll('.qc-muscle:checked').forEach(function(cb) { cb.checked = false; });
