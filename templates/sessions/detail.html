@@ -964,43 +964,37 @@
   {% if _ns2.done > 0 or _ns2.proj > 0 %}{% set _ = _legend_muscles.append(m or 'その他') %}{% endif %}
 {% endfor %}
 
-{# 各筋肉の種目リストをJSへ渡す #}
+{% set _grand_total = _ns_done.total + _ns_proj.total %}
 {% if _legend_muscles %}
 <div class="mb-3 px-1" id="muscle-exp-bar">
-  <div style="font-size:0.68rem;color:rgba(255,255,255,0.4);letter-spacing:0.05em;margin-bottom:0.5rem;">主導筋バランス</div>
-
-  {# 実施済みバー #}
-  {% if _ns_done.total > 0 %}
-  <div style="display:flex;align-items:center;gap:0.4rem;margin-bottom:0.3rem;">
-    <span style="font-size:0.6rem;color:rgba(255,255,255,0.35);white-space:nowrap;width:3.5rem;text-align:right;">✅ 実施済</span>
-    <div style="flex:1;display:flex;height:1.3rem;border-radius:6px;overflow:hidden;gap:1px;background:rgba(255,255,255,0.05);">
-      {% for d in _mdata_done %}
-      {% set pct = (d.e / _ns_done.total * 100) | round(1) %}
-      <div style="width:{{ pct }}%;background:{{ _mc.get(d.m, '#90a4ae') }};min-width:{% if pct<3 %}3px{% else %}0{% endif %};"
-           title="{{ d.m }}: {{ pct }}%"></div>
-      {% endfor %}
-    </div>
-    <span style="font-size:0.6rem;color:rgba(255,255,255,0.25);white-space:nowrap;">{{ "{:,}".format(_ns_done.total|int) }}</span>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.4rem;">
+    <span style="font-size:0.68rem;color:rgba(255,255,255,0.4);letter-spacing:0.05em;">主導筋バランス</span>
+    <span style="font-size:0.6rem;color:rgba(255,255,255,0.22);">
+      {% if _ns_done.total > 0 %}✅ {{ "{:,}".format(_ns_done.total|int) }}{% endif %}
+      {% if _ns_proj.total > 0 %} ＋ 📋{{ "{:,}".format(_ns_proj.total|int) }}{% endif %}
+    </span>
   </div>
-  {% endif %}
 
-  {# 試算バー (ハッチング) #}
-  {% if _ns_proj.total > 0 %}
-  <div style="display:flex;align-items:center;gap:0.4rem;margin-bottom:0.5rem;">
-    <span style="font-size:0.6rem;color:rgba(255,255,255,0.35);white-space:nowrap;width:3.5rem;text-align:right;">📋 試算</span>
-    <div style="flex:1;display:flex;height:1.3rem;border-radius:6px;overflow:hidden;gap:1px;background:rgba(255,255,255,0.05);">
-      {% for d in _mdata_proj %}
-      {% set pct = (d.e / _ns_proj.total * 100) | round(1) %}
-      {% set clr = _mc.get(d.m, '#90a4ae') %}
-      <div style="width:{{ pct }}%;min-width:{% if pct<3 %}3px{% else %}0{% endif %};
-                  background-image:repeating-linear-gradient(-45deg,{{ clr }} 0,{{ clr }} 3px,rgba(0,0,0,0.45) 3px,rgba(0,0,0,0.45) 6px);
-                  background-color:{{ clr }};"
-           title="{{ d.m }}: {{ pct }}%"></div>
-      {% endfor %}
-    </div>
-    <span style="font-size:0.6rem;color:rgba(255,255,255,0.25);white-space:nowrap;">{{ "{:,}".format(_ns_proj.total|int) }}</span>
+  {# 1本の複合バー: 実施済(ソリッド) → 未実施(ハッチング) #}
+  <div style="display:flex;height:1.4rem;border-radius:7px;overflow:hidden;gap:1px;background:rgba(255,255,255,0.05);margin-bottom:0.5rem;">
+    {% for d in _mdata_done %}
+    {% set pct = (d.e / _grand_total * 100) | round(1) %}
+    <div style="width:{{ pct }}%;background:{{ _mc.get(d.m, '#90a4ae') }};min-width:{% if pct<2 %}3px{% else %}0{% endif %};"
+         title="✅ {{ d.m }}: {{ pct }}% ({{ '{:,}'.format(d.e|int) }} EXP)"></div>
+    {% endfor %}
+    {# 境界線 #}
+    {% if _ns_done.total > 0 and _ns_proj.total > 0 %}
+    <div style="width:2px;background:rgba(255,255,255,0.3);flex-shrink:0;"></div>
+    {% endif %}
+    {% for d in _mdata_proj %}
+    {% set pct = (d.e / _grand_total * 100) | round(1) %}
+    {% set clr = _mc.get(d.m, '#90a4ae') %}
+    <div style="width:{{ pct }}%;min-width:{% if pct<2 %}3px{% else %}0{% endif %};
+                background-image:repeating-linear-gradient(-45deg,{{ clr }} 0,{{ clr }} 3px,rgba(0,0,0,0.5) 3px,rgba(0,0,0,0.5) 6px);
+                background-color:{{ clr }};"
+         title="📋 {{ d.m }}: {{ pct }}% ({{ '{:,}'.format(d.e|int) }} EXP)"></div>
+    {% endfor %}
   </div>
-  {% endif %}
 
   {# 凡例（タップで種目ポップアップ） #}
   <div style="display:flex;flex-wrap:wrap;gap:0.3rem 0.5rem;" id="meb-legend">
