@@ -970,10 +970,7 @@
 <div class="mb-3 px-1" id="muscle-exp-bar">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.4rem;">
     <span style="font-size:0.68rem;color:rgba(255,255,255,0.4);letter-spacing:0.05em;">主導筋バランス</span>
-    <span style="font-size:0.6rem;color:rgba(255,255,255,0.22);">
-      {% if _ns_done.total > 0 %}✅ {{ "{:,}".format(_ns_done.total|int) }}{% endif %}
-      {% if _ns_proj.total > 0 %} ＋ 📋{{ "{:,}".format(_ns_proj.total|int) }}{% endif %}
-    </span>
+    <span class="meb-summary" style="font-size:0.6rem;color:rgba(255,255,255,0.22);">{% if _ns_done.total > 0 %}✅ {{ "{:,}".format(_ns_done.total|int) }}{% endif %}{% if _ns_proj.total > 0 %}{% if _ns_done.total > 0 %} ＋ {% endif %}📋{{ "{:,}".format(_ns_proj.total|int) }}{% endif %}</span>
   </div>
 
   {# 1本の複合バー: 実施済(ソリッド) → 未実施(ハッチング) #}
@@ -1020,6 +1017,27 @@
 </div>
 
 <script>
+// 筋肉バー再描画用グローバルデータ
+window._mebColors = {
+  '大胸筋':'#ef5350','広背筋':'#42a5f5','三角筋':'#ab47bc',
+  '大腿四頭筋':'#26c6da','ハムストリングス':'#26a69a','大臀筋':'#66bb6a',
+  '上腕二頭筋':'#ffb74d','上腕三頭筋':'#ffa726',
+  '腹直筋':'#f06292','腹斜筋':'#ec407a','脊柱起立筋':'#ff7043',
+  'カーフ':'#81c784','その他':'#90a4ae'
+};
+window._mebSessReps = {{ session.rep_count or 9 }};
+window._mebExList = [
+  {% for ex in exercises %}
+  { id:{{ ex.id }}, muscle:{{ (ex.primary_muscle or 'その他')|tojson }}, name:{{ ex.exercise_name|tojson }},
+    expEarned:{{ ex.exp_earned or 0 }}, weightHigh:{{ ex.weight_setting or 'null' }},
+    weightLow:{{ ex.weight_low_load or 'null' }}, loadMode:{{ (ex.load_mode or 'high')|tojson }},
+    reps:{{ ex.reps or 0 }}, completed:{{ 'true' if ex.completed else 'false' }}, skipped:{{ 'true' if ex.skipped else 'false' }} }{% if not loop.last %},{% endif %}
+
+  {% endfor %}
+];
+</script>
+
+<script>
 (function(){
   var exData = {
     {% for m in _legend_muscles %}
@@ -1033,21 +1051,91 @@
   var popup = document.getElementById('meb-popup');
   var openMuscle = null;
 
+  function _esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
   function applyHighlight(active) {
-    // 凡例ボタン: 選択中→通常, 非選択→薄く
     document.querySelectorAll('.meb-leg-btn').forEach(function(b) {
       var isActive = (b.dataset.muscle === active);
       b.style.opacity    = active ? (isActive ? '1' : '0.3') : '1';
       b.style.background = isActive ? 'rgba(255,255,255,0.12)' : 'none';
       b.style.fontWeight = isActive ? '700' : '';
     });
-    // バーセグメント: 選択中→通常, 非選択→薄く＋blur
     document.querySelectorAll('.meb-seg').forEach(function(seg) {
       var isActive = (seg.dataset.muscle === active);
       seg.style.opacity = active ? (isActive ? '1' : '0.2') : '';
       seg.style.filter  = active ? (isActive ? 'brightness(1.25)' : 'grayscale(0.5)') : '';
     });
   }
+
+  window.rebuildMuscleBar = function() {
+    var bar = document.getElementById('meb-bar');
+    if (!bar) return;
+    var colors = window._mebColors || {};
+    var sessReps = window._mebSessReps || 9;
+    var exList = window._mebExList || [];
+
+    // exData を最新状態で再構築（ポップアップ用）
+    exList.forEach(function(ex) {
+      var m = ex.muscle || 'その他';
+      if (!exData[m]) return;
+      var entry = exData[m].find(function(e){ return e.name === ex.name; });
+      if (entry) { entry.done = ex.completed; entry.skipped = ex.skipped; }
+    });
+
+    // 筋肉別 EXP 集計
+    var doneByM = {}, projByM = {};
+    exList.forEach(function(ex) {
+      var m = ex.muscle || 'その他';
+      if (ex.completed) {
+        doneByM[m] = (doneByM[m] || 0) + (ex.expEarned || 0);
+      } else if (!ex.skipped) {
+        var w = ex.loadMode === 'low' ? (ex.weightLow || ex.weightHigh || 1) : (ex.weightHigh || ex.weightLow || 1);
+        projByM[m] = (projByM[m] || 0) + Math.round(w * (ex.reps || sessReps) * 3);
+      }
+    });
+
+    var doneTotal = 0, projTotal = 0;
+    Object.keys(doneByM).forEach(function(m){ doneTotal += doneByM[m]; });
+    Object.keys(projByM).forEach(function(m){ projTotal += projByM[m]; });
+    var grand = doneTotal + projTotal;
+    if (grand <= 0) return;
+
+    var html = '';
+    Object.keys(doneByM).forEach(function(m) {
+      var e = doneByM[m]; if (!e) return;
+      var pct = Math.round(e / grand * 1000) / 10;
+      var clr = colors[m] || '#90a4ae';
+      html += '<div class="meb-seg" data-muscle="' + _esc(m) + '"'
+        + ' style="width:' + pct + '%;background:' + clr + ';min-width:' + (pct<2?'3px':'0') + ';transition:opacity 0.2s,filter 0.2s;"'
+        + ' title="✅ ' + _esc(m) + ': ' + pct + '% (' + Math.round(e).toLocaleString() + ' EXP)"></div>';
+    });
+    if (doneTotal > 0 && projTotal > 0) {
+      html += '<div style="width:2px;background:rgba(255,255,255,0.3);flex-shrink:0;"></div>';
+    }
+    Object.keys(projByM).forEach(function(m) {
+      var e = projByM[m]; if (!e) return;
+      var pct = Math.round(e / grand * 1000) / 10;
+      var clr = colors[m] || '#90a4ae';
+      html += '<div class="meb-seg" data-muscle="' + _esc(m) + '"'
+        + ' style="width:' + pct + '%;min-width:' + (pct<2?'3px':'0')
+        + ';background-image:repeating-linear-gradient(-45deg,' + clr + ' 0,' + clr + ' 3px,rgba(0,0,0,0.5) 3px,rgba(0,0,0,0.5) 6px);background-color:' + clr + ';transition:opacity 0.2s,filter 0.2s;"'
+        + ' title="📋 ' + _esc(m) + ': ' + pct + '% (' + Math.round(e).toLocaleString() + ' EXP)"></div>';
+    });
+    bar.innerHTML = html;
+
+    // サマリー数字を更新
+    var summaryEl = document.querySelector('#muscle-exp-bar .meb-summary');
+    if (summaryEl) {
+      var txt = '';
+      if (doneTotal > 0) txt += '✅ ' + Math.round(doneTotal).toLocaleString();
+      if (projTotal > 0) txt += (txt ? ' ＋ ' : '') + '📋' + Math.round(projTotal).toLocaleString();
+      summaryEl.textContent = txt;
+    }
+
+    if (openMuscle) applyHighlight(openMuscle);
+  };
 
   document.querySelectorAll('.meb-leg-btn').forEach(function(btn) {
     btn.addEventListener('click', function() {
@@ -1609,6 +1697,10 @@
           updateCarousel();
           addToCompletedList(seId);
           updateDoneCount();
+          // 筋肉バー更新
+          var _mex = (window._mebExList||[]).find(function(e){return e.id===parseInt(seId,10);});
+          if (_mex) _mex.completed = true;
+          if (window.rebuildMuscleBar) window.rebuildMuscleBar();
         } else {
           window.location.reload();
         }
@@ -1642,6 +1734,10 @@
             // Add to completed list
             addToCompletedList(seId);
             updateDoneCount();
+            // 筋肉バー更新
+            var _mex = (window._mebExList||[]).find(function(e){return e.id===parseInt(seId,10);});
+            if (_mex) _mex.completed = true;
+            if (window.rebuildMuscleBar) window.rebuildMuscleBar();
           } else {
             // Un-complete: reload to restore to carousel
             window.location.reload();
@@ -1726,6 +1822,10 @@
             var doneLabel = document.getElementById('done-count-label');
             if (doneLabel) doneLabel.textContent = document.querySelectorAll('#completed-list .card').length + '件';
             updateDoneCount();
+            // 筋肉バー更新
+            var _mex = (window._mebExList||[]).find(function(e){return e.id===parseInt(seId,10);});
+            if (_mex) _mex.skipped = true;
+            if (window.rebuildMuscleBar) window.rebuildMuscleBar();
           } else {
             window.location.reload();
           }
@@ -1747,6 +1847,9 @@
           Object.keys(data.exercise_exp).forEach(function(seId) {
             var expEl = document.querySelector('.exp-badge-' + seId);
             if (expEl) expEl.textContent = data.exercise_exp[seId].toLocaleString() + ' EXP';
+            // _mebExList の expEarned を最新値に更新
+            var _mex = (window._mebExList||[]).find(function(e){return e.id===parseInt(seId,10);});
+            if (_mex) _mex.expEarned = data.exercise_exp[seId];
           });
           var totalEl = document.getElementById('total-exp');
           if (totalEl && data.session_total_exp !== undefined) totalEl.textContent = data.session_total_exp.toLocaleString();
@@ -1756,6 +1859,7 @@
               if (el) el.textContent = data.category_exp[cat].toLocaleString();
             });
           }
+          if (window.rebuildMuscleBar) window.rebuildMuscleBar();
           recalcBtn.textContent = '✓';
           setTimeout(function() { recalcBtn.textContent = '再計算'; recalcBtn.disabled = false; }, 1500);
         })
