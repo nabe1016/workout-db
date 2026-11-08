@@ -959,7 +959,7 @@
   </div>
 </div>
 
-{# ── 主導筋 EXP バランスバー ── #}
+{# ── 主導筋 EXP バランスバー（3セット試算） ── #}
 {% set _mc = {
   '大胸筋':'#ef5350','広背筋':'#42a5f5','三角筋':'#ab47bc',
   '大腿四頭筋':'#26c6da','ハムストリングス':'#26a69a','大臀筋':'#66bb6a',
@@ -967,24 +967,31 @@
   '腹直筋':'#f06292','腹斜筋':'#ec407a','脊柱起立筋':'#ff7043',
   'カーフ':'#81c784','その他':'#90a4ae'
 } %}
+{# 各種目の3セット試算EXP: weight × reps × 3 #}
+{% set _sess_reps = session.rep_count or 9 %}
 {% set _ns = namespace(total=0) %}
-{% for ex in exercises %}{% set _ns.total = _ns.total + (ex.exp_earned or 0) %}{% endfor %}
-{% if _ns.total > 0 %}
-{% set _muscles = exercises | map(attribute='primary_muscle') | list | unique | list %}
-{# 各筋肉のEXP集計 #}
 {% set _mdata = [] %}
+{% set _muscles = exercises | map(attribute='primary_muscle') | list | unique | list %}
 {% for m in _muscles %}
   {% set _ns2 = namespace(s=0) %}
   {% for ex in exercises %}
     {% if (ex.primary_muscle or 'その他') == (m or 'その他') %}
-      {% set _ns2.s = _ns2.s + (ex.exp_earned or 0) %}
+      {% set _w = ex.weight_low_load if ex.load_mode == 'low' else ex.weight_setting %}
+      {% set _w = _w or ex.weight_setting or ex.weight_low_load or 1 %}
+      {% set _r = ex.reps or _sess_reps %}
+      {% set _ns2.s = _ns2.s + (_w * _r * 3) | round | int %}
     {% endif %}
   {% endfor %}
-  {% if _ns2.s > 0 %}{% set _ = _mdata.append({'m': m or 'その他', 'e': _ns2.s}) %}{% endif %}
+  {% if _ns2.s > 0 %}
+    {% set _ = _mdata.append({'m': m or 'その他', 'e': _ns2.s}) %}
+    {% set _ns.total = _ns.total + _ns2.s %}
+  {% endif %}
 {% endfor %}
+{% if _ns.total > 0 %}
 <div class="mb-3 px-1" id="muscle-exp-bar">
   <div style="font-size:0.68rem;color:rgba(255,255,255,0.4);letter-spacing:0.05em;margin-bottom:0.35rem;">
-    主導筋バランス <span style="color:rgba(255,255,255,0.25);font-size:0.62rem;">総EXP {{ "{:,}".format(_ns.total|int) }}</span>
+    主導筋バランス
+    <span style="color:rgba(255,255,255,0.25);font-size:0.62rem;">3セット試算 総EXP {{ "{:,}".format(_ns.total|int) }}</span>
   </div>
   {# 積み上げ横棒 #}
   <div style="display:flex;height:1.4rem;border-radius:7px;overflow:hidden;gap:1px;background:rgba(255,255,255,0.06);">
