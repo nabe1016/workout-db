@@ -976,10 +976,11 @@
   </div>
 
   {# 1本の複合バー: 実施済(ソリッド) → 未実施(ハッチング) #}
-  <div style="display:flex;height:1.4rem;border-radius:7px;overflow:hidden;gap:1px;background:rgba(255,255,255,0.05);margin-bottom:0.5rem;">
+  <div id="meb-bar" style="display:flex;height:1.4rem;border-radius:7px;overflow:hidden;gap:1px;background:rgba(255,255,255,0.05);margin-bottom:0.5rem;">
     {% for d in _mdata_done %}
     {% set pct = (d.e / _grand_total * 100) | round(1) %}
-    <div style="width:{{ pct }}%;background:{{ _mc.get(d.m, '#90a4ae') }};min-width:{% if pct<2 %}3px{% else %}0{% endif %};"
+    <div class="meb-seg" data-muscle="{{ d.m }}"
+         style="width:{{ pct }}%;background:{{ _mc.get(d.m, '#90a4ae') }};min-width:{% if pct<2 %}3px{% else %}0{% endif %};transition:opacity 0.2s,filter 0.2s;"
          title="✅ {{ d.m }}: {{ pct }}% ({{ '{:,}'.format(d.e|int) }} EXP)"></div>
     {% endfor %}
     {# 境界線 #}
@@ -989,9 +990,10 @@
     {% for d in _mdata_proj %}
     {% set pct = (d.e / _grand_total * 100) | round(1) %}
     {% set clr = _mc.get(d.m, '#90a4ae') %}
-    <div style="width:{{ pct }}%;min-width:{% if pct<2 %}3px{% else %}0{% endif %};
+    <div class="meb-seg" data-muscle="{{ d.m }}"
+         style="width:{{ pct }}%;min-width:{% if pct<2 %}3px{% else %}0{% endif %};
                 background-image:repeating-linear-gradient(-45deg,{{ clr }} 0,{{ clr }} 3px,rgba(0,0,0,0.5) 3px,rgba(0,0,0,0.5) 6px);
-                background-color:{{ clr }};"
+                background-color:{{ clr }};transition:opacity 0.2s,filter 0.2s;"
          title="📋 {{ d.m }}: {{ pct }}% ({{ '{:,}'.format(d.e|int) }} EXP)"></div>
     {% endfor %}
   </div>
@@ -1029,18 +1031,34 @@
   };
   var popup = document.getElementById('meb-popup');
   var openMuscle = null;
+
+  function applyHighlight(active) {
+    // 凡例ボタン: 選択中→通常, 非選択→薄く
+    document.querySelectorAll('.meb-leg-btn').forEach(function(b) {
+      var isActive = (b.dataset.muscle === active);
+      b.style.opacity   = active ? (isActive ? '1' : '0.3') : '';
+      b.style.background = isActive ? 'rgba(255,255,255,0.12)' : '';
+      b.style.fontWeight = isActive ? '700' : '';
+    });
+    // バーセグメント: 選択中→通常, 非選択→薄く＋blur
+    document.querySelectorAll('.meb-seg').forEach(function(seg) {
+      var isActive = (seg.dataset.muscle === active);
+      seg.style.opacity = active ? (isActive ? '1' : '0.2') : '';
+      seg.style.filter  = active ? (isActive ? 'brightness(1.25)' : 'grayscale(0.5)') : '';
+    });
+  }
+
   document.querySelectorAll('.meb-leg-btn').forEach(function(btn) {
     btn.addEventListener('click', function() {
       var m = btn.dataset.muscle;
       if (openMuscle === m) {
         popup.style.display = 'none';
         openMuscle = null;
-        btn.style.background = '';
+        applyHighlight(null);
         return;
       }
-      document.querySelectorAll('.meb-leg-btn').forEach(function(b){ b.style.background=''; });
-      btn.style.background = 'rgba(255,255,255,0.1)';
       openMuscle = m;
+      applyHighlight(m);
       var exs = exData[m] || [];
       popup.innerHTML = '<div style="font-size:0.62rem;color:rgba(255,255,255,0.4);margin-bottom:0.3rem;font-weight:700;letter-spacing:0.06em;">' + m + '</div>'
         + exs.map(function(e){
