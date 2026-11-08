@@ -1092,7 +1092,11 @@ window._mebExList = [
         doneByM[m] = (doneByM[m] || 0) + (ex.expEarned || 0);
       } else if (!ex.skipped) {
         var w = ex.loadMode === 'low' ? (ex.weightLow || ex.weightHigh || 1) : (ex.weightHigh || ex.weightLow || 1);
-        projByM[m] = (projByM[m] || 0) + Math.round(w * (ex.reps || sessReps) * 3);
+        var proj3 = Math.round(w * (ex.reps || sessReps) * 3);
+        var donePart = ex.expEarned || 0;
+        var projPart = Math.max(0, proj3 - donePart);
+        if (donePart > 0) doneByM[m] = (doneByM[m] || 0) + donePart;
+        if (projPart > 0) projByM[m] = (projByM[m] || 0) + projPart;
       }
     });
 
@@ -1465,6 +1469,10 @@ window._mebExList = [
           if (expEl) expEl.textContent = data.exp_earned.toLocaleString() + ' EXP';
           var totalEl = document.getElementById('total-exp');
           if (totalEl) totalEl.textContent = data.session_total_exp.toLocaleString();
+          // 筋肉バー更新（セット完了分をdone側に即反映）
+          var _mex = (window._mebExList||[]).find(function(e){return e.id===parseInt(seId,10);});
+          if (_mex) _mex.expEarned = data.exp_earned || 0;
+          if (window.rebuildMuscleBar) window.rebuildMuscleBar();
 
           if (data.category_exp) {
             Object.keys(data.category_exp).forEach(function(cat) {
