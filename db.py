@@ -173,7 +173,8 @@ def get_session_with_exercises(session_id: int):
                       FROM session_exercises se_m
                       WHERE se_m.exercise_id = se.exercise_id
                         AND se_m.one_rep_max IS NOT NULL)
-                   ) AS max_orm
+                   ) AS max_orm,
+                   COALESCE(se.unilateral_type, ex.unilateral_type) AS unilateral_type
             FROM session_exercises se
             JOIN exercises ex ON ex.id = se.exercise_id
             WHERE se.session_id = %s
