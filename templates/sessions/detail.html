@@ -918,7 +918,7 @@
 </template>
 {% endfor %}
 
-{# ── 主導筋 EXP バランスバー（3セット試算） ── #}
+{# ── 主導筋 EXP バランスバー ── #}
 {% set _mc = {
   '大胸筋':'#ef5350','広背筋':'#42a5f5','三角筋':'#ab47bc',
   '大腿四頭筋':'#26c6da','ハムストリングス':'#26a69a','大臀筋':'#66bb6a',
@@ -927,48 +927,138 @@
   'カーフ':'#81c784','その他':'#90a4ae'
 } %}
 {% set _sess_reps = session.rep_count or 9 %}
-{% set _ns = namespace(total=0) %}
-{% set _mdata = [] %}
-{% set _muscles = exercises | map(attribute='primary_muscle') | list | unique | list %}
-{% for m in _muscles %}
+{% set _done_exs = exercises | selectattr('completed', 'equalto', True) | list %}
+{% set _pend_exs = exercises | rejectattr('completed', 'equalto', True) | rejectattr('skipped', 'equalto', True) | list %}
+{% set _all_muscles = exercises | map(attribute='primary_muscle') | list | unique | list %}
+
+{# 実施済み: actual exp_earned #}
+{% set _ns_done = namespace(total=0) %}
+{% set _mdata_done = [] %}
+{% for m in _all_muscles %}
   {% set _ns2 = namespace(s=0) %}
-  {% for ex in exercises %}
+  {% for ex in _done_exs %}{% if (ex.primary_muscle or 'その他') == (m or 'その他') %}{% set _ns2.s = _ns2.s + (ex.exp_earned or 0) %}{% endif %}{% endfor %}
+  {% if _ns2.s > 0 %}{% set _ = _mdata_done.append({'m': m or 'その他', 'e': _ns2.s}) %}{% set _ns_done.total = _ns_done.total + _ns2.s %}{% endif %}
+{% endfor %}
+
+{# 試算: weight × reps × 3 for pending #}
+{% set _ns_proj = namespace(total=0) %}
+{% set _mdata_proj = [] %}
+{% for m in _all_muscles %}
+  {% set _ns2 = namespace(s=0) %}
+  {% for ex in _pend_exs %}
     {% if (ex.primary_muscle or 'その他') == (m or 'その他') %}
       {% set _w = ex.weight_low_load if ex.load_mode == 'low' else ex.weight_setting %}
       {% set _w = _w or ex.weight_setting or ex.weight_low_load or 1 %}
-      {% set _r = ex.reps or _sess_reps %}
-      {% set _ns2.s = _ns2.s + (_w * _r * 3) | round | int %}
+      {% set _ns2.s = _ns2.s + (_w * (ex.reps or _sess_reps) * 3) | round | int %}
     {% endif %}
   {% endfor %}
-  {% if _ns2.s > 0 %}
-    {% set _ = _mdata.append({'m': m or 'その他', 'e': _ns2.s}) %}
-    {% set _ns.total = _ns.total + _ns2.s %}
-  {% endif %}
+  {% if _ns2.s > 0 %}{% set _ = _mdata_proj.append({'m': m or 'その他', 'e': _ns2.s}) %}{% set _ns_proj.total = _ns_proj.total + _ns2.s %}{% endif %}
 {% endfor %}
-{% if _ns.total > 0 %}
+
+{# 凡例用: 全筋肉と色を収集 #}
+{% set _legend_muscles = [] %}
+{% for m in _all_muscles %}
+  {% set _ns2 = namespace(done=0, proj=0) %}
+  {% for d in _mdata_done %}{% if d.m == (m or 'その他') %}{% set _ns2.done = d.e %}{% endif %}{% endfor %}
+  {% for d in _mdata_proj %}{% if d.m == (m or 'その他') %}{% set _ns2.proj = d.e %}{% endif %}{% endfor %}
+  {% if _ns2.done > 0 or _ns2.proj > 0 %}{% set _ = _legend_muscles.append(m or 'その他') %}{% endif %}
+{% endfor %}
+
+{# 各筋肉の種目リストをJSへ渡す #}
+{% if _legend_muscles %}
 <div class="mb-3 px-1" id="muscle-exp-bar">
-  <div style="font-size:0.68rem;color:rgba(255,255,255,0.4);letter-spacing:0.05em;margin-bottom:0.35rem;">
-    主導筋バランス
-    <span style="color:rgba(255,255,255,0.25);font-size:0.62rem;">3セット試算 総EXP {{ "{:,}".format(_ns.total|int) }}</span>
+  <div style="font-size:0.68rem;color:rgba(255,255,255,0.4);letter-spacing:0.05em;margin-bottom:0.5rem;">主導筋バランス</div>
+
+  {# 実施済みバー #}
+  {% if _ns_done.total > 0 %}
+  <div style="display:flex;align-items:center;gap:0.4rem;margin-bottom:0.3rem;">
+    <span style="font-size:0.6rem;color:rgba(255,255,255,0.35);white-space:nowrap;width:3.5rem;text-align:right;">✅ 実施済</span>
+    <div style="flex:1;display:flex;height:1.3rem;border-radius:6px;overflow:hidden;gap:1px;background:rgba(255,255,255,0.05);">
+      {% for d in _mdata_done %}
+      {% set pct = (d.e / _ns_done.total * 100) | round(1) %}
+      <div style="width:{{ pct }}%;background:{{ _mc.get(d.m, '#90a4ae') }};min-width:{% if pct<3 %}3px{% else %}0{% endif %};"
+           title="{{ d.m }}: {{ pct }}%"></div>
+      {% endfor %}
+    </div>
+    <span style="font-size:0.6rem;color:rgba(255,255,255,0.25);white-space:nowrap;">{{ "{:,}".format(_ns_done.total|int) }}</span>
   </div>
-  <div style="display:flex;height:1.4rem;border-radius:7px;overflow:hidden;gap:1px;background:rgba(255,255,255,0.06);">
-    {% for d in _mdata %}
-    {% set pct = (d.e / _ns.total * 100) | round(1) %}
-    <div style="width:{{ pct }}%;background:{{ _mc.get(d.m, '#90a4ae') }};
-                min-width:{% if pct < 3 %}0.25rem{% else %}0{% endif %};"
-         title="{{ d.m }}: {{ pct }}% ({{ '{:,}'.format(d.e|int) }} EXP)"></div>
+  {% endif %}
+
+  {# 試算バー (ハッチング) #}
+  {% if _ns_proj.total > 0 %}
+  <div style="display:flex;align-items:center;gap:0.4rem;margin-bottom:0.5rem;">
+    <span style="font-size:0.6rem;color:rgba(255,255,255,0.35);white-space:nowrap;width:3.5rem;text-align:right;">📋 試算</span>
+    <div style="flex:1;display:flex;height:1.3rem;border-radius:6px;overflow:hidden;gap:1px;background:rgba(255,255,255,0.05);">
+      {% for d in _mdata_proj %}
+      {% set pct = (d.e / _ns_proj.total * 100) | round(1) %}
+      {% set clr = _mc.get(d.m, '#90a4ae') %}
+      <div style="width:{{ pct }}%;min-width:{% if pct<3 %}3px{% else %}0{% endif %};
+                  background-image:repeating-linear-gradient(-45deg,{{ clr }} 0,{{ clr }} 3px,rgba(0,0,0,0.45) 3px,rgba(0,0,0,0.45) 6px);
+                  background-color:{{ clr }};"
+           title="{{ d.m }}: {{ pct }}%"></div>
+      {% endfor %}
+    </div>
+    <span style="font-size:0.6rem;color:rgba(255,255,255,0.25);white-space:nowrap;">{{ "{:,}".format(_ns_proj.total|int) }}</span>
+  </div>
+  {% endif %}
+
+  {# 凡例（タップで種目ポップアップ） #}
+  <div style="display:flex;flex-wrap:wrap;gap:0.3rem 0.5rem;" id="meb-legend">
+    {% for m in _legend_muscles %}
+    <button type="button" class="meb-leg-btn"
+            data-muscle="{{ m }}"
+            style="display:flex;align-items:center;gap:0.22rem;font-size:0.65rem;
+                   color:rgba(255,255,255,0.7);background:none;border:none;padding:0.1rem 0.3rem;
+                   border-radius:4px;cursor:pointer;">
+      <span style="width:0.55rem;height:0.55rem;border-radius:2px;background:{{ _mc.get(m, '#90a4ae') }};flex-shrink:0;"></span>
+      <span>{{ m }}</span>
+    </button>
     {% endfor %}
   </div>
-  <div style="display:flex;flex-wrap:wrap;gap:0.3rem 0.6rem;margin-top:0.4rem;">
-    {% for d in _mdata %}
-    {% set pct = (d.e / _ns.total * 100) | round(1) %}
-    <span style="display:flex;align-items:center;gap:0.25rem;font-size:0.65rem;color:rgba(255,255,255,0.65);">
-      <span style="width:0.55rem;height:0.55rem;border-radius:2px;background:{{ _mc.get(d.m, '#90a4ae') }};flex-shrink:0;"></span>
-      {{ d.m }} <span style="color:{{ _mc.get(d.m, '#90a4ae') }};font-weight:700;">{{ pct }}%</span>
-    </span>
-    {% endfor %}
-  </div>
+
+  {# 種目ポップアップ（JS で開閉） #}
+  <div id="meb-popup" style="display:none;margin-top:0.4rem;padding:0.5rem 0.7rem;
+       border-radius:8px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);
+       font-size:0.75rem;"></div>
 </div>
+
+<script>
+(function(){
+  var exData = {
+    {% for m in _legend_muscles %}
+    {{ m | tojson }}: [
+      {% for ex in exercises %}{% if (ex.primary_muscle or 'その他') == m %}
+      { name: {{ ex.exercise_name | tojson }}, done: {{ 'true' if ex.completed else 'false' }}, skipped: {{ 'true' if ex.skipped else 'false' }} },
+      {% endif %}{% endfor %}
+    ],
+    {% endfor %}
+  };
+  var popup = document.getElementById('meb-popup');
+  var openMuscle = null;
+  document.querySelectorAll('.meb-leg-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var m = btn.dataset.muscle;
+      if (openMuscle === m) {
+        popup.style.display = 'none';
+        openMuscle = null;
+        btn.style.background = '';
+        return;
+      }
+      document.querySelectorAll('.meb-leg-btn').forEach(function(b){ b.style.background=''; });
+      btn.style.background = 'rgba(255,255,255,0.1)';
+      openMuscle = m;
+      var exs = exData[m] || [];
+      popup.innerHTML = '<div style="font-size:0.62rem;color:rgba(255,255,255,0.4);margin-bottom:0.3rem;font-weight:700;letter-spacing:0.06em;">' + m + '</div>'
+        + exs.map(function(e){
+          var icon = e.done ? '✅' : (e.skipped ? '⏭' : '⬜');
+          return '<div style="padding:0.15rem 0;color:rgba(255,255,255,' + (e.done||e.skipped?'0.45':'0.85') + ');">' + icon + ' ' + e.name + '</div>';
+        }).join('');
+      popup.style.display = 'block';
+      popup.scrollIntoView({behavior:'smooth', block:'nearest'});
+    });
+  });
+})();
+</script>
 {% endif %}
 
 {# ── COMPLETED SECTION ── #}
