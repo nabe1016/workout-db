@@ -1037,8 +1037,8 @@
     // 凡例ボタン: 選択中→通常, 非選択→薄く
     document.querySelectorAll('.meb-leg-btn').forEach(function(b) {
       var isActive = (b.dataset.muscle === active);
-      b.style.opacity   = active ? (isActive ? '1' : '0.3') : '';
-      b.style.background = isActive ? 'rgba(255,255,255,0.12)' : '';
+      b.style.opacity    = active ? (isActive ? '1' : '0.3') : '1';
+      b.style.background = isActive ? 'rgba(255,255,255,0.12)' : 'none';
       b.style.fontWeight = isActive ? '700' : '';
     });
     // バーセグメント: 選択中→通常, 非選択→薄く＋blur
