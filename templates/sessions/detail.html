@@ -315,7 +315,15 @@
 <div id="carousel-area" class="mb-3">
   {# Counter + label #}
   <div class="d-flex justify-content-between align-items-center mb-1 px-1">
-    <span style="font-size:0.65rem;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:var(--txt-2);">未実施メニュー</span>
+    <div class="d-flex align-items-center gap-2">
+      <span style="font-size:0.65rem;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:var(--txt-2);">未実施メニュー</span>
+      {% if pending_exs|length > 1 %}
+      <button type="button" id="open-reorder-btn"
+              style="font-size:0.6rem;padding:0.1rem 0.5rem;border-radius:12px;
+                     background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);
+                     color:rgba(255,255,255,0.55);cursor:pointer;">↕ 並び替え</button>
+      {% endif %}
+    </div>
     <span id="carousel-counter"
           style="font-size:0.88rem;font-weight:800;color:var(--yellow);">{{ pending_exs|length }}/{{ exercises|length }}</span>
   </div>
@@ -2553,4 +2561,139 @@ window._mebExList = [
     </div>
   </div>
 </div>
+
+{# ── 並び替えオーバーレイ ── #}
+<div id="reorder-overlay"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:1060;
+            overflow-y:auto;-webkit-overflow-scrolling:touch;">
+  <div style="max-width:520px;margin:2rem auto;padding:0 0.75rem 2rem;">
+    <div style="background:#1e1e1e;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,0.1);">
+      <div style="display:flex;align-items:center;justify-content:space-between;
+                  padding:0.75rem 1rem;border-bottom:1px solid rgba(255,255,255,0.08);">
+        <span style="font-size:0.85rem;font-weight:700;color:rgba(255,255,255,0.85);">↕ メニュー並び替え</span>
+        <button type="button" id="reorder-cancel-btn"
+                style="background:none;border:none;color:rgba(255,255,255,0.4);font-size:1.1rem;
+                       cursor:pointer;padding:0.1rem 0.3rem;line-height:1;">✕</button>
+      </div>
+      <div id="reorder-list" style="padding:0.5rem 0;"></div>
+      <div style="display:flex;gap:0.5rem;padding:0.75rem 1rem;
+                  border-top:1px solid rgba(255,255,255,0.08);">
+        <button type="button" id="reorder-cancel-btn2"
+                style="flex:1;padding:0.5rem;border-radius:8px;
+                       background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);
+                       color:rgba(255,255,255,0.6);font-size:0.8rem;cursor:pointer;">キャンセル</button>
+        <button type="button" id="reorder-confirm-btn"
+                style="flex:2;padding:0.5rem;border-radius:8px;
+                       background:#f9a825;border:none;
+                       color:#000;font-size:0.8rem;font-weight:700;cursor:pointer;">✓ 確定</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var overlay    = document.getElementById('reorder-overlay');
+  var listEl     = document.getElementById('reorder-list');
+  var openBtn    = document.getElementById('open-reorder-btn');
+  var cancelBtns = [document.getElementById('reorder-cancel-btn'), document.getElementById('reorder-cancel-btn2')];
+  var confirmBtn = document.getElementById('reorder-confirm-btn');
+  if (!overlay || !openBtn) return;
+
+  var reorderItems = [];
+
+  function buildList() {
+    reorderItems = [];
+    document.querySelectorAll('.carousel-slide').forEach(function(slide) {
+      var seId = slide.dataset.seId;
+      var card = slide.querySelector('.card[data-primary-muscle]');
+      var muscle = card ? (card.dataset.primaryMuscle || '') : '';
+      var nameEl = slide.querySelector('a.fw-bold');
+      var name = nameEl ? nameEl.textContent.trim() : '';
+      reorderItems.push({seId: seId, name: name, muscle: muscle});
+    });
+    renderList();
+  }
+
+  function renderList() {
+    listEl.innerHTML = '';
+    var n = reorderItems.length;
+    reorderItems.forEach(function(item, idx) {
+      var row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:0.4rem;padding:0.5rem 1rem;'
+        + (idx % 2 ? 'background:rgba(255,255,255,0.03);' : '');
+
+      var upBtn = document.createElement('button');
+      upBtn.type = 'button'; upBtn.textContent = '↑'; upBtn.disabled = idx === 0;
+      upBtn.style.cssText = 'width:1.8rem;height:1.8rem;border-radius:6px;border:1px solid rgba(255,255,255,0.2);'
+        + 'background:rgba(255,255,255,0.07);color:rgba(255,255,255,' + (idx===0?'0.2':'0.75') + ');'
+        + 'font-size:0.9rem;cursor:' + (idx===0?'default':'pointer') + ';flex-shrink:0;line-height:1;';
+      upBtn.onclick = function(){ moveItem(idx, -1); };
+
+      var downBtn = document.createElement('button');
+      downBtn.type = 'button'; downBtn.textContent = '↓'; downBtn.disabled = idx === n - 1;
+      downBtn.style.cssText = 'width:1.8rem;height:1.8rem;border-radius:6px;border:1px solid rgba(255,255,255,0.2);'
+        + 'background:rgba(255,255,255,0.07);color:rgba(255,255,255,' + (idx===n-1?'0.2':'0.75') + ');'
+        + 'font-size:0.9rem;cursor:' + (idx===n-1?'default':'pointer') + ';flex-shrink:0;line-height:1;';
+      downBtn.onclick = function(){ moveItem(idx, 1); };
+
+      var numEl = document.createElement('span');
+      numEl.textContent = (idx + 1) + '.';
+      numEl.style.cssText = 'font-size:0.65rem;color:rgba(255,255,255,0.3);min-width:1.3rem;text-align:right;flex-shrink:0;';
+
+      var nameEl2 = document.createElement('span');
+      nameEl2.textContent = item.name;
+      nameEl2.style.cssText = 'font-size:0.82rem;font-weight:600;color:rgba(255,255,255,0.85);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+
+      var muscleEl = document.createElement('span');
+      muscleEl.textContent = item.muscle;
+      muscleEl.style.cssText = 'font-size:0.65rem;color:rgba(255,255,255,0.35);flex-shrink:0;';
+
+      row.appendChild(upBtn); row.appendChild(downBtn); row.appendChild(numEl);
+      row.appendChild(nameEl2); row.appendChild(muscleEl);
+      listEl.appendChild(row);
+    });
+  }
+
+  function moveItem(idx, dir) {
+    var j = idx + dir;
+    if (j < 0 || j >= reorderItems.length) return;
+    var tmp = reorderItems[idx]; reorderItems[idx] = reorderItems[j]; reorderItems[j] = tmp;
+    renderList();
+  }
+
+  function openOverlay() { buildList(); overlay.style.display = ''; document.body.style.overflow = 'hidden'; }
+  function closeOverlay() { overlay.style.display = 'none'; document.body.style.overflow = ''; }
+
+  openBtn.addEventListener('click', openOverlay);
+  cancelBtns.forEach(function(b){ if (b) b.addEventListener('click', closeOverlay); });
+  overlay.addEventListener('click', function(e){ if (e.target === overlay) closeOverlay(); });
+
+  confirmBtn.addEventListener('click', function() {
+    confirmBtn.disabled = true; confirmBtn.textContent = '…';
+    var seIds = reorderItems.map(function(item){ return parseInt(item.seId, 10); });
+    fetch('/api/sessions/{{ session.id }}/reorder', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({se_ids: seIds})
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+      if (data.ok) {
+        var track = document.getElementById('carousel-track');
+        var dots  = document.getElementById('carousel-dots');
+        seIds.forEach(function(seId) {
+          var slide = document.getElementById('slide-' + seId);
+          if (slide && track) track.appendChild(slide);
+          var dot = dots ? dots.querySelector('.c-dot[data-se-id="' + seId + '"]') : null;
+          if (dot) dots.appendChild(dot);
+        });
+        if (track) track.scrollTo({left: 0, behavior: 'smooth'});
+        closeOverlay();
+      }
+      confirmBtn.disabled = false; confirmBtn.textContent = '✓ 確定';
+    })
+    .catch(function(){ confirmBtn.disabled = false; confirmBtn.textContent = '✓ 確定'; });
+  });
+})();
+</script>
 {% endblock %}

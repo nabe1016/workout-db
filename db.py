@@ -345,6 +345,16 @@ def bulk_delete_session_exercises(session_id: int, se_ids: list) -> None:
     recalculate_session_exp(session_id)
 
 
+def reorder_session_exercises(se_id_list: list) -> None:
+    with _conn() as conn:
+        cur = conn.cursor()
+        for idx, se_id in enumerate(se_id_list, 1):
+            cur.execute(
+                "UPDATE session_exercises SET sort_order = %s WHERE id = %s",
+                (idx, se_id)
+            )
+
+
 def toggle_skip_exercise(se_id: int) -> dict:
     with _conn() as conn:
         cur = conn.cursor()

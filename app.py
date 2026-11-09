@@ -772,6 +772,16 @@ def api_toggle_complete(se_id):
     return jsonify(result)
 
 
+@app.route("/api/sessions/<int:session_id>/reorder", methods=["POST"])
+def api_reorder_session_exercises(session_id):
+    data = request.get_json(force=True) or {}
+    se_ids = data.get("se_ids", [])
+    if not se_ids:
+        return jsonify({"error": "no se_ids"}), 400
+    db.reorder_session_exercises(se_ids)
+    return jsonify({"ok": True})
+
+
 @app.route("/api/se/<int:se_id>/quick-edit", methods=["POST"])
 def api_quick_edit_se(se_id):
     data = request.get_json(force=True) or {}
