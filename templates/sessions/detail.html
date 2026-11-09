@@ -2672,27 +2672,31 @@ window._mebExList = [
   confirmBtn.addEventListener('click', function() {
     confirmBtn.disabled = true; confirmBtn.textContent = '…';
     var seIds = reorderItems.map(function(item){ return parseInt(item.seId, 10); });
+    if (!seIds.length || seIds.some(isNaN)) {
+      confirmBtn.disabled = false; confirmBtn.textContent = '✓ 確定';
+      alert('並び替えリストが空です。一度閉じて再度開いてください。');
+      return;
+    }
     fetch('/api/sessions/{{ session.id }}/reorder', {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({se_ids: seIds})
     })
-    .then(function(r){ return r.json(); })
+    .then(function(r){
+      if (!r.ok) return r.text().then(function(t){ throw new Error(r.status + ': ' + t); });
+      return r.json();
+    })
     .then(function(data) {
       if (data.ok) {
-        var track = document.getElementById('carousel-track');
-        var dots  = document.getElementById('carousel-dots');
-        seIds.forEach(function(seId) {
-          var slide = document.getElementById('slide-' + seId);
-          if (slide && track) track.appendChild(slide);
-          var dot = dots ? dots.querySelector('.c-dot[data-se-id="' + seId + '"]') : null;
-          if (dot) dots.appendChild(dot);
-        });
-        if (track) track.scrollTo({left: 0, behavior: 'smooth'});
-        closeOverlay();
+        location.reload();
+      } else {
+        confirmBtn.disabled = false; confirmBtn.textContent = '✓ 確定';
+        alert('保存に失敗しました: ' + JSON.stringify(data));
       }
-      confirmBtn.disabled = false; confirmBtn.textContent = '✓ 確定';
     })
-    .catch(function(){ confirmBtn.disabled = false; confirmBtn.textContent = '✓ 確定'; });
+    .catch(function(err){
+      confirmBtn.disabled = false; confirmBtn.textContent = '✓ 確定';
+      alert('エラー: ' + err.message);
+    });
   });
 })();
 </script>

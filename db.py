@@ -1154,6 +1154,7 @@ def reorder_session_exercises(session_id: int, ordered_ids: list) -> None:
                 "UPDATE session_exercises SET sort_order=%s WHERE id=%s AND session_id=%s",
                 (i, se_id, session_id)
             )
+        conn.commit()
 
 
 def copy_session_to_my_set(session_id: int, my_set_id: int) -> int:
