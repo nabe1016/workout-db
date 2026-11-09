@@ -778,7 +778,7 @@ def api_reorder_session_exercises(session_id):
     se_ids = data.get("se_ids", [])
     if not se_ids:
         return jsonify({"error": "no se_ids"}), 400
-    db.reorder_session_exercises(se_ids)
+    db.reorder_session_exercises(session_id, [int(i) for i in se_ids])
     return jsonify({"ok": True})
 
 
