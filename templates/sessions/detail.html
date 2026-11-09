@@ -968,9 +968,10 @@
 {% set _grand_total = _ns_done.total + _ns_proj.total %}
 {% if _legend_muscles %}
 <div class="mb-3 px-1" id="muscle-exp-bar">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.4rem;">
-    <span style="font-size:0.68rem;color:rgba(255,255,255,0.4);letter-spacing:0.05em;">主導筋バランス</span>
-    <span class="meb-summary" style="font-size:0.6rem;color:rgba(255,255,255,0.22);">{% if _ns_done.total > 0 %}✅ {{ "{:,}".format(_ns_done.total|int) }}{% endif %}{% if _ns_proj.total > 0 %}{% if _ns_done.total > 0 %} ＋ {% endif %}📋{{ "{:,}".format(_ns_proj.total|int) }}{% endif %}</span>
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:0.5rem;margin-bottom:0.4rem;">
+    <span style="font-size:0.68rem;color:rgba(255,255,255,0.4);letter-spacing:0.05em;white-space:nowrap;padding-top:0.05rem;">主導筋バランス</span>
+    <span id="meb-ex-names" style="display:none;font-size:0.65rem;line-height:1.6;color:rgba(255,255,255,0.75);flex:1;text-align:left;"></span>
+    <span class="meb-summary" style="font-size:0.6rem;color:rgba(255,255,255,0.22);white-space:nowrap;flex-shrink:0;padding-top:0.05rem;">{% if _ns_done.total > 0 %}✅ {{ "{:,}".format(_ns_done.total|int) }}{% endif %}{% if _ns_proj.total > 0 %}{% if _ns_done.total > 0 %} ＋ {% endif %}📋{{ "{:,}".format(_ns_proj.total|int) }}{% endif %}</span>
   </div>
 
   {# 1本の複合バー: 実施済(ソリッド) → 未実施(ハッチング) #}
@@ -996,7 +997,7 @@
     {% endfor %}
   </div>
 
-  {# 凡例（タップで種目ポップアップ） #}
+  {# 凡例（タップでラベル横に種目名表示） #}
   <div style="display:flex;flex-wrap:wrap;gap:0.3rem 0.5rem;" id="meb-legend">
     {% for m in _legend_muscles %}
     <button type="button" class="meb-leg-btn"
@@ -1010,10 +1011,6 @@
     {% endfor %}
   </div>
 
-  {# 種目ポップアップ（JS で開閉） #}
-  <div id="meb-popup" style="display:none;margin-top:0.4rem;padding:0.5rem 0.7rem;
-       border-radius:8px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);
-       font-size:0.75rem;"></div>
 </div>
 
 <script>
@@ -1048,7 +1045,7 @@ window._mebExList = [
     ],
     {% endfor %}
   };
-  var popup = document.getElementById('meb-popup');
+  var exNamesEl = document.getElementById('meb-ex-names');
   var openMuscle = null;
 
   function _esc(s) {
@@ -1138,28 +1135,32 @@ window._mebExList = [
       summaryEl.textContent = txt;
     }
 
-    if (openMuscle) applyHighlight(openMuscle);
+    if (openMuscle) { applyHighlight(openMuscle); showExNames(openMuscle); }
   };
+
+  function showExNames(m) {
+    if (!exNamesEl) return;
+    if (!m) { exNamesEl.style.display = 'none'; exNamesEl.innerHTML = ''; return; }
+    var exs = exData[m] || [];
+    exNamesEl.innerHTML = exs.map(function(e) {
+      var icon = e.done ? '✅' : (e.skipped ? '⏭' : '⬜');
+      return icon + ' ' + e.name;
+    }).join('<br>');
+    exNamesEl.style.display = '';
+  }
 
   document.querySelectorAll('.meb-leg-btn').forEach(function(btn) {
     btn.addEventListener('click', function() {
       var m = btn.dataset.muscle;
       if (openMuscle === m) {
-        popup.style.display = 'none';
         openMuscle = null;
         applyHighlight(null);
+        showExNames(null);
         return;
       }
       openMuscle = m;
       applyHighlight(m);
-      var exs = exData[m] || [];
-      popup.innerHTML = '<div style="font-size:0.62rem;color:rgba(255,255,255,0.4);margin-bottom:0.3rem;font-weight:700;letter-spacing:0.06em;">' + m + '</div>'
-        + exs.map(function(e){
-          var icon = e.done ? '✅' : (e.skipped ? '⏭' : '⬜');
-          return '<div style="padding:0.15rem 0;color:rgba(255,255,255,' + (e.done||e.skipped?'0.45':'0.85') + ');">' + icon + ' ' + e.name + '</div>';
-        }).join('');
-      popup.style.display = 'block';
-      popup.scrollIntoView({behavior:'smooth', block:'nearest'});
+      showExNames(m);
     });
   });
 })();
