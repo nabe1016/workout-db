@@ -588,6 +588,31 @@
                     <span style="font-size:0.58rem;padding:0.05rem 0.25rem;border-radius:3px;background:rgba(255,120,0,0.18);border:1px solid rgba(255,120,0,0.35);color:#ff9944;">1RM未設定</span>
                     {% endif %}
                   </div>
+                  {% if ex.bar_weight %}
+                  {% set _bw = ex.bar_weight|float %}
+                  {% set _total_w = ((ex.weight_low_load or 0) if mode == 'low' else (ex.weight_setting or 0))|float %}
+                  <div class="d-flex align-items-center" style="gap:0.4rem;">
+                    <span class="text-secondary" style="width:2.8em;flex-shrink:0;font-size:0.68rem;">バー</span>
+                    <span style="display:flex;align-items:center;gap:0.3rem;">
+                      <select class="bar-weight-select"
+                              data-se-id="{{ ex.id }}"
+                              data-weight-high="{{ ex.weight_setting or 0 }}"
+                              data-weight-low="{{ ex.weight_low_load or 0 }}"
+                              data-mode="{{ mode }}"
+                              style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);
+                                     border-radius:4px;color:rgba(255,255,255,0.75);font-size:0.68rem;
+                                     padding:0.1rem 0.3rem;cursor:pointer;outline:none;">
+                        {% for bw_opt in [8, 10, 11, 12.5, 15, 20] %}
+                        <option value="{{ bw_opt }}" {% if _bw == bw_opt %}selected{% endif %}>{{ bw_opt }}kg</option>
+                        {% endfor %}
+                      </select>
+                      <span id="plate-side-{{ ex.id }}" class="text-secondary" style="font-size:0.65rem;">
+                        {% set _plate_per_side = ((_total_w - _bw) / 2)|round(1) %}
+                        {% if _plate_per_side > 0 %}/ 片側 {{ _plate_per_side }}kg{% endif %}
+                      </span>
+                    </span>
+                  </div>
+                  {% endif %}
                   <div class="d-flex">
                     <span class="text-secondary" style="width:2.8em;flex-shrink:0;">rep</span>
                     <span id="rep-val-{{ ex.id }}">: <strong class="text-light">{% if mode == 'low' %}{{ ex.reps_low or 20 }}{% else %}{{ ex.reps or 8 }}{% endif %}</strong></span>
@@ -1906,6 +1931,20 @@ window._mebExList = [
                       + '<span class="text-secondary" style="font-size:0.65rem;"> (80%)</span>';
       }
     }
+    // Update bar weight plate display when mode or weight changes
+    var barSel = card ? card.querySelector('.bar-weight-select') : null;
+    if (barSel) {
+      if (data.weight_setting != null) barSel.dataset.weightHigh = data.weight_setting;
+      if (data.weight_low_load != null) barSel.dataset.weightLow = data.weight_low_load;
+      barSel.dataset.mode = isLow ? 'low' : 'high';
+      var _bwVal = parseFloat(barSel.value);
+      var _totalW = parseFloat(isLow ? barSel.dataset.weightLow : barSel.dataset.weightHigh) || 0;
+      var plateSideEl = document.getElementById('plate-side-' + seId);
+      if (plateSideEl) {
+        var _perSide = (_totalW - _bwVal) / 2;
+        plateSideEl.textContent = _perSide > 0 ? '/ 片側 ' + _perSide.toFixed(1) + 'kg' : '';
+      }
+    }
 
     if (data.bench_angle !== undefined) {
       var baEl = document.getElementById('bench-angle-val-' + seId);
@@ -2014,6 +2053,26 @@ window._mebExList = [
       }
     }
   }
+
+  // ── Bar weight select ────────────────────────────────────────────────────
+  document.querySelectorAll('.bar-weight-select').forEach(function(sel) {
+    sel.addEventListener('change', function() {
+      var seId = sel.dataset.seId;
+      var bw = parseFloat(sel.value);
+      var mode = sel.dataset.mode;
+      var totalW = parseFloat(mode === 'low' ? sel.dataset.weightLow : sel.dataset.weightHigh) || 0;
+      var plateSideEl = document.getElementById('plate-side-' + seId);
+      if (plateSideEl) {
+        var perSide = (totalW - bw) / 2;
+        plateSideEl.textContent = perSide > 0 ? '/ 片側 ' + perSide.toFixed(1) + 'kg' : '';
+      }
+      fetch('/api/se/' + seId + '/bar-weight', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({bar_weight: bw})
+      });
+    });
+  });
 
   document.querySelectorAll('.load-mode-btn').forEach(function(btn) {
     btn.addEventListener('click', function() {

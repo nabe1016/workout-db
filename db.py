@@ -90,6 +90,9 @@ def ensure_schema():
         "ALTER TABLE exercises ADD COLUMN IF NOT EXISTS unilateral_type TEXT",
         "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS unilateral_type TEXT",
         "UPDATE exercises SET unilateral_type = 'foot' WHERE name IN ('ブルガリアンスクワット', 'パロフプレス') AND unilateral_type IS NULL",
+        # bar weight for barbell exercises
+        "ALTER TABLE session_exercises ADD COLUMN IF NOT EXISTS bar_weight FLOAT",
+        "UPDATE session_exercises se SET bar_weight = 11 FROM exercises ex WHERE se.exercise_id = ex.id AND ex.name LIKE '%バーベル%' AND se.bar_weight IS NULL",
     ]
     with _conn() as conn:
         cur = conn.cursor()
@@ -262,7 +265,7 @@ def _next_sort_order(cur, session_id: int) -> int:
 def create_session_exercise(session_id, exercise_id, one_rep_max,
                              weight_setting, weight_low_load, reps,
                              set1, set2, set3, exp_earned, muscle_groups,
-                             unilateral_type=None) -> int:
+                             unilateral_type=None, bar_weight=None) -> int:
     weight_pct80 = round(float(one_rep_max) * 0.8, 1) if one_rep_max else None
     if not weight_low_load and one_rep_max:
         weight_low_load = round(float(one_rep_max) * 0.30, 1)
@@ -270,26 +273,33 @@ def create_session_exercise(session_id, exercise_id, one_rep_max,
                  if weight_setting and one_rep_max else None)
     with _conn() as conn:
         cur = conn.cursor()
+        # Auto-set bar_weight for barbell exercises when not explicitly provided
+        if bar_weight is None:
+            cur.execute("SELECT name FROM exercises WHERE id = %s", (exercise_id,))
+            ex_row = cur.fetchone()
+            if ex_row and 'バーベル' in ex_row['name']:
+                bar_weight = 11.0
         sort_order = _next_sort_order(cur, session_id)
         cur.execute("""
             INSERT INTO session_exercises
                 (session_id, exercise_id, sort_order,
                  one_rep_max, weight_pct80, weight_setting, weight_low_load, reps,
                  ratio_pct, set1_completed, set2_completed, set3_completed,
-                 exp_earned, muscle_groups, unilateral_type)
-            VALUES (%s,%s,%s, %s,%s,%s,%s,%s, %s,%s,%s,%s, %s,%s,%s)
+                 exp_earned, muscle_groups, unilateral_type, bar_weight)
+            VALUES (%s,%s,%s, %s,%s,%s,%s,%s, %s,%s,%s,%s, %s,%s,%s,%s)
             ON CONFLICT (session_id, exercise_id) DO UPDATE
                 SET sort_order=%s, one_rep_max=%s, weight_pct80=%s,
                     weight_setting=%s, weight_low_load=%s, reps=%s,
                     ratio_pct=%s, set1_completed=%s, set2_completed=%s,
                     set3_completed=%s, exp_earned=%s, muscle_groups=%s,
-                    unilateral_type=%s
+                    unilateral_type=%s,
+                    bar_weight = COALESCE(session_exercises.bar_weight, EXCLUDED.bar_weight)
             RETURNING id
         """, (
             session_id, exercise_id, sort_order,
             one_rep_max, weight_pct80, weight_setting, weight_low_load or None, reps or None,
             ratio_pct, set1, set2, set3,
-            exp_earned or 0, muscle_groups or None, unilateral_type or None,
+            exp_earned or 0, muscle_groups or None, unilateral_type or None, bar_weight,
             # ON CONFLICT values
             sort_order, one_rep_max, weight_pct80,
             weight_setting, weight_low_load or None, reps or None,
@@ -1144,6 +1154,16 @@ def reorder_my_set_exercises(my_set_id: int, ordered_ids: list) -> None:
                 "UPDATE my_set_exercises SET sort_order=%s WHERE id=%s AND my_set_id=%s",
                 (i, mse_id, my_set_id)
             )
+
+
+def update_se_bar_weight(se_id: int, bar_weight: float) -> None:
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE session_exercises SET bar_weight = %s WHERE id = %s",
+            (bar_weight, se_id)
+        )
+        conn.commit()
 
 
 def reorder_session_exercises(session_id: int, ordered_ids: list) -> None:

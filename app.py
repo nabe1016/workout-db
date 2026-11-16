@@ -868,6 +868,16 @@ def api_se_at_home(se_id):
     return jsonify(result)
 
 
+@app.route("/api/se/<int:se_id>/bar-weight", methods=["POST"])
+def api_se_bar_weight(se_id):
+    data = request.get_json(force=True) or {}
+    bar_weight = data.get("bar_weight")
+    if bar_weight is None:
+        return jsonify({"error": "missing bar_weight"}), 400
+    db.update_se_bar_weight(se_id, float(bar_weight))
+    return jsonify({"ok": True})
+
+
 @app.route("/api/sessions/<int:session_id>/finish-rpe", methods=["POST"])
 def api_session_finish_rpe(session_id):
     data = request.get_json(force=True) or {}
