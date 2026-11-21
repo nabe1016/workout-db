@@ -253,10 +253,11 @@
         ].join(';');
         btn.addEventListener('click', function(e) {
           e.preventDefault();
-          scrollToMuscle(lb.m);
+          // パネルを先に閉じてから座標を計算する（閉じる前だとパネル高さ分ズレる）
           panel.style.display = 'none';
           mapOpen = false;
           if (arrowEl) arrowEl.style.transform = '';
+          scrollToMuscle(lb.m);
         });
         btn.addEventListener('touchstart', function() {
           btn.style.background = 'rgba(255,215,0,0.35)';
@@ -276,7 +277,10 @@
       if (searchEl) { searchEl.value = ''; searchEl.dispatchEvent(new Event('input')); }
       var target = list.querySelector('.ex-muscle-group[data-muscle="' + muscle + '"]');
       if (target) {
-        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // コンテナ内だけスクロール（window全体スクロールを避ける）
+        var listRect   = list.getBoundingClientRect();
+        var targetRect = target.getBoundingClientRect();
+        list.scrollTop += (targetRect.top - listRect.top);
         // ハイライト一瞬
         target.style.outline = '2px solid rgba(255,215,0,0.6)';
         setTimeout(function() { target.style.outline = ''; }, 1200);
@@ -460,7 +464,9 @@
     <input type="hidden" name="unilateral_type" id="unilateral_type" value="{{ _ut_val or '' }}">
   </div>
 
-  <button type="submit" class="btn btn-warning btn-lg w-100">保存</button>
+  <div style="padding-bottom:2rem;">
+    <button type="submit" class="btn btn-warning btn-lg w-100">保存</button>
+  </div>
 </form>
 
 <script>
